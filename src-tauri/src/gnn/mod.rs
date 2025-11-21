@@ -206,6 +206,11 @@ impl GNNEngine {
     pub fn find_node(&self, name: &str, file_path: Option<&str>) -> Option<&CodeNode> {
         self.graph.find_node(name, file_path)
     }
+    
+    /// Get reference to the underlying graph
+    pub fn get_graph(&self) -> &graph::CodeGraph {
+        &self.graph
+    }
 }
 
 #[cfg(test)]

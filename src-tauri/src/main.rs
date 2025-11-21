@@ -237,6 +237,64 @@ fn clear_llm_key(app_handle: tauri::AppHandle, provider: String) -> Result<(), S
 }
 
 /// Update retry configuration
+// LLM commands (Configuration already implemented above)
+
+/// Generate code using LLM with GNN context
+#[tauri::command]
+async fn generate_code(
+    app_handle: tauri::AppHandle,
+    intent: String,
+    file_path: Option<String>,
+    target_node: Option<String>,
+) -> Result<llm::CodeGenerationResponse, String> {
+    use llm::context::assemble_context;
+    use llm::CodeGenerationRequest;
+    
+    // Get configuration
+    let config_dir = app_handle.path_resolver()
+        .app_config_dir()
+        .ok_or_else(|| "Failed to get config directory".to_string())?;
+    
+    let manager = llm::config::LLMConfigManager::new(&config_dir)?;
+    let config = manager.get_sanitized_config();
+    
+    // Verify at least one API key is configured
+    if !config.has_claude_key && !config.has_openai_key {
+        return Err("No LLM API keys configured. Please configure at least one provider in settings.".to_string());
+    }
+    
+    // Initialize GNN engine for context
+    let data_dir = app_handle.path_resolver()
+        .app_data_dir()
+        .ok_or_else(|| "Failed to get data directory".to_string())?;
+    
+    let db_path = data_dir.join("gnn.db");
+    let engine = gnn::GNNEngine::new(&db_path)?;
+    
+    // Assemble context from GNN
+    let context = assemble_context(
+        &engine,
+        target_node.as_deref(),
+        file_path.as_deref(),
+    )?;
+    
+    // Create code generation request
+    let request = CodeGenerationRequest {
+        intent: intent.clone(),
+        file_path: file_path.clone(),
+        context,
+        dependencies: Vec::new(), // TODO: Extract from GNN
+    };
+    
+    // Get full config for orchestrator
+    let llm_config = manager.get_config().clone();
+    
+    // Create orchestrator and generate code
+    let orchestrator = llm::orchestrator::LLMOrchestrator::new(llm_config);
+    orchestrator.generate_code(&request).await
+        .map_err(|e| e.message)
+}
+
 #[tauri::command]
 fn set_llm_retry_config(
     app_handle: tauri::AppHandle,
@@ -268,7 +326,8 @@ fn main() {
             set_claude_key,
             set_openai_key,
             clear_llm_key,
-            set_llm_retry_config
+            set_llm_retry_config,
+            generate_code
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
