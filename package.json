@@ -1,0 +1,45 @@
+{
+  "name": "yantra",
+  "version": "0.1.0",
+  "description": "AI-first development platform that generates code that never breaks",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
+    "lint": "eslint src-ui --ext .ts,.tsx",
+    "format": "prettier --write \"src-ui/**/*.{ts,tsx,css}\""
+  },
+  "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
+    "@tauri-apps/api": "^1.5.3",
+    "monaco-editor": "^0.55.1",
+    "solid-js": "^1.8.7"
+  },
+  "devDependencies": {
+    "@solidjs/testing-library": "^0.8.10",
+    "@tauri-apps/cli": "^1.5.9",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@types/node": "^20.10.5",
+    "@typescript-eslint/eslint-plugin": "^6.14.0",
+    "@typescript-eslint/parser": "^6.14.0",
+    "@vitest/ui": "^4.0.12",
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8.55.0",
+    "eslint-plugin-solid": "^0.13.1",
+    "jsdom": "^27.2.0",
+    "postcss": "^8.4.32",
+    "prettier": "^3.1.1",
+    "tailwindcss": "^3.3.6",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.8",
+    "vite-plugin-solid": "^2.8.2",
+    "vitest": "^4.0.12"
+  }
+}
