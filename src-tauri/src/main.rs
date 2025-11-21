@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 
 mod gnn;
 mod llm;
+mod testing;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct FileEntry {
@@ -295,6 +296,43 @@ async fn generate_code(
         .map_err(|e| e.message)
 }
 
+/// Generate pytest tests for given code
+#[tauri::command]
+async fn generate_tests(
+    app_handle: tauri::AppHandle,
+    code: String,
+    language: String,
+    file_path: String,
+    coverage_target: Option<f32>,
+) -> Result<testing::TestGenerationResponse, String> {
+    // Get configuration
+    let config_dir = app_handle.path_resolver()
+        .app_config_dir()
+        .ok_or_else(|| "Failed to get config directory".to_string())?;
+    
+    let manager = llm::config::LLMConfigManager::new(&config_dir)?;
+    let config = manager.get_sanitized_config();
+    
+    // Verify at least one API key is configured
+    if !config.has_claude_key && !config.has_openai_key {
+        return Err("No LLM API keys configured. Please configure at least one provider in settings.".to_string());
+    }
+    
+    // Create test generation request
+    let request = testing::TestGenerationRequest {
+        code,
+        language,
+        file_path,
+        coverage_target: coverage_target.unwrap_or(0.9), // Default to 90%
+    };
+    
+    // Get full config for test generator
+    let llm_config = manager.get_config().clone();
+    
+    // Generate tests
+    testing::generator::generate_tests(request, llm_config).await
+}
+
 #[tauri::command]
 fn set_llm_retry_config(
     app_handle: tauri::AppHandle,
@@ -327,7 +365,8 @@ fn main() {
             set_openai_key,
             clear_llm_key,
             set_llm_retry_config,
-            generate_code
+            generate_code,
+            generate_tests
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
