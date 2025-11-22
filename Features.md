@@ -549,6 +549,395 @@ Yantra:
 
 ---
 
+## 🆕 Planned Automation Features (Week 9-10 & Beyond)
+
+### Status: 🔴 Not Implemented - CRITICAL FOR FULL AUTOMATION
+
+**Vision:** Transform Yantra from code generator to fully autonomous developer that handles the complete lifecycle: Generate → Run → Test → Package → Deploy → Monitor → Heal
+
+---
+
+### 10. 🆕 Autonomous Code Execution
+
+**Status:** 🔴 Not Implemented  
+**Target:** Week 9-10  
+**Files:** `src/agent/terminal.rs`, `src/agent/execution.rs`
+
+#### Description
+Automatically run generated code with proper environment setup, dependency installation, and runtime validation. Yantra doesn't just generate code—it executes it to verify it works.
+
+#### User Benefits
+- **No Context Switching**: Execute code without leaving Yantra
+- **Automatic Environment Setup**: venv, env vars configured automatically
+- **Dependency Auto-Installation**: Missing packages installed on-demand
+- **Real-Time Feedback**: See execution output as it happens
+- **Error Recovery**: Runtime errors automatically detected and fixed
+
+#### Use Cases
+
+**Use Case 1: Generate and Run Script**
+```
+User: "Create a script to fetch data from an API and save to CSV"
+
+Yantra:
+1. Generates Python script with requests library
+2. Detects missing 'requests' package
+3. Automatically executes: pip install requests
+4. Runs the script: python fetch_data.py
+5. Shows real-time output in terminal panel
+6. If error occurs, analyzes and fixes automatically
+7. Re-runs until successful
+
+Result: Working script, verified by execution
+Time: 2-3 minutes (vs 30+ minutes manually)
+```
+
+**Use Case 2: Runtime Error Recovery**
+```
+Scenario: Generated code has runtime error
+
+Yantra:
+1. Executes code: python app.py
+2. Detects ImportError: cannot import name 'DATABASE_URL'
+3. Analyzes error: Missing config variable
+4. Generates fix: Adds DATABASE_URL to config.py
+5. Re-executes: python app.py
+6. Success! Application running
+
+Result: Self-healing execution
+Time: 30 seconds (fully automatic)
+```
+
+**Use Case 3: Dependency Installation**
+```
+Scenario: Code needs multiple packages
+
+Yantra:
+1. Attempts to run code
+2. Detects ModuleNotFoundError: 'pandas'
+3. Executes: pip install pandas
+4. Detects ModuleNotFoundError: 'numpy'
+5. Executes: pip install numpy
+6. Re-runs code successfully
+7. Updates requirements.txt automatically
+
+Result: All dependencies installed
+Time: 1-2 minutes
+```
+
+#### Technical Details
+- **Terminal Executor**: Secure command execution with whitelist
+- **Streaming Output**: Real-time stdout/stderr to UI (<10ms latency)
+- **Environment Context**: venv, env vars, working directory maintained
+- **Command Validation**: Blocks dangerous commands (rm -rf, sudo, eval)
+- **Performance**: <50ms to spawn command, <3 minutes full cycle
+
+---
+
+### 11. 🆕 Package Building & Distribution
+
+**Status:** 🔴 Not Implemented  
+**Target:** Phase 2 (Month 3-4)  
+**Files:** `src/agent/packaging.rs`
+
+#### Description
+Automatically build distributable packages (Python wheels, Docker images, npm packages) with proper versioning and optimization.
+
+#### User Benefits
+- **Zero Manual Packaging**: Yantra handles all build steps
+- **Multi-Format Support**: Wheels, Docker, npm, binaries
+- **Automatic Versioning**: From Git tags or semantic versioning
+- **Optimization**: Multi-stage Docker builds, minification
+- **Registry Integration**: Push to PyPI, Docker Hub, npm automatically
+
+#### Use Cases
+
+**Use Case 1: Build Docker Image**
+```
+User: "Package this Flask app as a Docker image"
+
+Yantra:
+1. Generates optimized multi-stage Dockerfile
+2. Builds image: docker build -t myapp:1.0.0 .
+3. Shows build output in real-time
+4. Tags with version from Git: myapp:latest, myapp:1.0.0
+5. Optionally pushes to registry
+6. Commits Dockerfile to Git
+
+Result: Production-ready Docker image
+Time: 2-3 minutes
+```
+
+**Use Case 2: Build Python Wheel**
+```
+User: "Create a distributable package for this library"
+
+Yantra:
+1. Generates setup.py with metadata
+2. Executes: python -m build
+3. Creates dist/mylib-1.0.0-py3-none-any.whl
+4. Optionally uploads to PyPI
+5. Verifies installability
+
+Result: Installable Python package
+Time: 30 seconds
+```
+
+#### Technical Details
+- **Config Generation**: setup.py, Dockerfile, package.json
+- **Build Tools**: python -m build, docker build, npm run build
+- **Optimization**: Multi-stage builds, asset compression
+- **Versioning**: Git tags, semantic versioning
+- **Performance**: <30s wheels, <2min Docker builds
+
+---
+
+### 12. 🆕 Automated Deployment Pipeline
+
+**Status:** 🔴 Not Implemented  
+**Target:** Phase 2 (Month 3-4)  
+**Files:** `src/agent/deployment.rs`
+
+#### Description
+Deploy applications to cloud platforms (AWS, GCP, Kubernetes, Heroku) with automatic health checks, database migrations, and rollback on failure.
+
+#### User Benefits
+- **Multi-Cloud Support**: AWS, GCP, K8s, Heroku
+- **Zero Downtime**: Blue-green deployments
+- **Auto-Rollback**: Revert if health checks fail
+- **Database Migrations**: Run migrations safely
+- **Infrastructure as Code**: Terraform, CloudFormation
+
+#### Use Cases
+
+**Use Case 1: Deploy to AWS**
+```
+User: "Deploy this Flask API to AWS"
+
+Yantra:
+1. Generates CloudFormation template for ECS
+2. Builds Docker image
+3. Pushes to ECR: docker push 123.dkr.ecr.us-east-1.amazonaws.com/api:latest
+4. Updates ECS service with new image
+5. Runs database migrations if needed
+6. Waits for health check: GET /health → 200 OK
+7. Monitors for 5 minutes
+8. Success! Deployment complete
+
+Result: API live at https://api.example.com
+Time: 5-8 minutes
+```
+
+**Use Case 2: Rollback on Failure**
+```
+Scenario: Deployment has errors
+
+Yantra:
+1. Deploys new version
+2. Health check fails: GET /health → 500 Error
+3. Detects failure within 30 seconds
+4. Automatically rolls back to previous version
+5. Analyzes error from logs
+6. Generates fix
+7. Offers to retry deployment
+
+Result: No downtime, automatic recovery
+Time: 2 minutes (rollback) + fix time
+```
+
+**Use Case 3: Kubernetes Deployment**
+```
+User: "Deploy to production Kubernetes cluster"
+
+Yantra:
+1. Generates Deployment and Service manifests
+2. Applies: kubectl apply -f k8s/
+3. Waits for pods: kubectl wait --for=condition=ready
+4. Runs health check against LoadBalancer IP
+5. Monitors pod logs for errors
+6. Scales replicas if needed
+
+Result: Deployed to K8s with zero downtime
+Time: 3-5 minutes
+```
+
+#### Technical Details
+- **Platforms**: AWS (ECS, Lambda), GCP (Cloud Run), K8s, Heroku
+- **Infrastructure**: Terraform, CloudFormation
+- **Health Checks**: HTTP, TCP, custom scripts
+- **Rollback**: Automatic on failure within 60 seconds
+- **Performance**: 3-10 minute deployment, <1 minute health check
+
+---
+
+### 13. 🆕 Production Monitoring & Self-Healing
+
+**Status:** 🔴 Not Implemented  
+**Target:** Phase 2 (Month 5)  
+**Files:** `src/agent/monitoring.rs`
+
+#### Description
+Monitor production systems, detect errors from logs, automatically generate fixes, and deploy hotfix patches—all without human intervention.
+
+#### User Benefits
+- **Real-Time Monitoring**: Errors, latency, throughput
+- **Automatic Fix Generation**: LLM analyzes and fixes production errors
+- **Hotfix Deployment**: Auto-deploy patches in <5 minutes
+- **Alert Escalation**: Human notified only for critical issues
+- **Self-Healing**: 90%+ of issues fixed automatically
+
+#### Use Cases
+
+**Use Case 1: Auto-Fix Production Error**
+```
+Scenario: Production API returns 500 errors
+
+Yantra Monitoring:
+1. Detects error spike in CloudWatch logs
+2. Parses error: AttributeError: 'NoneType' object has no attribute 'price'
+3. Locates code: calculate_discount() in pricing.py line 47
+4. Analyzes: price can be None when item is on_sale=False
+5. Generates fix: Add null check before accessing price
+6. Runs tests locally: All pass
+7. Creates hotfix branch
+8. Deploys to staging: Health check passes
+9. Deploys to production
+10. Monitors for 10 minutes: Error rate 0%
+11. Merges hotfix to main
+
+Result: Production issue fixed in 5 minutes
+Human intervention: None
+```
+
+**Use Case 2: Performance Degradation**
+```
+Scenario: API latency increases from 50ms to 800ms
+
+Yantra:
+1. Detects latency spike in metrics
+2. Analyzes slow query in database logs
+3. Identifies missing database index
+4. Generates migration: CREATE INDEX ON users(email)
+5. Tests migration on staging database
+6. Runs migration on production
+7. Monitors latency: back to 50ms
+
+Result: Performance restored automatically
+Time: 3 minutes
+```
+
+**Use Case 3: Escalation for Critical Issue**
+```
+Scenario: Database connection pool exhausted
+
+Yantra:
+1. Detects repeated connection errors
+2. Attempts auto-fix: Increase pool size
+3. Fix doesn't resolve issue (connections still failing)
+4. Escalates to human: "Database connection issue - unable to auto-fix"
+5. Provides full context:
+   - Error logs
+   - Attempted fixes
+   - Current resource usage
+   - Suggested manual actions
+
+Result: Human informed with full context
+Time: 2 minutes to escalation
+```
+
+#### Technical Details
+- **Monitoring**: CloudWatch, Stackdriver APIs
+- **Error Detection**: Log parsing, pattern matching
+- **Fix Generation**: LLM with error context
+- **Deployment**: Hotfix pipeline with staging→prod
+- **Performance**: <10s error detection, <2min fix generation, <5min deployment
+
+---
+
+### 14. 🆕 Integrated Terminal with Real-Time Output
+
+**Status:** 🔴 Not Implemented  
+**Target:** Week 9-10  
+**Files:** `src-ui/components/TerminalOutput.tsx`
+
+#### Description
+Built-in terminal panel that shows real-time streaming output from all executed commands (pip install, pytest, docker build, deployments).
+
+#### User Benefits
+- **Full Transparency**: See exactly what Yantra executes
+- **Real-Time Feedback**: Watch progress as it happens
+- **No External Terminal**: Everything in one window
+- **Command History**: Review all executed commands
+- **Error Visibility**: Instantly see what went wrong
+
+#### Use Cases
+
+**Use Case 1: Watch Dependency Installation**
+```
+Terminal Output Panel:
+
+$ pip install -r requirements.txt
+Collecting flask>=2.0.0
+  Using cached Flask-2.3.3-py3-none-any.whl (96 kB)
+Collecting pytest>=7.0.0
+  Downloading pytest-7.4.3-py3-none-any.whl (325 kB)
+  ████████████████████ 100%
+Installing collected packages: flask, pytest
+Successfully installed flask-2.3.3 pytest-7.4.3
+✅ Installation complete (15.2s)
+```
+
+**Use Case 2: Watch Test Execution**
+```
+Terminal Output Panel:
+
+$ pytest tests/ -v --cov=src
+tests/test_auth.py::test_login PASSED                [ 16%]
+tests/test_auth.py::test_logout PASSED               [ 33%]
+tests/test_users.py::test_create_user PASSED         [ 50%]
+tests/test_users.py::test_get_user PASSED            [ 66%]
+tests/test_users.py::test_update_user PASSED         [ 83%]
+tests/test_users.py::test_delete_user PASSED         [100%]
+
+============== 6 passed in 3.45s ==============
+Coverage: 99%
+✅ All tests passed
+```
+
+**Use Case 3: Watch Deployment**
+```
+Terminal Output Panel:
+
+$ docker build -t myapp:latest .
+[+] Building 45.2s (12/12) FINISHED
+ => [1/6] FROM docker.io/library/python:3.11-slim
+ => [2/6] WORKDIR /app
+ => [3/6] COPY requirements.txt .
+ => [4/6] RUN pip install -r requirements.txt
+ => [5/6] COPY src/ ./src/
+ => [6/6] EXPOSE 5000
+✅ Image built successfully
+
+$ docker push 123.dkr.ecr.us-east-1.amazonaws.com/myapp:latest
+Pushed: latest
+✅ Image pushed to registry
+
+$ aws ecs update-service --cluster prod --service myapp
+Service updated successfully
+✅ Deployment complete
+
+🚀 API live at: https://api.example.com
+```
+
+#### Technical Details
+- **Streaming**: Real-time output via mpsc channels (<10ms latency)
+- **Color Coding**: stdout (white), stderr (red/yellow), success (green)
+- **Features**: Auto-scroll, copy, clear, search, timestamps
+- **UI**: Bottom panel (30% height), resizable
+- **Performance**: Handles 1000+ lines without lag
+
+---
+
 ## Planned Features (MVP)
 
 ### 1. AI-Powered Code Generation
