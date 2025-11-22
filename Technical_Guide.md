@@ -1469,6 +1469,661 @@ Provide AI-first interface for user interaction with code viewing and browser pr
 
 ---
 
+### 🆕 9. Terminal Executor Module (Week 9-10)
+
+**Status:** 🔴 Not Implemented (Planned for Week 9-10)
+
+#### Purpose
+Enable autonomous code execution with secure command execution, real-time output streaming, and intelligent error recovery.
+
+#### Implementation Approach
+
+**Technology:**
+- `tokio::process::Command` for async subprocess execution
+- `tokio::sync::mpsc` for streaming output
+- Regex for command validation
+- `HashSet` for whitelist lookups
+
+**Why This Approach:**
+- Tokio provides async subprocess execution with streaming
+- Channel-based output enables real-time UI updates
+- Whitelist security prevents dangerous commands
+- Rust's type system ensures memory safety
+
+**Core Data Structures:**
+
+```rust
+// src/agent/terminal.rs
+
+pub struct TerminalExecutor {
+    workspace_path: PathBuf,
+    python_env: Option<PathBuf>,      // Path to venv
+    node_env: Option<PathBuf>,        // Path to node_modules
+    env_vars: HashMap<String, String>,
+    command_whitelist: CommandWhitelist,
+}
+
+pub struct CommandWhitelist {
+    allowed_commands: HashSet<String>,  // ["python", "pip", "npm", "node", "cargo"]
+    allowed_patterns: Vec<Regex>,       // Pre-compiled regex patterns
+    blocked_patterns: Vec<Regex>,       // rm -rf, sudo, eval, etc.
+}
+
+pub enum CommandType {
+    PythonRun,        // python script.py
+    PythonTest,       // pytest tests/
+    PythonInstall,    // pip install package
+    NodeRun,          // node script.js, npm run build
+    NodeTest,         // npm test, jest
+    NodeInstall,      // npm install package
+    RustBuild,        // cargo build, cargo test
+    DockerBuild,      // docker build, docker run
+    GitCommand,       // git status, git commit (via MCP)
+    CloudDeploy,      // aws, gcloud, kubectl commands
+}
+
+pub struct ExecutionResult {
+    command: String,
+    exit_code: i32,
+    stdout: String,
+    stderr: String,
+    execution_time: Duration,
+    success: bool,
+}
+```
+
+**Algorithm Overview:**
+
+1. **Command Validation (`validate_command`)**
+   ```
+   Input: Raw command string
+   Output: ValidatedCommand or SecurityError
+   
+   Steps:
+   1. Parse command into base command + arguments
+   2. Check base command against whitelist (HashSet O(1))
+   3. Check full command against blocked patterns (regex)
+   4. Validate arguments for shell injection (;, |, &, `, $(, etc.)
+   5. Classify command type for context-aware execution
+   6. Return ValidatedCommand
+   
+   Performance: <1ms (target), <5ms (acceptable)
+   ```
+
+2. **Async Execution with Streaming (`execute_with_streaming`)**
+   ```
+   Input: ValidatedCommand, mpsc::Sender for output
+   Output: ExecutionResult (when complete)
+   
+   Steps:
+   1. Spawn subprocess with Tokio
+   2. Set working directory to workspace_path
+   3. Apply environment variables
+   4. Pipe stdout and stderr
+   5. Spawn two async tasks:
+      - Task 1: Stream stdout lines to UI via mpsc channel
+      - Task 2: Stream stderr lines to UI via mpsc channel
+   6. Wait for process completion
+   7. Capture exit code
+   8. Aggregate output for error analysis
+   9. Return ExecutionResult
+   
+   Performance:
+   - Spawn latency: <50ms (target)
+   - Output latency: <10ms per line (unbuffered streaming)
+   - Memory: O(output size) for captured output
+   ```
+
+3. **Environment Setup (`setup_environment`)**
+   ```
+   Input: ProjectType (Python/Node/Rust)
+   Output: Environment configuration
+   
+   Steps:
+   1. Detect project type from files (requirements.txt, package.json, Cargo.toml)
+   2. For Python:
+      - Create venv if not exists: `python -m venv .venv`
+      - Detect venv activation script
+      - Set PYTHONPATH to workspace
+   3. For Node:
+      - Detect node_modules directory
+      - Set NODE_PATH if needed
+   4. For Rust:
+      - Ensure cargo is in PATH
+   5. Set common env vars (CI=true, NO_COLOR=1 for CI-friendly output)
+   
+   Performance: <5s for venv creation, <100ms for detection
+   ```
+
+4. **Dependency Installation (`install_dependencies`)**
+   ```
+   Input: ProjectType, dependency file path
+   Output: Installation result
+   
+   Steps:
+   1. Read dependency file (requirements.txt, package.json)
+   2. For Python:
+      - Execute: `pip install -r requirements.txt`
+      - Stream output to UI
+      - Parse errors if any
+   3. For Node:
+      - Execute: `npm install` or `yarn install`
+      - Stream output to UI
+   4. For Rust:
+      - Execute: `cargo build`
+   5. Cache installation for future runs
+   6. Return success/failure with details
+   
+   Performance: <30s (target), depends on network and package count
+   ```
+
+5. **Script Execution (`execute_script`)**
+   ```
+   Input: Entry point path, arguments
+   Output: Runtime result
+   
+   Steps:
+   1. Determine execution command based on file extension
+      - .py → `python script.py`
+      - .js → `node script.js`
+      - Cargo.toml → `cargo run`
+   2. Execute with streaming output
+   3. Capture stdout and stderr
+   4. Detect runtime errors:
+      - ImportError → Missing dependency
+      - SyntaxError → Code generation issue
+      - RuntimeError → Logic issue
+      - PermissionError → Environment issue
+   5. Return ExecutionResult with error classification
+   
+   Performance: Depends on script, timeout after 5 minutes
+   ```
+
+6. **Error Recovery (`handle_runtime_failure`)**
+   ```
+   Input: ExecutionResult with error
+   Output: Fix action or escalation
+   
+   Steps:
+   1. Extract error message from stderr
+   2. Classify error type:
+      - ImportError → Try installing missing package
+      - SyntaxError → Trigger code fix
+      - RuntimeError → Analyze logic error
+      - PermissionError → Check environment
+   3. Query known fixes database
+   4. If known fix:
+      - Apply fix automatically
+      - Increment retry count
+      - Re-execute (max 3 retries)
+   5. If unknown:
+      - Transition to FixingIssues phase
+      - Let LLM analyze and fix
+   
+   Performance: <2s for error analysis
+   ```
+
+**Security Measures:**
+
+1. **Command Whitelist**
+   - Only allow pre-approved commands
+   - No arbitrary shell command execution
+   - Block dangerous patterns: `rm -rf`, `sudo`, `eval`, `chmod +x`
+
+2. **Argument Validation**
+   - Check for shell injection: `;`, `|`, `&`, `` ` ``, `$(`, etc.
+   - Block file redirects to sensitive paths: `> /etc/*`
+   - Reject commands with suspicious patterns
+
+3. **Path Restrictions**
+   - Commands can only access workspace directory
+   - No access to system directories
+   - Validate all file paths before execution
+
+4. **Resource Limits**
+   - Timeout: Kill process after 5 minutes
+   - Memory: Monitor and kill if > 2GB
+   - CPU: No restrictions (local execution)
+
+5. **Audit Logging**
+   - Log all executed commands to SQLite
+   - Include timestamp, user, command, result
+   - Enable security review and forensics
+
+**Reference Files:**
+- `src/agent/terminal.rs` - TerminalExecutor implementation
+- `src/agent/orchestrator.rs` - Integration with agent phases
+- `src-ui/components/TerminalOutput.tsx` - UI panel for output
+- `tests/agent/terminal_tests.rs` - Command validation tests
+
+---
+
+### 🆕 10. Test Runner (Week 9-10)
+
+**Status:** 🔴 Not Implemented (Planned for Week 9-10)
+
+#### Purpose
+Execute generated tests in subprocess, parse results, integrate with orchestrator for automatic validation.
+
+#### Implementation Approach
+
+**Technology:**
+- Subprocess execution via TerminalExecutor
+- JUnit XML parsing for pytest output
+- Test result aggregation
+
+**Why This Approach:**
+- Subprocess isolation prevents test failures from crashing Yantra
+- JUnit XML is industry standard, easily parseable
+- pytest generates detailed failure information
+- Integration with terminal executor provides streaming output
+
+**Algorithm Overview:**
+
+1. **Test Execution (`run_tests`)**
+   ```
+   Input: Test directory path, test file patterns
+   Output: TestExecutionResult
+   
+   Steps:
+   1. Construct pytest command:
+      `pytest tests/ -v --junitxml=test-results.xml --cov=src --cov-report=term-missing`
+   2. Execute via TerminalExecutor with streaming
+   3. Wait for completion
+   4. Parse JUnit XML output
+   5. Calculate coverage percentage
+   6. Identify failed tests
+   7. Return aggregated results
+   
+   Performance: <30s for typical project
+   ```
+
+2. **Result Parsing (`parse_junit_xml`)**
+   ```
+   Input: JUnit XML file path
+   Output: Structured test results
+   
+   Steps:
+   1. Parse XML with quick-xml crate
+   2. Extract testsuite information:
+      - Total tests
+      - Passed tests
+      - Failed tests
+      - Skipped tests
+      - Execution time
+   3. For each testcase:
+      - Test name
+      - Status (pass/fail/skip)
+      - Failure message (if failed)
+      - Failure type (assertion, error, etc.)
+      - Stack trace
+   4. Return TestResults struct
+   
+   Performance: <100ms for 1000 tests
+   ```
+
+3. **Coverage Analysis (`analyze_coverage`)**
+   ```
+   Input: pytest coverage output
+   Output: Coverage report
+   
+   Steps:
+   1. Parse coverage output (term-missing format)
+   2. Extract per-file coverage:
+      - File path
+      - Statement count
+      - Missing statements
+      - Coverage percentage
+   3. Calculate overall coverage
+   4. Identify uncovered lines
+   5. Return CoverageReport
+   
+   Performance: <50ms
+   ```
+
+**Reference Files:**
+- `src/testing/runner.rs` - Test runner implementation
+- `src/testing/parser.rs` - JUnit XML parser
+- `src/agent/orchestrator.rs` - Integration with UnitTesting phase
+
+---
+
+### 🆕 11. Dependency Installer (Week 9-10)
+
+**Status:** 🔴 Not Implemented (Planned for Week 9-10)
+
+#### Purpose
+Automatically install missing dependencies detected from ImportError or explicit requirements.
+
+#### Implementation Approach
+
+**Technology:**
+- TerminalExecutor for command execution
+- File parsing for requirements.txt/package.json
+- Error pattern matching for detecting missing modules
+
+**Algorithm Overview:**
+
+1. **Dependency Detection (`detect_missing_dependency`)**
+   ```
+   Input: Runtime error message
+   Output: Package name
+   
+   Steps:
+   1. Match error pattern: "ModuleNotFoundError: No module named 'X'"
+   2. Extract package name X
+   3. Map import name to package name:
+      - cv2 → opencv-python
+      - PIL → Pillow
+      - sklearn → scikit-learn
+   4. Return package name
+   
+   Performance: <1ms
+   ```
+
+2. **Installation (`install_package`)**
+   ```
+   Input: Package name, project type
+   Output: Installation result
+   
+   Steps:
+   1. For Python:
+      - Execute: `pip install package`
+      - Stream output to UI
+      - Capture any errors
+   2. For Node:
+      - Execute: `npm install package`
+   3. Update dependency file:
+      - Add to requirements.txt or package.json
+   4. Return success/failure
+   
+   Performance: <15s per package
+   ```
+
+**Reference Files:**
+- `src/agent/dependencies.rs` - Dependency installer
+- `src/agent/orchestrator.rs` - Integration with DependencyInstallation phase
+
+---
+
+### 🆕 12. Package Builder (Month 3)
+
+**Status:** 🔴 Not Implemented (Planned for Month 3)
+
+#### Purpose
+Build distributable artifacts: Python wheels, Docker images, npm packages.
+
+#### Implementation Approach
+
+**Technology:**
+- TerminalExecutor for build commands
+- Template generation for config files
+- Multi-stage builds for Docker
+
+**Algorithm Overview:**
+
+1. **Package Configuration (`generate_package_config`)**
+   ```
+   Input: Project metadata
+   Output: Config files (setup.py, Dockerfile, package.json)
+   
+   Steps:
+   1. Detect project type and dependencies
+   2. Generate appropriate config:
+      - Python: setup.py or pyproject.toml
+      - Node: package.json with build scripts
+      - Docker: Multi-stage Dockerfile
+   3. Include all dependencies
+   4. Set version from Git tags or defaults
+   5. Write config files
+   
+   Performance: <500ms
+   ```
+
+2. **Build Execution (`build_package`)**
+   ```
+   Input: Project type, build configuration
+   Output: Build artifacts
+   
+   Steps:
+   1. For Python wheel:
+      - Execute: `python -m build`
+      - Output: dist/*.whl
+   2. For Docker image:
+      - Execute: `docker build -t app:tag .`
+      - Tag with version
+      - Push to registry if configured
+   3. For npm package:
+      - Execute: `npm run build`
+      - Output: dist/ or build/
+   4. Verify artifacts were created
+   5. Return build result
+   
+   Performance: <2 minutes for Docker, <30s for wheels
+   ```
+
+**Reference Files:**
+- `src/agent/packaging.rs` - Package builder
+- `src/agent/orchestrator.rs` - Integration with packaging phases
+
+---
+
+### 🆕 13. Deployment Automation (Month 3-4)
+
+**Status:** 🔴 Not Implemented (Planned for Month 3-4)
+
+#### Purpose
+Deploy built artifacts to cloud platforms with health checks and auto-rollback.
+
+#### Implementation Approach
+
+**Technology:**
+- TerminalExecutor for cloud CLIs (aws, gcloud, kubectl)
+- Terraform/CloudFormation templates for infrastructure
+- Health check HTTP requests
+
+**Algorithm Overview:**
+
+1. **Deployment Configuration (`configure_deployment`)**
+   ```
+   Input: Target platform (AWS/GCP/K8s), environment (staging/prod)
+   Output: Deployment configuration
+   
+   Steps:
+   1. Detect platform from config or prompt user
+   2. Generate infrastructure config:
+      - AWS: CloudFormation template or ECS task definition
+      - GCP: Cloud Run service.yaml
+      - K8s: Deployment and Service manifests
+   3. Set environment variables
+   4. Configure secrets
+   5. Return deployment config
+   
+   Performance: <1s
+   ```
+
+2. **Infrastructure Provisioning (`provision_infrastructure`)**
+   ```
+   Input: Infrastructure config
+   Output: Provisioned resources
+   
+   Steps:
+   1. Execute infrastructure tool:
+      - Terraform: `terraform apply`
+      - CloudFormation: `aws cloudformation create-stack`
+   2. Wait for stack creation
+   3. Extract outputs (URLs, ARNs, etc.)
+   4. Return resource details
+   
+   Performance: 2-5 minutes
+   ```
+
+3. **Service Deployment (`deploy_service`)**
+   ```
+   Input: Docker image, deployment config
+   Output: Deployment result
+   
+   Steps:
+   1. Push Docker image to registry
+   2. Update service:
+      - AWS ECS: `aws ecs update-service`
+      - K8s: `kubectl apply -f deployment.yaml`
+   3. Wait for deployment to stabilize
+   4. Perform health check
+   5. If health check fails:
+      - Trigger automatic rollback
+   6. Return deployment status
+   
+   Performance: 3-10 minutes
+   ```
+
+4. **Health Check (`verify_deployment`)**
+   ```
+   Input: Service URL, health endpoint
+   Output: Health status
+   
+   Steps:
+   1. Wait 30 seconds for service to start
+   2. Make HTTP request to health endpoint
+   3. Check status code (200 = healthy)
+   4. Verify response body if configured
+   5. Repeat check 3 times with 10s intervals
+   6. Return healthy/unhealthy
+   
+   Performance: <1 minute
+   ```
+
+5. **Rollback (`rollback_deployment`)**
+   ```
+   Input: Previous deployment version
+   Output: Rollback result
+   
+   Steps:
+   1. Revert to previous image/version
+   2. Update service with old configuration
+   3. Wait for stabilization
+   4. Verify health check
+   5. Return rollback status
+   
+   Performance: 2-5 minutes
+   ```
+
+**Reference Files:**
+- `src/agent/deployment.rs` - Deployment automation
+- `src/agent/orchestrator.rs` - Integration with deployment phases
+- `templates/` - Infrastructure templates
+
+---
+
+### 🆕 14. Monitoring & Self-Healing (Month 5)
+
+**Status:** 🔴 Not Implemented (Planned for Month 5)
+
+#### Purpose
+Monitor production systems, detect issues, automatically generate fixes, and deploy patches.
+
+#### Implementation Approach
+
+**Technology:**
+- CloudWatch/Stackdriver APIs for metrics and logs
+- Error pattern matching
+- LLM-based fix generation
+- Automated deployment pipeline
+
+**Algorithm Overview:**
+
+1. **Monitoring Setup (`setup_monitoring`)**
+   ```
+   Input: Deployed service details
+   Output: Monitoring configuration
+   
+   Steps:
+   1. Configure metric collection:
+      - Latency (p50, p90, p99)
+      - Error rate
+      - Request rate
+      - CPU/memory usage
+   2. Set up log aggregation
+   3. Configure alerts:
+      - Error rate > 5% → Trigger self-healing
+      - Latency p99 > 1s → Alert
+      - Service down → Immediate escalation
+   4. Return monitoring handles
+   
+   Performance: <2 minutes setup
+   ```
+
+2. **Error Detection (`detect_production_error`)**
+   ```
+   Input: Log stream, error threshold
+   Output: Detected error with context
+   
+   Steps:
+   1. Poll logs every 60 seconds
+   2. Parse error messages
+   3. Group similar errors
+   4. If error rate > threshold:
+      - Extract error stack trace
+      - Find affected code location
+      - Gather recent code changes
+      - Return error context
+   
+   Performance: <10s per check
+   ```
+
+3. **Self-Healing (`attempt_auto_fix`)**
+   ```
+   Input: Production error context
+   Output: Fix patch
+   
+   Steps:
+   1. Query known fixes database
+   2. If known fix exists:
+      - Apply fix automatically
+      - Skip to deployment
+   3. If unknown:
+      - Call LLM with error context
+      - Generate fix code
+      - Generate tests for fix
+      - Run tests locally
+      - If tests pass:
+          - Proceed to deployment
+      - If tests fail:
+          - Escalate to human
+   4. Return fix patch
+   
+   Performance: <2 minutes for auto-fix
+   ```
+
+4. **Patch Deployment (`deploy_hotfix`)**
+   ```
+   Input: Fix patch, deployment config
+   Output: Deployment result
+   
+   Steps:
+   1. Create hotfix branch
+   2. Apply patch to code
+   3. Build new Docker image
+   4. Deploy to staging first
+   5. Run automated tests
+   6. If tests pass:
+      - Deploy to production
+      - Monitor for 10 minutes
+      - If stable:
+          - Merge hotfix to main
+      - If unstable:
+          - Rollback automatically
+   7. Return deployment status
+   
+   Performance: <5 minutes total
+   ```
+
+**Reference Files:**
+- `src/agent/monitoring.rs` - Monitoring and self-healing
+- `src/agent/orchestrator.rs` - Integration with monitoring phases
+
+---
+
 ## Data Flow
 
 ### Complete User Interaction Flow
