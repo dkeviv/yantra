@@ -739,57 +739,318 @@ These enhancements will improve the system but are not required for MVP:
 | **Agentic Pipeline (MVP)** | Dec 22, 2025 | ✅ COMPLETE 🎉 |
 | **Autonomous Code Generation** | Dec 22, 2025 | ✅ COMPLETE 🎉 |
 | MVP Documentation Complete | Dec 31, 2025 | ⚪ Not Started |
+| **Execution Layer Complete** | Jan 10, 2026 | ⚪ Not Started |
 | MVP Beta Release | Jan 15, 2026 | ⚪ Not Started |
 
 ---
 
-## Phase 2 Preview: Advanced Context + Network Effect (Months 3-4)
+## 🆕 Week 9-10: Execution Layer - Full Automation (Jan 1-10, 2026)
+
+### Status: ⚪ Not Started (Planned)
+
+**Goal:** Transform Yantra from code generator to fully autonomous developer by adding code execution, testing, and error recovery capabilities.
+
+**Why Critical:** Without execution, Yantra can only generate code. With execution, Yantra can generate → run → test → fix → commit completely autonomously.
+
+#### Tasks
+
+- [ ] **Terminal Executor Module** ⚪ Not Started (Week 9, Day 1-3)
+  - [ ] Create `src/agent/terminal.rs` module
+  - [ ] Implement `TerminalExecutor` struct with workspace context
+  - [ ] Implement command validation with whitelist security
+  - [ ] Add blocked pattern detection (rm -rf, sudo, eval, etc.)
+  - [ ] Implement async subprocess execution with Tokio
+  - [ ] Add real-time output streaming via mpsc channels
+  - [ ] Implement environment variable management
+  - [ ] Add timeout and resource limit handling
+  - [ ] Create audit logging for all executed commands
+  - [ ] Write unit tests for command validation (20+ tests)
+  - [ ] Write integration tests for execution
+  - **Deliverable:** Secure terminal executor with streaming output
+  - **Acceptance:** Can execute python/pip/npm/docker commands safely with <50ms spawn latency
+
+- [ ] **Environment Setup** ⚪ Not Started (Week 9, Day 3-4)
+  - [ ] Implement project type detection (Python/Node/Rust)
+  - [ ] Add venv creation for Python projects
+  - [ ] Add env var setup (PYTHONPATH, NODE_PATH, etc.)
+  - [ ] Implement working directory management
+  - [ ] Add `EnvironmentSetup` phase to orchestrator
+  - [ ] Write tests for environment detection
+  - **Deliverable:** Automatic environment configuration
+  - **Acceptance:** Creates venv in <5s, detects project type correctly
+
+- [ ] **Dependency Installer** ⚪ Not Started (Week 9, Day 4-5)
+  - [ ] Create `src/agent/dependencies.rs` module
+  - [ ] Implement missing dependency detection from ImportError
+  - [ ] Add import-to-package name mapping (cv2→opencv-python, etc.)
+  - [ ] Implement pip/npm install with streaming output
+  - [ ] Add requirements.txt/package.json auto-update
+  - [ ] Implement installation caching
+  - [ ] Add `DependencyInstallation` phase to orchestrator
+  - [ ] Write tests for dependency detection
+  - **Deliverable:** Auto-install missing dependencies
+  - **Acceptance:** Installs packages in <15s, updates dependency files
+
+- [ ] **Script Executor** ⚪ Not Started (Week 10, Day 1-2)
+  - [ ] Create `src/agent/execution.rs` module
+  - [ ] Implement script execution (python/node/cargo)
+  - [ ] Add stdout/stderr capture and streaming
+  - [ ] Implement runtime error classification:
+    - ImportError → Missing dependency
+    - SyntaxError → Code generation issue
+    - RuntimeError → Logic issue
+    - PermissionError → Environment issue
+  - [ ] Add `ScriptExecution` phase to orchestrator
+  - [ ] Add `RuntimeValidation` phase to orchestrator
+  - [ ] Write tests for error classification
+  - **Deliverable:** Execute generated code with error detection
+  - **Acceptance:** Classifies errors correctly, timeout after 5 minutes
+
+- [ ] **Test Runner Implementation** ⚪ Not Started (Week 10, Day 2-3)
+  - [ ] Create `src/testing/runner.rs` module
+  - [ ] Implement pytest subprocess execution
+  - [ ] Add JUnit XML output generation
+  - [ ] Implement XML parsing for test results
+  - [ ] Add coverage report parsing
+  - [ ] Update `UnitTesting` phase to use subprocess runner
+  - [ ] Write tests for result parsing
+  - **Deliverable:** Execute tests in subprocess
+  - **Acceptance:** <30s test execution, <100ms XML parsing, 95%+ accuracy
+
+- [ ] **Terminal Output UI Panel** ⚪ Not Started (Week 10, Day 3-4)
+  - [ ] Create `src-ui/components/TerminalOutput.tsx`
+  - [ ] Implement 4-panel layout (add bottom panel 30% height)
+  - [ ] Add real-time output streaming display
+  - [ ] Implement color-coded output (stdout/stderr/success/error)
+  - [ ] Add auto-scroll with manual override
+  - [ ] Add copy/clear/search functionality
+  - [ ] Integrate with Tauri events for output streaming
+  - [ ] Add execution status indicators
+  - [ ] Write frontend tests
+  - **Deliverable:** Terminal output panel in UI
+  - **Acceptance:** <10ms output latency, smooth scrolling, responsive
+
+- [ ] **Error Recovery Integration** ⚪ Not Started (Week 10, Day 4-5)
+  - [ ] Update orchestrator to handle runtime failures
+  - [ ] Implement `handle_runtime_failure` method
+  - [ ] Add automatic retry with error classification
+  - [ ] Integrate with known fixes database
+  - [ ] Add transition back to `FixingIssues` for unknown errors
+  - [ ] Update confidence scoring for runtime errors
+  - [ ] Write integration tests for full flow
+  - **Deliverable:** Automatic runtime error recovery
+  - **Acceptance:** 80%+ runtime errors auto-fixed, max 3 retries
+
+- [ ] **Orchestrator Phase Expansion** ⚪ Not Started (Week 10, Day 5)
+  - [ ] Add new phases to `AgentPhase` enum:
+    - `EnvironmentSetup`
+    - `DependencyInstallation`
+    - `ScriptExecution`
+    - `RuntimeValidation`
+    - `PerformanceProfiling`
+  - [ ] Implement phase handlers in orchestrator
+  - [ ] Update state machine transitions
+  - [ ] Add performance profiling (execution time, memory)
+  - [ ] Update agent state persistence
+  - [ ] Write tests for new phases
+  - **Deliverable:** Expanded orchestrator with execution phases
+  - **Acceptance:** All phases integrate seamlessly, state persists
+
+- [ ] **End-to-End Testing** ⚪ Not Started (Week 10, Day 5)
+  - [ ] Write E2E test: Generate → Run → Test → Commit
+  - [ ] Write E2E test: Generate → Runtime Error → Fix → Retry → Success
+  - [ ] Write E2E test: Missing Dependency → Auto-install → Success
+  - [ ] Performance test: Full cycle <3 minutes
+  - [ ] Security test: Blocked commands rejected
+  - **Deliverable:** Comprehensive E2E test suite
+  - **Acceptance:** All E2E tests pass, <3 minute cycle time
+
+#### Testing Requirements
+- 50+ unit tests for terminal executor
+- 20+ unit tests for dependency installer
+- 15+ unit tests for script executor
+- 10+ integration tests for orchestrator expansion
+- 5+ E2E tests for full autonomous flow
+- Target: 90%+ coverage for new modules
+
+#### Success Criteria
+- ✅ Can execute Python scripts autonomously
+- ✅ Can install missing dependencies automatically
+- ✅ Can detect and classify runtime errors
+- ✅ Can retry with fixes for known errors
+- ✅ Terminal output streams to UI in real-time
+- ✅ Full cycle (generate → run → test → commit) <3 minutes
+- ✅ 80%+ runtime errors auto-fixed without human intervention
+- ✅ Zero security vulnerabilities in command execution
+
+#### Risks
+- **Command execution security:** Mitigated by whitelist approach, rigorous validation
+- **Performance overhead:** Mitigated by async execution, streaming output
+- **Terminal output buffering:** Mitigated by unbuffered streaming via mpsc channels
+- **Platform differences (macOS/Windows/Linux):** Test on all platforms, use cross-platform Rust crates
+
+---
+
+## Phase 2: Complete Automation Pipeline (Months 3-4)
 
 **Status:** Planning Phase  
-**Target Start:** February 2026 (after MVP)
+**Target Start:** February 2026 (after MVP + Execution Layer)  
+**Duration:** 8 weeks
 
 ### Key Objectives
 
-1. **Complete Unlimited Context Engine**
-   - Full RAG with ChromaDB
+1. **Package Building & Distribution**
+   - Generate package configs (setup.py, Dockerfile, package.json)
+   - Build Python wheels (python -m build)
+   - Build Docker images with multi-stage optimization
+   - Build npm packages (npm run build)
+   - Verify artifacts and tag versions
+   - Push to registries (PyPI, npm, Docker Hub)
+
+2. **Automated Deployment Pipeline**
+   - Configure for AWS/GCP/Kubernetes/Heroku
+   - Provision infrastructure (Terraform/CloudFormation)
+   - Database migration automation
+   - Deploy to staging with health checks
+   - Deploy to production with canary rollout
+   - Auto-rollback on failure
+   - CI/CD pipeline generation
+
+3. **Advanced Context & Network Effect**
+   - Complete unlimited context engine with RAG (ChromaDB)
    - Advanced compression (semantic chunking)
    - Full hierarchical context (L1-L4)
-   - Adaptive strategies per task type
-   - Context caching optimization
-
-2. **Network Effect System**
    - Privacy-preserving pattern extraction
    - Anonymous failure pattern aggregation
-   - Opt-in pattern sharing (user-reviewable)
-   - Daily pattern database updates
+   - Opt-in pattern sharing with community
    - Pattern success rate tracking
-   - Community-powered training data
 
-3. **Full Agentic Validation Pipeline**
-   - All 5 validations (dependency, unit, integration, security, browser)
+4. **Full Validation Pipeline**
+   - Complete all 5 validations (dependency, unit, integration, security, browser)
    - Advanced auto-fixing with ML patterns
    - Multi-attempt retry strategies
    - Smart escalation to human with full context
    - Session resumption after crashes
 
-4. **Workflow Foundation**
+### Major Tasks (High-Level)
+
+**Packaging (Week 1-2):**
+- [ ] Create `src/agent/packaging.rs` module
+- [ ] Implement package configuration generation
+- [ ] Add build execution with Docker/pip/npm
+- [ ] Implement asset optimization
+- [ ] Add artifact verification
+- [ ] Integrate `PackageConfiguration`, `BuildExecution`, `AssetOptimization`, `ArtifactGeneration` phases
+
+**Deployment (Week 3-4):**
+- [ ] Create `src/agent/deployment.rs` module
+- [ ] Implement cloud platform detection
+- [ ] Add infrastructure provisioning (Terraform/CloudFormation)
+- [ ] Implement database migration runner
+- [ ] Add service deployment with health checks
+- [ ] Implement automatic rollback
+- [ ] Integrate `DeploymentPrep`, `InfrastructureProvisioning`, `DatabaseMigration`, `ServiceDeployment`, `HealthCheck`, `RollbackIfNeeded` phases
+
+**Advanced Context (Week 5-6):**
+- [ ] RAG with ChromaDB implementation
+- [ ] Semantic search for code patterns
+- [ ] L3/L4 hierarchical context expansion (include 300+ file signatures)
+- [ ] Adaptive context strategies per task type
+- [ ] Context caching optimization
+
+**Network Effect (Week 7-8):**
+- [ ] Pattern extraction and anonymization
+- [ ] Network effect backend (opt-in sharing)
+- [ ] Community pattern database
+- [ ] Daily pattern updates
+- [ ] Pattern success rate tracking
+
+### Success Metrics (Phase 2)
+- ✅ Can build and deploy to AWS/GCP/K8s autonomously
+- ✅ Can generate Docker images and push to registry
+- ✅ Health checks pass before production deployment
+- ✅ Auto-rollback works on deployment failure
+- ✅ Context includes L3/L4 (300+ file signatures)
+- ✅ Network effect reduces error rate by 50%
+- ✅ Full deployment cycle <10 minutes
+
+---
+
+## Phase 3: Enterprise & Self-Healing (Months 5-8)
+
+**Status:** Planning Phase  
+**Target Start:** April 2026  
+**Duration:** 16 weeks
+
+### Key Objectives
+
+1. **Production Monitoring & Self-Healing**
+   - Set up observability (metrics, logs, traces)
+   - Track production errors from CloudWatch/Stackdriver
+   - Performance monitoring (latency, throughput, resource usage)
+   - Auto-detect issues in production
+   - Generate fixes using LLM with production context
+   - Deploy hotfix patches automatically
+   - Rollback if unstable
+   - Alert escalation for critical issues
+
+2. **Browser Automation for Enterprise**
+   - Advanced browser automation with Playwright
+   - Legacy system integration via browser control
+   - Data extraction from web interfaces
+   - Form filling and workflow automation
+   - Cross-browser testing
+   - Screenshot comparison for UI regression
+
+3. **Multi-Language Support**
+   - JavaScript/TypeScript full support
+   - Java support
+   - Go support
+   - Multi-language project support
+
+4. **Workflow Automation**
    - Cron scheduler for recurring tasks
    - Webhook server for event triggers
-   - Multi-step workflow execution
+   - Multi-step workflow execution (3-5 steps)
    - External API integration framework
+   - Workflow templates library
 
 ### Major Tasks (High-Level)
 
-- [ ] RAG with ChromaDB implementation
-- [ ] Semantic search for code patterns
-- [ ] Pattern extraction and anonymization
-- [ ] Network effect backend (opt-in sharing)
-- [ ] Full 5-stage validation pipeline
-- [ ] Advanced auto-fixing system
+**Monitoring & Self-Healing (Week 1-4):**
+- [ ] Create `src/agent/monitoring.rs` module
+- [ ] Implement CloudWatch/Stackdriver integration
+- [ ] Add error detection from log streams
+- [ ] Implement auto-fix generation
+- [ ] Add hotfix deployment automation
+- [ ] Integrate `MonitoringSetup`, `ErrorTracking`, `PerformanceMonitoring`, `SelfHealing` phases
+
+**Browser Automation (Week 5-8):**
+- [ ] Playwright integration
+- [ ] Legacy system automation
+- [ ] Data extraction framework
+- [ ] UI regression testing
+
+**Multi-Language Support (Week 9-12):**
+- [ ] JavaScript/TypeScript GNN parser
+- [ ] Java GNN parser
+- [ ] Go GNN parser
+- [ ] Multi-language context assembly
+
+**Workflow Automation (Week 13-16):**
 - [ ] Workflow runtime engine
+- [ ] Cron scheduler implementation
+- [ ] Webhook server
 - [ ] External API discovery
 
-**Note:** Detailed week-by-week plan will be created after MVP completion.
+### Success Metrics (Phase 3)
+- ✅ 95%+ production issues auto-healed
+- ✅ Average time to fix production issue <5 minutes
+- ✅ Browser automation handles 80%+ legacy integrations
+- ✅ Multi-language projects fully supported
+- ✅ Workflow execution <2 minute per step
+
+**Note:** Detailed week-by-week plan will be created after Phase 2 completion.
 
 ---
 
