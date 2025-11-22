@@ -49,6 +49,306 @@ Links to related decision entries
 
 ## Decisions
 
+### 🆕 November 22, 2025 - Add Terminal Integration for Full Automation
+
+**Status:** Accepted  
+**Deciders:** Project Team  
+**Impact:** CRITICAL - Enables complete autonomous development lifecycle
+
+#### Context
+During Session 5 brainstorming, the true vision for Yantra was clarified: Not just a code generator, but a **fully autonomous agentic developer** that handles the complete software development lifecycle from understanding requirements to deploying and monitoring production systems.
+
+**Original Design Assumption:** "No shell command execution for security reasons" → Yantra would only generate code and validate it, but users would manually run, test, package, and deploy.
+
+**Reality Check:** This assumption fundamentally limits Yantra's value proposition. The vision is **full automation**: Generate → Run → Test → Package → Deploy → Monitor → Heal. Without terminal integration, Yantra cannot:
+- Run generated code to verify it works
+- Execute tests in subprocess
+- Install missing dependencies automatically
+- Build distributable packages (Docker, wheels)
+- Deploy to cloud platforms
+- Monitor production and auto-fix issues
+
+**The Question:** "Can the lack of terminal integration be perceived as a limitation by developers?"  
+**Answer:** YES - It's not just a limitation, it's a showstopper for the autonomous vision.
+
+#### Decision
+**Add comprehensive terminal integration with secure command execution capabilities.**
+
+Implement a `TerminalExecutor` module that:
+1. Executes whitelisted commands in controlled subprocess environment
+2. Streams real-time output to UI via async channels
+3. Validates commands using whitelist + regex patterns
+4. Blocks dangerous commands (rm -rf, sudo, eval, shell injection)
+5. Maintains execution context (venv, env vars, working directory)
+6. Logs all commands to SQLite for audit trail
+7. Implements resource limits (timeout, memory)
+
+**Shift in Philosophy:**
+- **OLD:** "No shell commands → Security through prohibition"
+- **NEW:** "Controlled command execution → Security through validation"
+
+#### Rationale
+
+**1. Full Automation is the Core Value Proposition**
+- **Competitive Moat:** Yantra's unique value is being the ONLY platform that handles the complete development lifecycle autonomously
+- **vs Copilot/Cursor:** They stop at code generation. Yantra continues through deployment.
+- **vs Replit Agent:** Yantra adds enterprise features (self-healing, browser automation, desktop app)
+- **Time Savings:** 98% reduction in development time (10 min vs 11 hours for full feature deployment)
+
+**2. Developer Expectations**
+- Modern AI coding tools (Replit Agent, Devin) already execute code
+- Developers expect automation, not just code suggestions
+- Terminal integration is table stakes, not a luxury
+
+**3. Verification Requires Execution**
+- **Truth:** The only way to know if code works is to run it
+- Static analysis and tests are insufficient without actual execution
+- Runtime errors can only be detected by running the code
+- Dependency issues surface during installation, not before
+
+**4. Security Through Smart Design**
+- Whitelist approach is proven (sandboxes, containers use this)
+- Command validation prevents injection attacks
+- Audit logging provides forensics
+- Resource limits prevent resource exhaustion
+- Much safer than allowing users to run arbitrary external terminal commands
+
+**5. User Experience**
+- **No Context Switching:** Everything in one window (Yantra)
+- **Full Transparency:** Users see exactly what commands are executed
+- **Real-Time Feedback:** Watch progress as it happens
+- **Learning Tool:** Understand what commands Yantra uses
+- **Trust Building:** Verify Yantra's actions in real-time
+
+#### Alternatives Considered
+
+**Alternative 1: No Terminal Integration (Original Design)**
+- **Pros:** 
+  - Simpler security model
+  - No command injection risks
+  - Smaller attack surface
+- **Cons:** ❌
+  - Fundamentally limits Yantra to code generation only
+  - Cannot verify generated code works
+  - Cannot auto-install dependencies
+  - Cannot build packages or deploy
+  - User must switch to external terminal (poor UX)
+  - **Conclusion:** Defeats the purpose of autonomous development
+
+**Alternative 2: User Provides Terminal Commands**
+- **Pros:**
+  - Security responsibility on user
+  - No command validation needed
+- **Cons:** ❌
+  - User still has to think about commands (not autonomous)
+  - Security risk if user provides malicious commands
+  - Doesn't reduce developer workload
+  - **Conclusion:** Not truly autonomous
+
+**Alternative 3: Limited Command Set (Hardcoded)**
+- **Pros:**
+  - Simple implementation
+  - Very secure (no dynamic commands)
+- **Cons:** ❌
+  - Too restrictive for real-world use cases
+  - Cannot handle custom build tools
+  - Cannot adapt to different tech stacks
+  - **Conclusion:** Not flexible enough
+
+**Alternative 4: Full Shell Access (Unsafe)**
+- **Pros:**
+  - Maximum flexibility
+  - No command restrictions
+- **Cons:** ❌ UNACCEPTABLE
+  - Major security vulnerability
+  - Allows arbitrary command execution
+  - No audit trail
+  - Could delete files, install malware, etc.
+  - **Conclusion:** Irresponsible design
+
+**Alternative 5: Whitelist + Validation (CHOSEN)**
+- **Pros:** ✅
+  - Secure yet flexible
+  - Supports all necessary automation
+  - Full audit trail
+  - Blocks dangerous patterns
+  - Adapts to different tech stacks
+  - Best balance of security and functionality
+- **Cons:**
+  - More complex implementation
+  - Requires ongoing maintenance of whitelist
+  - **Conclusion:** Best approach for production system
+
+#### Consequences
+
+**Positive:**
+1. **Enables Full Automation**
+   - Complete generate → run → test → package → deploy pipeline
+   - True autonomous development (human provides intent only)
+   - 98% time savings (10 min vs 11 hours for complete feature)
+
+2. **Competitive Differentiation**
+   - Only platform with complete development lifecycle automation
+   - Stronger moat vs Copilot, Cursor, Windsurf
+   - Comparable to Replit Agent but with enterprise features
+
+3. **Better User Experience**
+   - No context switching between tools
+   - Real-time feedback and transparency
+   - Learning tool (see what commands are used)
+   - Trust building through visibility
+
+4. **Verification & Quality**
+   - Code verified by actual execution
+   - Runtime errors caught automatically
+   - Dependencies validated by installation
+   - Tests run in real environment
+
+5. **Enterprise Features Enabled**
+   - Package building (Docker, wheels, npm)
+   - Automated deployment (AWS, GCP, K8s)
+   - Production monitoring & self-healing
+   - CI/CD pipeline generation
+
+**Negative:**
+1. **Implementation Complexity**
+   - Need to build secure command executor
+   - Regex patterns for validation
+   - Streaming output infrastructure
+   - Error handling and recovery
+   - **Mitigation:** Well-documented architecture, comprehensive tests
+
+2. **Security Risks (Mitigated)**
+   - Command injection → Blocked by argument validation
+   - Dangerous commands → Blocked by pattern matching
+   - Resource exhaustion → Timeout and memory limits
+   - Privilege escalation → Block sudo, su, chmod +x
+   - **Mitigation:** Multiple layers of security
+
+3. **Maintenance Burden**
+   - Whitelist needs updates for new tools
+   - Patterns need refinement over time
+   - **Mitigation:** Community contributions, automated pattern updates
+
+4. **Platform Differences**
+   - Commands differ across OS (Windows/Mac/Linux)
+   - Shell syntax variations
+   - **Mitigation:** Detect OS, adapt commands accordingly
+
+**Trade-offs Accepted:**
+- **Simplicity ↔ Functionality:** Accept complexity for automation
+- **Strict Security ↔ Flexibility:** Balance via whitelist approach
+- **Fast Implementation ↔ Robustness:** Invest time in proper security
+
+#### Implementation Details
+
+**Security Measures:**
+1. **Command Whitelist** (HashSet for O(1) lookup)
+   - Python: `python`, `python3`, `pip`, `pytest`, `black`, `flake8`
+   - Node: `node`, `npm`, `npx`, `yarn`, `jest`
+   - Rust: `cargo`
+   - Docker: `docker` (build, run, ps, stop only)
+   - Git: `git` (via MCP protocol for extra security)
+   - Cloud: `aws`, `gcloud`, `kubectl`, `terraform`, `heroku`
+
+2. **Blocked Patterns** (Pre-compiled Regex)
+   - File operations: `rm -rf`, `chmod +x`
+   - Privilege escalation: `sudo`, `su`
+   - Code execution: `eval`, `exec`, `source`
+   - Shell injection: `;`, `|`, `&`, `` ` ``, `$(`, `{`, `}`
+   - Network attacks: `curl | bash`, `wget | sh`
+   - System file access: `> /etc/*`, `> /sys/*`
+
+3. **Argument Validation**
+   - Check each argument for shell metacharacters
+   - Reject commands with suspicious patterns
+   - Validate file paths are within workspace
+
+4. **Resource Limits**
+   - Timeout: 5 minutes per command
+   - Memory: Kill if exceeds 2GB
+   - CPU: No hard limit (local execution)
+
+5. **Audit Logging**
+   - Log all commands to SQLite
+   - Include: timestamp, command, exit code, output, user intent
+   - Enable forensics and debugging
+
+**Architecture:**
+```rust
+// src/agent/terminal.rs
+
+pub struct TerminalExecutor {
+    workspace_path: PathBuf,
+    python_env: Option<PathBuf>,
+    env_vars: HashMap<String, String>,
+    command_whitelist: CommandWhitelist,
+}
+
+pub struct CommandWhitelist {
+    allowed_commands: HashSet<String>,
+    allowed_patterns: Vec<Regex>,
+    blocked_patterns: Vec<Regex>,
+}
+
+impl TerminalExecutor {
+    // 1. Validate command (whitelist + pattern check)
+    pub fn validate_command(&self, cmd: &str) -> Result<ValidatedCommand>
+    
+    // 2. Execute with streaming output
+    pub async fn execute_with_streaming(
+        &self,
+        cmd: &str,
+        output_sender: mpsc::Sender<String>,
+    ) -> Result<ExecutionResult>
+    
+    // 3. Environment setup
+    pub fn setup_environment(&mut self, project_type: ProjectType) -> Result<()>
+}
+```
+
+**Integration with Agent:**
+- Add 5 new phases to orchestrator:
+  1. `EnvironmentSetup` - Create venv, set env vars
+  2. `DependencyInstallation` - pip install, npm install
+  3. `ScriptExecution` - Run generated code
+  4. `RuntimeValidation` - Verify execution success
+  5. `PerformanceProfiling` - Measure execution time
+
+**UI Component:**
+- Bottom terminal panel (30% height, resizable)
+- Real-time streaming output (<10ms latency)
+- Color-coded: stdout (white), stderr (red), success (green)
+- Features: Auto-scroll, copy, clear, search, timestamps
+
+#### Performance Targets
+- Command validation: <1ms
+- Subprocess spawn: <50ms
+- Output streaming latency: <10ms per line
+- Environment setup: <5s (venv creation)
+- Dependency installation: <30s (with caching)
+- Full execution cycle: <3 minutes (generate → run → test → commit)
+
+#### Timeline
+- **Week 9-10:** Terminal executor, test runner, dependency installer, output panel UI
+- **Month 3-4:** Package building, deployment automation
+- **Month 5:** Monitoring & self-healing
+
+#### Related Decisions
+- Use Tokio for async subprocess execution (enables streaming)
+- Use mpsc channels for output streaming (real-time updates)
+- Use SQLite for audit logging (existing infrastructure)
+- Add orchestrator execution phases (extends state machine)
+
+#### Lessons Learned
+1. **Early assumptions need validation:** "No shell commands" was premature optimization for security
+2. **Vision drives architecture:** Clarifying the autonomous vision changed everything
+3. **Security through design, not prohibition:** Whitelist approach is secure AND flexible
+4. **User expectations matter:** Modern AI tools execute code, Yantra must too
+5. **Verification requires execution:** Static analysis is insufficient without running code
+
+---
+
 ### November 20, 2025 - Use Tauri Over Electron
 
 **Status:** Accepted  
