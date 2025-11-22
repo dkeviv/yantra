@@ -26,8 +26,10 @@
 pub mod state;
 pub mod confidence;
 pub mod validation;
+pub mod orchestrator;
 
 // Re-export key types
 pub use state::{AgentPhase, AgentState, AgentStateManager};
 pub use confidence::{ConfidenceScore, ConfidenceFactor};
 pub use validation::{ValidationResult, ValidationError, validate_dependencies};
+pub use orchestrator::{orchestrate_code_generation, OrchestrationResult};
