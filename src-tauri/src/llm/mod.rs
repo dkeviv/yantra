@@ -1,7 +1,7 @@
 // File: src-tauri/src/llm/mod.rs
 // Purpose: Multi-LLM orchestration module for code generation
 // Dependencies: reqwest, tokio, serde
-// Last Updated: November 20, 2025
+// Last Updated: November 21, 2025
 
 pub mod claude;
 pub mod openai;
@@ -9,6 +9,7 @@ pub mod orchestrator;
 pub mod prompts;
 pub mod context;
 pub mod config;
+pub mod tokens;
 
 use serde::{Deserialize, Serialize};
 
@@ -27,6 +28,7 @@ pub struct LLMConfig {
 pub enum LLMProvider {
     Claude,
     OpenAI,
+    Qwen,
 }
 
 /// Request for code generation

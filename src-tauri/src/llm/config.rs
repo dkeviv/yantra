@@ -70,6 +70,7 @@ impl LLMConfigManager {
         match provider {
             LLMProvider::Claude => self.config.claude_api_key = None,
             LLMProvider::OpenAI => self.config.openai_api_key = None,
+            LLMProvider::Qwen => self.config.openai_api_key = None, // Qwen uses OpenAI-compatible API
         }
         self.save()
     }

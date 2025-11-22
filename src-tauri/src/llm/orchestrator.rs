@@ -112,6 +112,7 @@ impl LLMOrchestrator {
         let primary_result = match self.config.primary_provider {
             LLMProvider::Claude => self.try_claude(request).await,
             LLMProvider::OpenAI => self.try_openai(request).await,
+            LLMProvider::Qwen => self.try_openai(request).await, // Qwen uses OpenAI-compatible API
         };
 
         if let Ok(response) = primary_result {
@@ -122,6 +123,7 @@ impl LLMOrchestrator {
         let secondary_result = match self.config.primary_provider {
             LLMProvider::Claude => self.try_openai(request).await,
             LLMProvider::OpenAI => self.try_claude(request).await,
+            LLMProvider::Qwen => self.try_claude(request).await,
         };
 
         if let Ok(response) = secondary_result {

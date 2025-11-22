@@ -22,6 +22,9 @@ tree-sitter-python = "0.20"
 petgraph = "0.6"
 rusqlite = { version = "0.37.0", features = ["bundled"] }
 reqwest = { version = "0.12.24", features = ["json", "rustls-tls"] }
+tiktoken-rs = "0.5"
+uuid = { version = "1.18.1", features = ["v4", "serde"] }
+chrono = { version = "0.4.42", features = ["serde"] }
 
 [dev-dependencies]
 tempfile = "3.8"
