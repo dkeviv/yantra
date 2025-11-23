@@ -16,6 +16,16 @@ pub enum AgentPhase {
     CodeGeneration,
     /// Validating dependencies via GNN
     DependencyValidation,
+    /// Setting up execution environment (venv, env vars)
+    EnvironmentSetup,
+    /// Installing missing dependencies
+    DependencyInstallation,
+    /// Executing generated script
+    ScriptExecution,
+    /// Validating runtime behavior
+    RuntimeValidation,
+    /// Profiling performance
+    PerformanceProfiling,
     /// Running unit tests
     UnitTesting,
     /// Running integration tests
@@ -41,6 +51,11 @@ impl AgentPhase {
             AgentPhase::ContextAssembly => "ContextAssembly".to_string(),
             AgentPhase::CodeGeneration => "CodeGeneration".to_string(),
             AgentPhase::DependencyValidation => "DependencyValidation".to_string(),
+            AgentPhase::EnvironmentSetup => "EnvironmentSetup".to_string(),
+            AgentPhase::DependencyInstallation => "DependencyInstallation".to_string(),
+            AgentPhase::ScriptExecution => "ScriptExecution".to_string(),
+            AgentPhase::RuntimeValidation => "RuntimeValidation".to_string(),
+            AgentPhase::PerformanceProfiling => "PerformanceProfiling".to_string(),
             AgentPhase::UnitTesting => "UnitTesting".to_string(),
             AgentPhase::IntegrationTesting => "IntegrationTesting".to_string(),
             AgentPhase::SecurityScanning => "SecurityScanning".to_string(),
@@ -58,6 +73,11 @@ impl AgentPhase {
             "ContextAssembly" => Some(AgentPhase::ContextAssembly),
             "CodeGeneration" => Some(AgentPhase::CodeGeneration),
             "DependencyValidation" => Some(AgentPhase::DependencyValidation),
+            "EnvironmentSetup" => Some(AgentPhase::EnvironmentSetup),
+            "DependencyInstallation" => Some(AgentPhase::DependencyInstallation),
+            "ScriptExecution" => Some(AgentPhase::ScriptExecution),
+            "RuntimeValidation" => Some(AgentPhase::RuntimeValidation),
+            "PerformanceProfiling" => Some(AgentPhase::PerformanceProfiling),
             "UnitTesting" => Some(AgentPhase::UnitTesting),
             "IntegrationTesting" => Some(AgentPhase::IntegrationTesting),
             "SecurityScanning" => Some(AgentPhase::SecurityScanning),
