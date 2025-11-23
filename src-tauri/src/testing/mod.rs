@@ -1,8 +1,12 @@
 // File: src-tauri/src/testing/mod.rs
 // Purpose: Testing module for test generation and execution
-// Last Updated: November 21, 2025
+// Last Updated: November 22, 2025
 
 pub mod generator;
+pub mod runner;
+
+// Re-export key types
+pub use runner::{TestRunner, TestResult, FailureType};
 
 use serde::{Deserialize, Serialize};
 
