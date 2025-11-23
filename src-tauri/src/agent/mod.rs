@@ -29,6 +29,7 @@ pub mod validation;
 pub mod orchestrator;
 pub mod terminal;
 pub mod dependencies;
+pub mod execution;
 
 // Re-export key types
 pub use state::{AgentPhase, AgentState, AgentStateManager};
@@ -37,3 +38,4 @@ pub use validation::{ValidationResult, ValidationError, validate_dependencies};
 pub use orchestrator::{orchestrate_code_generation, OrchestrationResult};
 pub use terminal::{TerminalExecutor, TerminalOutput, ExecutionResult};
 pub use dependencies::{DependencyInstaller, ProjectType, InstallationResult};
+pub use execution::{ScriptExecutor, ScriptExecutionResult, ErrorType};
