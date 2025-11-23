@@ -1746,6 +1746,766 @@ Weeks 9-10: Workflow definition (YAML), executor, scheduler Weeks 11-12: Externa
 
 ---
 
+## Phase 2B: Cluster Agents Architecture (Months 3-4, Parallel Development)
+
+### Overview
+
+**Problem:** As codebases scale beyond 100k LOC and teams grow to 5+ concurrent developers, single-agent architecture becomes a bottleneck. Developers need multiple AI agents working simultaneously on different parts of the codebase without conflicts.
+
+**Solution:** Transform Yantra from a single autonomous agent to a **cluster of coordinating agents** using a Master-Servant architecture with Agent-to-Agent (A2A) protocol for proactive conflict prevention.
+
+**Key Innovation:** Unlike traditional collaborative editing (which reactively resolves conflicts), Yantra uses **proactive conflict prevention** - agents communicate intent before making changes, preventing conflicts rather than resolving them after the fact.
+
+### Why Cluster Agents?
+
+**Current Limitations (Single Agent):**
+- Only one developer can use Yantra at a time
+- Large codebases (100k+ LOC) exceed context limits
+- Complex features require serial execution of multiple tasks
+- Bottleneck for team collaboration
+
+**Cluster Agent Benefits:**
+- **Parallelization:** 3-10 agents working simultaneously
+- **Specialization:** Dedicated agents for frontend, backend, testing, DevOps
+- **Scalability:** Handle 100k+ LOC codebases efficiently
+- **Team Collaboration:** Multiple developers with their own agents
+- **Fault Tolerance:** One agent failure doesn't block others
+
+**Pricing Tiers:**
+- **Starter (1 agent):** $29/month - Solo developers
+- **Professional (3 agents):** $99/month - Small teams (2-5 developers)
+- **Enterprise (10 agents):** $299/month - Large teams (5+ developers)
+
+---
+
+### Architecture: Master-Servant Pattern
+
+**Why Master-Servant over Peer-to-Peer?**
+
+**Rejected: Peer-to-Peer (P2P)**
+- ❌ No single source of truth (coordination nightmare)
+- ❌ Complex consensus algorithms (Raft/Paxos)
+- ❌ Race conditions on file writes
+- ❌ Conflict resolution after-the-fact
+
+**Chosen: Master-Servant**
+- ✅ Single source of truth (Master agent)
+- ✅ Clear hierarchy and responsibility
+- ✅ Proactive conflict prevention (not reactive resolution)
+- ✅ Simple state management
+- ✅ Easy to reason about and debug
+
+---
+
+### Master Agent Responsibilities
+
+**1. Task Decomposition**
+```
+User: "Add payment processing with Stripe"
+
+Master Agent Breakdown:
+├─ Task 1: Create payment API endpoint (Backend Agent)
+├─ Task 2: Add Stripe SDK integration (Backend Agent)
+├─ Task 3: Build payment form UI (Frontend Agent)
+├─ Task 4: Add payment success page (Frontend Agent)
+├─ Task 5: Write integration tests (Testing Agent)
+└─ Task 6: Update deployment config (DevOps Agent)
+```
+
+**2. Dependency Analysis**
+- Build task dependency graph using GNN
+- Identify parallel tasks (can run simultaneously)
+- Identify sequential tasks (must wait for dependencies)
+- Assign tasks to appropriate servant agents
+
+**3. Conflict Prevention Coordination**
+- Maintain file access registry (which agent is editing what)
+- Approve or deny servant agent IntentToModify requests
+- Prevent multiple agents from editing same file
+- Track file modification history
+
+**4. Work Validation**
+- Collect completed work from servants
+- Run final validation (tests, security, browser)
+- Merge changes into main codebase
+- Handle integration conflicts if they occur
+
+**5. Error Recovery**
+- Detect when servant agent fails
+- Reassign task to another agent
+- Maintain task queue and retry logic
+- Escalate to human if automated recovery fails
+
+---
+
+### Servant Agent Responsibilities
+
+**1. Specialized Execution**
+
+Each servant agent specializes in specific domains:
+
+- **Backend Agent:** API endpoints, database models, business logic
+- **Frontend Agent:** UI components, state management, styling
+- **Testing Agent:** Unit tests, integration tests, test fixtures
+- **DevOps Agent:** Deployment, infrastructure, monitoring
+- **Security Agent:** Vulnerability scanning, auto-fixing (can run in parallel)
+- **Documentation Agent:** Code comments, API docs, user guides
+
+**2. Peer Coordination via A2A Protocol**
+
+Servants communicate directly with each other (not through master) for:
+- Querying dependencies: "Does UserService.login() exist?"
+- Checking interfaces: "What's the signature of PaymentAPI.charge()?"
+- Sharing context: "I'm adding a new field to User model"
+- Negotiating changes: "Can I modify auth.py or are you using it?"
+
+**3. Proactive Conflict Prevention**
+
+**Before making any change:**
+1. Servant sends `IntentToModify(file_path, reason)` to Master
+2. Master checks file access registry
+3. If no conflict:
+   - Master approves → Servant proceeds
+   - Other servants notified via A2A protocol
+4. If conflict detected:
+   - Master denies → Servant waits or finds alternative approach
+   - Master suggests: "UserService.login() is being modified by Backend Agent. Wait 30s or use auth.py instead?"
+
+**4. Bounded Execution**
+
+Each servant operates within defined boundaries:
+- **File scope:** Only modify assigned files
+- **Time limit:** Complete task within 5 minutes or report progress
+- **Resource limits:** Max 500 LLM tokens per generation
+- **Validation:** Local validation before submitting to Master
+
+---
+
+### Agent-to-Agent (A2A) Protocol
+
+**Protocol Design Principles:**
+- **Proactive, not reactive:** Prevent conflicts before they happen
+- **Lightweight:** Minimal overhead for high-frequency communication
+- **Stateless:** No persistent connections, message-based
+- **Structured:** JSON schema for all messages
+
+**Core Message Types:**
+
+```json
+// 1. IntentToModify - Declare intention to change file
+{
+  "type": "IntentToModify",
+  "agent_id": "backend-agent-1",
+  "file_path": "src/payment/stripe.py",
+  "operation": "create|update|delete",
+  "reason": "Adding Stripe payment integration",
+  "estimated_duration": "2min",
+  "timestamp": "2025-11-23T10:30:00Z"
+}
+
+// 2. ChangeCompleted - Notify completion
+{
+  "type": "ChangeCompleted",
+  "agent_id": "backend-agent-1",
+  "file_path": "src/payment/stripe.py",
+  "changes": {
+    "functions_added": ["charge_card", "refund_payment"],
+    "dependencies_added": ["stripe"],
+    "lines_changed": 120
+  },
+  "timestamp": "2025-11-23T10:32:00Z"
+}
+
+// 3. QueryDependency - Ask about code dependencies
+{
+  "type": "QueryDependency",
+  "agent_id": "frontend-agent-1",
+  "query": "Does PaymentAPI.charge() support retry_count parameter?",
+  "target_file": "src/payment/stripe.py",
+  "timestamp": "2025-11-23T10:33:00Z"
+}
+
+// 4. DependencyResponse - Answer dependency query
+{
+  "type": "DependencyResponse",
+  "agent_id": "backend-agent-1",
+  "query_id": "query-123",
+  "answer": {
+    "exists": true,
+    "signature": "charge(amount: float, currency: str, retry_count: int = 3) -> PaymentResult",
+    "location": "src/payment/stripe.py:45"
+  },
+  "timestamp": "2025-11-23T10:33:01Z"
+}
+
+// 5. ConflictNegotiation - Resolve potential conflicts
+{
+  "type": "ConflictNegotiation",
+  "agent_id": "frontend-agent-1",
+  "conflict": {
+    "file_path": "src/models/user.py",
+    "my_intent": "Add 'phone_number' field to User model",
+    "conflicting_agent": "backend-agent-1",
+    "conflicting_intent": "Refactoring User model structure"
+  },
+  "proposal": "I'll wait for backend-agent-1 to finish, then add my field",
+  "timestamp": "2025-11-23T10:35:00Z"
+}
+```
+
+**Communication Flow Example:**
+
+```
+[Frontend Agent] → [Master]: IntentToModify(payment_form.tsx)
+[Master] → [Frontend Agent]: Approved (no conflicts)
+[Frontend Agent] → [All Servants]: IntentToModify broadcast (via A2A)
+
+[Frontend Agent] needs PaymentAPI info
+[Frontend Agent] → [Backend Agent]: QueryDependency(PaymentAPI.charge signature)
+[Backend Agent] → [Frontend Agent]: DependencyResponse(signature details)
+
+[Frontend Agent] completes work
+[Frontend Agent] → [Master]: ChangeCompleted(payment_form.tsx)
+[Master] → [All Servants]: ChangeCompleted broadcast (via A2A)
+```
+
+---
+
+### Hybrid Intelligence: Vector DB + GNN
+
+**Why Hybrid Architecture?**
+
+**Pure Vector DB Approach (Rejected):**
+- ❌ Semantic understanding only (can't guarantee type safety)
+- ❌ No structural dependency tracking
+- ❌ Can't detect breaking changes (function signature changes)
+- ❌ Slow for real-time dependency validation
+
+**Pure GNN Approach (Rejected):**
+- ❌ Structural dependencies only (no semantic understanding)
+- ❌ Can't find similar patterns or examples
+- ❌ Poor LLM context retrieval (needs exact matches)
+- ❌ Doesn't capture intent or purpose
+
+**Hybrid Vector DB + GNN (Chosen):**
+- ✅ **Vector DB:** Semantic understanding (What does this function do? Find similar patterns)
+- ✅ **GNN:** Structural dependencies (What imports what? Who calls this function?)
+- ✅ **Combined:** Best of both worlds
+
+---
+
+### Vector Database Integration (ChromaDB)
+
+**Purpose:**
+- Semantic code search for LLM context
+- Pattern matching for similar code
+- Documentation and comment search
+- Error message similarity for auto-fix
+
+**What Gets Stored in Vector DB:**
+
+1. **Function/Class Embeddings**
+```python
+# Source code
+def calculate_payment_fee(amount: float, currency: str) -> float:
+    """Calculate processing fee for payment.
+    
+    Args:
+        amount: Payment amount
+        currency: Currency code (USD, EUR, etc.)
+    
+    Returns:
+        Processing fee amount
+    """
+    fee_rate = 0.029  # 2.9% Stripe fee
+    return amount * fee_rate
+
+# Vector DB entry
+{
+  "id": "func-calculate_payment_fee",
+  "type": "function",
+  "name": "calculate_payment_fee",
+  "signature": "calculate_payment_fee(amount: float, currency: str) -> float",
+  "docstring": "Calculate processing fee for payment...",
+  "embedding": [0.123, -0.456, ...],  # 384-dim vector
+  "file_path": "src/payment/fees.py",
+  "line_start": 10,
+  "line_end": 20
+}
+```
+
+2. **Code Comments** (for context)
+3. **Error Messages** (for pattern-based auto-fix)
+4. **Test Cases** (for similar test examples)
+5. **Documentation** (README, API docs)
+
+**Vector Search Queries:**
+
+```python
+# Agent needs to implement payment refund
+query = "How to refund a payment transaction?"
+
+# Vector DB returns semantically similar code
+results = vector_db.search(query, top_k=3)
+# Result 1: refund_payment() function in stripe.py
+# Result 2: cancel_subscription() in billing.py
+# Result 3: reverse_transaction() in ledger.py
+
+# Agent uses these as LLM context for generation
+```
+
+**Performance:**
+- **Search latency:** <50ms for semantic search
+- **Index update:** Real-time (on file save)
+- **Storage:** ~10MB per 10k LOC (embeddings + metadata)
+
+---
+
+### GNN Integration for Structural Dependencies
+
+**Purpose:**
+- Track function calls, imports, inheritance
+- Detect breaking changes (signature modifications)
+- Validate dependencies before code execution
+- Build task dependency graphs
+
+**GNN vs Vector DB - When to Use:**
+
+| Use Case | Tool | Reason |
+|----------|------|--------|
+| "Find functions that call UserService.login()" | GNN | Structural dependency |
+| "Find similar authentication code" | Vector DB | Semantic similarity |
+| "Will changing this function break anything?" | GNN | Impact analysis |
+| "How do other projects handle OAuth?" | Vector DB | Pattern search |
+| "What imports this module?" | GNN | Direct dependency |
+| "Find code related to payment processing" | Vector DB | Semantic search |
+
+**Combined Query Example:**
+
+```python
+# Agent task: "Refactor UserService.login() to support 2FA"
+
+# Step 1: GNN - Find all callers
+callers = gnn.get_function_callers("UserService.login")
+# Result: ["auth_api.py:45", "login_view.py:30", "test_auth.py:20"]
+
+# Step 2: Vector DB - Find similar 2FA implementations
+patterns = vector_db.search("two-factor authentication implementation", top_k=5)
+# Result: Similar code from other projects or modules
+
+# Step 3: GNN - Validate new signature doesn't break callers
+new_signature = "login(username: str, password: str, otp: str = None) -> bool"
+breaking_changes = gnn.validate_signature_change(
+    "UserService.login",
+    new_signature
+)
+# Result: No breaking changes (optional parameter added)
+
+# Agent proceeds with refactoring
+```
+
+---
+
+### Real-Time Synchronization
+
+**Challenge:** Multiple agents editing simultaneously - how to keep Vector DB and GNN in sync?
+
+**Strategy: Hybrid Sync**
+
+| Component | Sync Strategy | Latency | Reason |
+|-----------|---------------|---------|--------|
+| **Vector DB** | Real-time (on file save) | <100ms | Semantic search must be current |
+| **GNN** | Periodic (every 2-3s) | 2-3s | Structural changes less frequent |
+| **File Access Registry** | Real-time (on intent) | <10ms | Critical for conflict prevention |
+
+**Why Periodic GNN Sync is Acceptable:**
+
+1. **Structural changes are rare:** Most edits don't change function signatures or imports
+2. **Intent-based locking:** Agents declare intent before modifying, so GNN has time to update
+3. **Performance:** Full GNN rebuild for 10k LOC takes ~500ms, periodic is more efficient
+4. **Validation:** Master runs final GNN validation before merging changes
+
+**Sync Flow:**
+
+```
+[Agent A] Saves file → [Vector DB] Immediate index update (100ms)
+                     ↓
+[GNN Sync Thread] Checks every 2s → Detects file change → Incremental GNN update (50ms)
+                     ↓
+[Agent B] Queries dependency → [GNN] Returns up-to-date graph (10ms)
+```
+
+**File Access Registry (Real-Time):**
+
+```rust
+// In-memory registry for fast lookups
+pub struct FileAccessRegistry {
+    files: HashMap<PathBuf, FileAccess>,
+}
+
+pub struct FileAccess {
+    agent_id: String,
+    operation: Operation,  // Read, Write, Delete
+    start_time: Instant,
+    estimated_duration: Duration,
+}
+
+// Real-time operations
+registry.lock_file("src/payment/stripe.py", "backend-agent-1", Write, 2min);
+registry.check_conflict("src/payment/stripe.py");  // <1ms lookup
+registry.unlock_file("src/payment/stripe.py", "backend-agent-1");
+```
+
+---
+
+### Confidence-Based LLM Routing
+
+**Problem:** Phase 1 uses perplexity-based routing (high perplexity = complex task → use better LLM). But perplexity doesn't capture task success confidence.
+
+**New Approach: Confidence-Based Routing**
+
+**Confidence Score Calculation:**
+```rust
+pub struct ConfidenceScore {
+    llm_confidence: f64,      // From LLM response metadata (0-1)
+    validation_score: f64,    // Tests + security + GNN validation (0-1)
+    complexity_penalty: f64,  // High LOC or deep nesting reduces confidence
+    historical_success: f64,  // Similar tasks success rate (0-1)
+}
+
+impl ConfidenceScore {
+    pub fn calculate(&self) -> f64 {
+        let base = (self.llm_confidence + self.validation_score) / 2.0;
+        let adjusted = base * (1.0 - self.complexity_penalty);
+        adjusted * 0.7 + self.historical_success * 0.3
+    }
+}
+```
+
+**Routing Strategy:**
+
+```rust
+pub enum RoutingMode {
+    Adaptive {
+        initial_model: String,       // "gpt-4-turbo"
+        confidence_threshold: f64,   // 0.8
+        max_escalations: usize,      // 2
+    },
+    AlwaysBest {
+        model: String,               // "claude-sonnet-4"
+    },
+    TaskBased {
+        simple_model: String,        // "gpt-3.5-turbo"
+        complex_model: String,       // "claude-sonnet-4"
+    },
+}
+
+impl LlmRouter {
+    pub async fn route(&self, task: &Task) -> LlmClient {
+        match self.mode {
+            Adaptive { initial_model, confidence_threshold, max_escalations } => {
+                let mut attempts = 0;
+                let mut current_model = initial_model;
+                
+                loop {
+                    let result = self.generate(current_model, task).await;
+                    let confidence = result.confidence_score();
+                    
+                    if confidence >= confidence_threshold {
+                        return result;
+                    }
+                    
+                    if attempts >= max_escalations {
+                        // Escalate to human
+                        return self.request_human_help(task, result);
+                    }
+                    
+                    // Escalate to better model
+                    current_model = self.get_better_model(current_model);
+                    attempts += 1;
+                }
+            }
+            AlwaysBest { model } => {
+                self.generate(model, task).await
+            }
+            TaskBased { simple_model, complex_model } => {
+                if task.complexity() > 0.7 {
+                    self.generate(complex_model, task).await
+                } else {
+                    self.generate(simple_model, task).await
+                }
+            }
+        }
+    }
+}
+```
+
+**Configuration (TOML):**
+
+```toml
+[llm_routing]
+mode = "Adaptive"
+
+[llm_routing.adaptive]
+initial_model = "gpt-4-turbo"
+confidence_threshold = 0.8
+max_escalations = 2
+
+# Model hierarchy (worst to best)
+escalation_chain = [
+    "gpt-3.5-turbo",
+    "gpt-4-turbo",
+    "claude-sonnet-4"
+]
+
+# Tradeoffs
+# Adaptive: Fast + cheap for simple tasks, escalates for complex
+# AlwaysBest: Slow + expensive but highest quality
+# TaskBased: Balanced, but requires complexity estimation
+```
+
+**Tradeoffs:**
+
+| Mode | Speed | Cost | Quality | Best For |
+|------|-------|------|---------|----------|
+| **Adaptive** | Fast (avg) | Low-Medium | High | Production (95%+ quality, cost-optimized) |
+| **AlwaysBest** | Slow | High | Highest | Critical tasks, compliance, security |
+| **TaskBased** | Medium | Medium | Medium-High | Predictable workloads, tight budgets |
+
+---
+
+### Conflict Prevention Strategies
+
+**1. Intent-Based Locking**
+
+Before any file modification:
+```
+[Agent] → [Master]: IntentToModify(file_path)
+[Master] checks registry:
+  - If file unlocked → Approve + Lock file
+  - If file locked by same agent → Approve
+  - If file locked by different agent → Deny + Suggest alternative
+```
+
+**2. Time-Bounded Locks**
+
+- All locks have expiration (default: 5 minutes)
+- Agent must renew lock if work takes longer
+- Expired locks automatically released
+- Master can force-release if agent crashes
+
+**3. Granular Locking**
+
+Instead of locking entire file:
+```python
+# Option 1: File-level lock (simple, less parallelism)
+lock("src/payment/stripe.py")
+
+# Option 2: Function-level lock (complex, more parallelism)
+lock("src/payment/stripe.py::charge_card")
+lock("src/payment/stripe.py::refund_payment")
+# Different agents can edit different functions in same file
+```
+
+**For MVP: File-level locking** (simpler, good enough for 3-10 agents)
+**Future: Function-level locking** (for 10+ agents)
+
+**4. Alternative Suggestions**
+
+When conflict detected, Master suggests alternatives:
+
+```
+[Frontend Agent]: IntentToModify(user.py) - "Add phone_number field"
+[Master]: DENIED - user.py locked by Backend Agent (refactoring)
+[Master]: SUGGESTION: 
+  - Wait 2 minutes (estimated time remaining)
+  - Create new file user_profile.py with phone_number
+  - Add phone_number to UserProfile model instead
+```
+
+---
+
+### Git Coordination
+
+**Challenge:** Multiple agents committing simultaneously can cause Git conflicts.
+
+**Strategy: Centralized Commit Authority (Master Only)**
+
+**Rules:**
+1. **Servants never commit directly** - they submit work to Master
+2. **Master validates all changes** before committing
+3. **Master runs GNN validation** to detect integration issues
+4. **Master creates single atomic commit** with all changes
+
+**Workflow:**
+
+```
+[Agent A] Completes payment_api.py
+[Agent A] → [Master]: WorkCompleted(payment_api.py)
+
+[Agent B] Completes payment_form.tsx
+[Agent B] → [Master]: WorkCompleted(payment_form.tsx)
+
+[Master] Collects all completed work
+[Master] Runs GNN validation (no breaking changes?)
+[Master] Runs integration tests
+[Master] Creates single commit:
+
+git add src/payment/payment_api.py src/ui/payment_form.tsx
+git commit -m "feat: Add Stripe payment processing
+- Payment API endpoint (Backend Agent)
+- Payment form UI (Frontend Agent)
+- Integration tests passing (32/32)
+- Security scan: 0 vulnerabilities"
+```
+
+**Merge Strategy:**
+
+```rust
+pub enum MergeStrategy {
+    Automatic,    // Master auto-commits if all validations pass
+    Manual,       // Master requests human review before commit
+    Hybrid,       // Auto-commit for low-risk, manual for high-risk
+}
+
+// Risk assessment
+fn assess_risk(changes: &[FileChange]) -> RiskLevel {
+    if changes.iter().any(|c| c.is_critical_file()) {
+        RiskLevel::High  // auth.py, database migrations, etc.
+    } else if changes.len() > 10 {
+        RiskLevel::Medium  // Many files changed
+    } else {
+        RiskLevel::Low  // Few files, non-critical
+    }
+}
+```
+
+**Configuration:**
+
+```toml
+[git_coordination]
+merge_strategy = "Hybrid"
+
+# Auto-commit if:
+auto_commit_conditions = [
+    "all_tests_pass",
+    "no_security_vulnerabilities",
+    "risk_level == 'Low'",
+    "fewer_than_5_files_changed"
+]
+
+# Require human review if:
+require_review_conditions = [
+    "critical_files_modified",  # auth.py, migrations, etc.
+    "more_than_10_files_changed",
+    "security_vulnerabilities_detected"
+]
+
+critical_files = [
+    "src/auth/**",
+    "src/database/migrations/**",
+    "src/security/**",
+    ".github/workflows/**"
+]
+```
+
+---
+
+### Scalability & Performance
+
+**Target Performance:**
+
+| Metric | Single Agent | 3 Agents | 10 Agents |
+|--------|--------------|----------|-----------|
+| **Codebase Size** | 10k LOC | 50k LOC | 100k+ LOC |
+| **Concurrent Tasks** | 1 | 3 | 10 |
+| **Context Build Time** | <500ms | <800ms | <1.5s |
+| **Conflict Detection** | N/A | <10ms | <20ms |
+| **Commit Frequency** | Every task | Every 3 tasks | Every 10 tasks |
+| **Cost per Feature** | $0.20 | $0.25 | $0.35 |
+
+**Optimization Strategies:**
+
+1. **Incremental GNN Updates:** Only rebuild affected subgraphs
+2. **Vector DB Caching:** Cache embeddings for unchanged code
+3. **Lazy Context Loading:** Only load context when needed
+4. **Parallel Validation:** Run tests/security/browser checks simultaneously
+5. **Batched Commits:** Combine multiple small changes into single commit
+
+---
+
+### Implementation Phases
+
+**Phase 2B (Months 3-4, 8 weeks):**
+
+**Weeks 1-2: Master-Servant Foundation**
+- Implement Master agent orchestrator
+- Task decomposition with GNN dependency analysis
+- File access registry (in-memory)
+- Basic IntentToModify approval/denial
+- ✅ Milestone: Master can decompose tasks and assign to 3 servants
+
+**Weeks 3-4: A2A Protocol**
+- Implement 5 core message types (IntentToModify, ChangeCompleted, QueryDependency, DependencyResponse, ConflictNegotiation)
+- WebSocket server for A2A communication
+- Message routing and broadcasting
+- Peer-to-peer dependency queries
+- ✅ Milestone: Servants can communicate directly without Master
+
+**Weeks 5-6: Hybrid Vector DB + GNN**
+- Integrate ChromaDB for semantic search
+- Embed functions, classes, comments, docs
+- Real-time Vector DB updates on file save
+- Periodic GNN sync (every 2s)
+- Combined queries (Vector DB for semantics, GNN for structure)
+- ✅ Milestone: Agents can find code semantically and validate dependencies structurally
+
+**Weeks 7-8: Confidence-Based LLM Routing + Git Coordination**
+- Implement RoutingMode enum (Adaptive, AlwaysBest, TaskBased)
+- Confidence score calculation with historical success tracking
+- Automatic LLM escalation on low confidence
+- Centralized Git commit authority (Master only)
+- Risk assessment for auto-commit vs manual review
+- ✅ Milestone: System can auto-escalate LLMs and coordinate Git commits safely
+
+**Week 9: Integration Testing**
+- Multi-agent coordination tests
+- Conflict prevention scenarios
+- Performance benchmarks (3 vs 10 agents)
+- Chaos engineering (agent failures, network issues)
+- ✅ Milestone: All integration tests passing
+
+**Week 10: Beta Release**
+- Deploy to 10 beta users with Professional plan (3 agents)
+- Collect feedback on conflict handling
+- Measure performance gains vs single agent
+- ✅ Milestone: Beta users successfully using 3 agents concurrently
+
+---
+
+### Success Metrics
+
+**Technical Metrics:**
+- ✅ 3 agents can work on different modules simultaneously without conflicts
+- ✅ Conflict detection latency <10ms
+- ✅ 95%+ of conflicts prevented proactively (not resolved reactively)
+- ✅ Context build time <1s for 50k LOC codebase
+- ✅ Vector DB search <50ms
+- ✅ GNN incremental update <100ms per file
+
+**Business Metrics:**
+- ✅ 30% faster feature delivery with 3 agents vs 1 agent
+- ✅ 10+ beta users on Professional plan (3 agents)
+- ✅ <5% conflict-related errors (false positives)
+- ✅ NPS >50 from beta users
+
+**User Experience Metrics:**
+- ✅ "Agents feel coordinated, not chaotic"
+- ✅ "I can trust multiple agents working simultaneously"
+- ✅ "Rare conflicts are resolved quickly and transparently"
+
+---
+
 ## Phase 3: Enterprise Automation (Months 5-8)
 
 ### Objectives
