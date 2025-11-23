@@ -1,9 +1,9 @@
 # Yantra - Integration Test Results
 
 **Purpose:** Track integration test results with details and fixes  
-**Last Updated:** November 20, 2025  
+**Last Updated:** November 23, 2025  
 **Target:** All critical flows tested end-to-end  
-**Current Status:** 0 tests (No tests yet)
+**Current Status:** 2 tests created (Test Generation Integration), awaiting API keys
 
 ---
 
@@ -11,6 +11,7 @@
 
 | Integration Flow | Tests | Passed | Failed | Last Run | Status |
 |------------------|-------|--------|--------|----------|--------|
+| **Test Generation (NEW)** | **2** | **0** | **0** | **N/A** | **⏳ Awaiting API Keys** |
 | End-to-End Pipeline | 0 | 0 | 0 | N/A | ⚪ Not Started |
 | GNN Integration | 0 | 0 | 0 | N/A | ⚪ Not Started |
 | LLM Integration | 0 | 0 | 0 | N/A | ⚪ Not Started |
@@ -18,11 +19,114 @@
 | Security Pipeline | 0 | 0 | 0 | N/A | ⚪ Not Started |
 | Browser Validation | 0 | 0 | 0 | N/A | ⚪ Not Started |
 | Git Integration | 0 | 0 | 0 | N/A | ⚪ Not Started |
-| **Total** | **0** | **0** | **0** | **N/A** | **⚪** |
+| **Total** | **2** | **0** | **0** | **N/A** | **⏳** |
 
 ---
 
 ## Integration Test Flows
+
+### 0. Test Generation Integration (NEW - Nov 23, 2025) ⭐
+
+**Status:** ✅ Created, ⏳ Awaiting ANTHROPIC_API_KEY for execution  
+**File:** `tests/integration_orchestrator_test_gen.rs` (161 lines)  
+**Target Week:** Week 7 (MVP Blocker Removal)
+
+**Flow:**
+```
+User Task → Code Generation (LLM) → Test Generation (Phase 3.5) → 
+Test File Written → Test Execution (pytest) → Results Validation
+```
+
+**Test Scenarios:**
+
+#### Scenario 1: Orchestrator Generates Tests for Code ⏳
+- **Test Name:** `test_orchestrator_generates_tests_for_code`
+- **Description:** Complete E2E test of automatic test generation integration
+- **Steps:**
+  1. Setup temp workspace with GNN and state manager
+  2. Create LLM orchestrator with real ANTHROPIC_API_KEY
+  3. Request: "Create function called add_numbers that takes two numbers and returns their sum"
+  4. Call orchestrate_with_execution()
+  5. Verify code file created: calculator.py
+  6. Verify test file created: calculator_test.py
+  7. Verify tests contain pytest functions
+  8. Verify tests reference add_numbers function
+- **Expected:** Code and tests generated successfully
+- **Actual:** ⏳ Not run yet (requires ANTHROPIC_API_KEY)
+- **Estimated Time:** ~15-20s (includes 2 LLM calls: code + tests)
+
+**Implementation Details:**
+```rust
+#[tokio::test]
+async fn test_orchestrator_generates_tests_for_code() {
+    // Skip if no API keys (CI environment)
+    let claude_key = std::env::var("ANTHROPIC_API_KEY").ok();
+    if claude_key.is_none() {
+        println!("Skipping test: ANTHROPIC_API_KEY not set");
+        return;
+    }
+
+    // Setup temp workspace
+    let temp_dir = tempdir().unwrap();
+    let workspace = temp_dir.path().to_path_buf();
+    
+    // Create GNN, state manager, LLM orchestrator
+    // ...
+    
+    // Generate simple Python function
+    let user_task = "Create a function called add_numbers that takes two numbers and returns their sum".to_string();
+    let file_path = "calculator.py".to_string();
+    
+    let result = orchestrate_with_execution(
+        &gnn,
+        &llm,
+        &state_manager,
+        workspace.clone(),
+        user_task,
+        file_path.clone(),
+    ).await;
+    
+    // Verify success
+    assert!(result.is_ok());
+    
+    // Verify files exist
+    assert!(workspace.join("calculator.py").exists());
+    assert!(workspace.join("calculator_test.py").exists());
+    
+    // Verify test content
+    let test_content = std::fs::read_to_string(workspace.join("calculator_test.py")).unwrap();
+    assert!(test_content.contains("def test_"));
+    assert!(test_content.contains("add_numbers"));
+}
+```
+
+#### Scenario 2: Orchestrator Runs Generated Tests ⏳
+- **Test Name:** `test_orchestrator_runs_generated_tests`
+- **Description:** Verify generated tests are executed and results captured
+- **Steps:**
+  1. Setup same as Scenario 1
+  2. Generate code + tests for simple math function
+  3. Verify orchestrator Phase 8 runs pytest
+  4. Check result includes test execution status
+  5. Verify confidence score affected by test results
+  6. Confirm test pass rate captured
+- **Expected:** Tests generated, executed, and results influence confidence
+- **Actual:** ⏳ Not run yet (requires ANTHROPIC_API_KEY)
+- **Estimated Time:** ~15-20s
+
+**Current Status:**
+- ✅ Tests created and compile successfully
+- ✅ Skip when ANTHROPIC_API_KEY not available
+- ⏳ Need manual run with real API key
+- 📊 Will validate MVP blocker fix
+
+**Why This Matters:**
+- **MVP Blocker:** Tests prove automatic test generation works end-to-end
+- **Promise Verification:** Enables measuring "95%+ code passes tests"
+- **Quality Assurance:** Validates Phase 3.5 integration with real LLM
+- **Confidence Metric:** Verifies test results feed into confidence scoring
+
+---
 
 ### 1. End-to-End Code Generation Pipeline
 

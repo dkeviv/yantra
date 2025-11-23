@@ -1,13 +1,62 @@
 # Yantra - Known Issues
 
 **Purpose:** Track all bugs, issues, and their fixes  
-**Last Updated:** November 20, 2025
+**Last Updated:** November 23, 2025
 
 ---
 
 ## Active Issues
 
-*No active issues yet. This section will be updated as issues are discovered.*
+### Issue #1: Integration Tests Require API Keys for Execution
+
+**Status:** Open (By Design)  
+**Severity:** Low  
+**Reported:** November 23, 2025  
+**Component:** Testing  
+**Assigned:** N/A (Manual testing required)
+
+#### Description
+The integration tests for automatic test generation (`tests/integration_orchestrator_test_gen.rs`) require an `ANTHROPIC_API_KEY` environment variable to run the full E2E flow with real LLM calls.
+
+**Impact:**
+- Tests skip in CI environment when API key not present
+- Cannot verify test generation quality without manual testing
+- MVP blocker fix validated structurally but not end-to-end
+
+#### Steps to Reproduce
+1. Run `cargo test integration_orchestrator_test_gen`
+2. Without `ANTHROPIC_API_KEY` set, tests print "Skipping test: ANTHROPIC_API_KEY not set"
+3. Tests pass (via skip) but don't validate actual behavior
+
+#### Root Cause
+- Integration tests need real LLM API to generate code and tests
+- Cannot mock LLM responses realistically for this test
+- API keys should not be committed to repository
+
+#### Solution
+**Current Approach (Acceptable for MVP):**
+- Tests skip gracefully when API key unavailable
+- Manual testing with real API key required before releases
+- Documentation updated to note manual testing requirement
+
+**Future Enhancement (Post-MVP):**
+- Add mock LLM responses for integration tests
+- Or: Use recorded LLM responses (VCR pattern)
+- Or: Set up secure CI environment with encrypted API keys
+
+#### Workaround
+**For Manual Testing:**
+```bash
+export ANTHROPIC_API_KEY="your-key-here"
+cargo test integration_orchestrator_test_gen --test integration_orchestrator_test_gen
+```
+
+**Expected Output:**
+- test_orchestrator_generates_tests_for_code: PASS (~15-20s)
+- test_orchestrator_runs_generated_tests: PASS (~15-20s)
+
+#### Fixed In
+N/A - By design, will remain as manual testing requirement for MVP
 
 ---
 

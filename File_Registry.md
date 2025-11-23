@@ -93,7 +93,7 @@
 | `src/llm/mod.rs` | ✅ Complete | LLM module root with core types | All LLM submodules | Nov 20 |
 | `src/llm/claude.rs` | ✅ Complete | Claude Sonnet 4 API client | reqwest, serde, tokio | Nov 20 |
 | `src/llm/openai.rs` | ✅ Complete | OpenAI GPT-4 Turbo client | reqwest, serde, tokio | Nov 20 |
-| `src/llm/orchestrator.rs` | ✅ Complete | Multi-LLM orchestration + circuit breaker | claude.rs, openai.rs | Nov 20 |
+| `src/llm/orchestrator.rs` | ✅ Complete + Enhanced | Multi-LLM orchestration + config accessor | claude.rs, openai.rs | Nov 23, 2025 |
 | `src/llm/config.rs` | ✅ Complete | Configuration management with persistence | serde, tokio | Nov 20 |
 | `src/llm/context.rs` | ⚪ Placeholder | Context assembly from GNN | GNN module | Nov 20 |
 | `src/llm/prompts.rs` | ⚪ Placeholder | Prompt template system | None | Nov 20 |
@@ -103,6 +103,10 @@
 - **claude.rs (300+ lines)**: Full HTTP client with Messages API, system/user prompt building, code block extraction, response parsing
 - **openai.rs (200+ lines)**: Chat completions client with temperature 0.2 for deterministic code, similar structure to Claude
 - **orchestrator.rs (280+ lines)**: CircuitBreaker state machine (Closed/Open/HalfOpen), retry with exponential backoff (100ms-400ms), automatic failover (Claude → OpenAI)
+  - **Config Accessor (Added Nov 23, 2025):**
+    - Lines 107-110: New `config()` getter method
+    - Returns `&LLMConfig` for sharing with test generator
+    - Enables consistent LLM settings across code and test generation
 - **config.rs (180+ lines)**: JSON persistence to OS config dir, secure API key storage, sanitized config for frontend (boolean flags only)
 - **context.rs (20 lines)**: Placeholder for smart context assembly from GNN
 - **prompts.rs (10 lines)**: Placeholder for version-controlled templates
@@ -113,28 +117,33 @@
 - `src-ui/api/llm.ts` (60 lines): TypeScript API wrapper for all LLM config Tauri commands
 - `src-ui/components/LLMSettings.tsx` (230+ lines): Full-featured SolidJS settings UI with provider selection, API key inputs, status indicators
 
-### Testing Module (Week 5-6) - ✅ COMPLETE
+### Testing Module (Week 5-6) - ✅ COMPLETE (Integrated Nov 23, 2025)
 
 | File | Status | Purpose | Dependencies | Last Updated |
 |------|--------|---------|--------------|--------------|
-| `src/testing/mod.rs` | ✅ Complete | Testing module root | All testing submodules | Nov 21, 2025 |
-| `src/testing/generator.rs` | ✅ Complete | Test generation with LLM | LLM module | Nov 21, 2025 |
+| `src/testing/mod.rs` | ✅ Complete | Testing module root | All testing submodules | Nov 23, 2025 |
+| `src/testing/generator.rs` | ✅ Complete + Integrated | Test generation with LLM, now integrated into orchestrator | LLM module | Nov 23, 2025 |
 | `src/testing/runner.rs` | ✅ Complete | pytest subprocess runner + JUnit XML parser | tokio, quick-xml | Nov 21, 2025 |
 
 **Implementation Details:**
 - **generator.rs (410 lines)**: Test prompt generation, coverage estimation, fixture extraction, test function counting, integration with LLM
+  - **CRITICAL INTEGRATION (Nov 23):** Now called automatically by orchestrator Phase 3.5
+  - Called via `generate_tests(TestGenerationRequest, LLMConfig)` function
+  - Generates pytest tests with 80% coverage target
+  - Writes tests to `{filename}_test.py`
 - **runner.rs (549 lines)**: Execute pytest in subprocess, parse JUnit XML output, coverage analysis, test failure classification (3 types: assertion/import/runtime)
 - **Tests**: 4 tests passing (pytest execution, XML parsing, coverage, failure classification)
+- **Integration Impact:** Every code generation now includes automatic test generation (MVP blocker removed)
 
-### Agent Module (Week 5-8) - ✅ COMPLETE
+### Agent Module (Week 5-8) - ✅ COMPLETE (Test Gen Integrated Nov 23, 2025)
 
 | File | Status | Purpose | Dependencies | Last Updated |
 |------|--------|---------|--------------|--------------|
-| `src/agent/mod.rs` | ✅ Complete | Agent module root with exports | All agent submodules | Nov 22, 2025 |
+| `src/agent/mod.rs` | ✅ Complete | Agent module root with exports | All agent submodules | Nov 23, 2025 |
 | `src/agent/state.rs` | ✅ Complete | Agent state machine (16 phases) | serde, std::fs | Nov 22, 2025 |
 | `src/agent/confidence.rs` | ✅ Complete | Confidence scoring system | serde | Nov 21, 2025 |
 | `src/agent/validation.rs` | ✅ Complete | Dependency validation | GNN module | Nov 21, 2025 |
-| `src/agent/orchestrator.rs` | ✅ Complete | Main orchestration with execution | All agent modules | Nov 22, 2025 |
+| `src/agent/orchestrator.rs` | ✅ Complete + Enhanced | Main orchestration with automatic test generation (Phase 3.5) | All agent modules, testing::generator | Nov 23, 2025 |
 | `src/agent/terminal.rs` | ✅ Complete | Terminal command executor | tokio, Command | Nov 21, 2025 |
 | `src/agent/dependencies.rs` | ✅ Complete | Dependency installer with auto-fix | terminal.rs | Nov 21, 2025 |
 | `src/agent/execution.rs` | ✅ Complete | Script executor with error classification | terminal.rs | Nov 21, 2025 |
@@ -146,7 +155,15 @@
 - **state.rs (150 lines)**: 16-phase state machine with crash recovery, serialization, JSON persistence
 - **confidence.rs (314 lines)**: Multi-factor confidence scoring (LLM/tests/complexity/deps), auto-retry decision logic
 - **validation.rs (200 lines)**: GNN-based dependency validation, breaking change detection
-- **orchestrator.rs (726 lines)**: Full autonomous pipeline with 13 tests, orchestrate_with_execution() for runtime validation
+- **orchestrator.rs (726 lines, 15 tests)**: Full autonomous pipeline with automatic test generation
+  - **Phase 3.5 - AUTOMATIC TEST GENERATION (Added Nov 23, 2025):**
+    - Lines 455-489: New phase between code generation and validation
+    - Creates TestGenerationRequest with 80% coverage target
+    - Calls `testing::generator::generate_tests()` using LLM config
+    - Writes tests to `{filename}_test.py`
+    - Graceful failure handling (logs warning, continues orchestration)
+    - **IMPACT:** MVP promise "95%+ code passes tests" now measurable and verifiable
+  - orchestrate_with_execution() for runtime validation
 - **terminal.rs (529 lines)**: Secure command execution with whitelist, streaming output, 6 tests
 - **dependencies.rs (410 lines)**: Auto-install missing packages, import-to-package mapping, 7 tests
 - **execution.rs (603 lines)**: Runtime execution with 6 error types, entry point detection, 8 tests
@@ -323,7 +340,7 @@
 
 ## Test Files
 
-### Integration Tests (Week 8) - ✅ COMPLETE
+### Integration Tests (Week 8) - ✅ COMPLETE (Test Gen Added Nov 23, 2025)
 
 | File | Status | Purpose | Dependencies | Last Updated |
 |------|--------|---------|--------------|--------------|
@@ -331,6 +348,8 @@
 | `tests/integration/execution_tests.rs` | ✅ Complete | Execution pipeline E2E tests (12 tests) | agent, testing, gnn | Nov 23, 2025 |
 | `tests/integration/packaging_tests.rs` | ✅ Complete | Package building tests (10 tests) | agent/packaging | Nov 23, 2025 |
 | `tests/integration/deployment_tests.rs` | ✅ Complete | Deployment automation tests (10 tests) | agent/deployment | Nov 23, 2025 |
+| `tests/integration_orchestrator_test_gen.rs` | ✅ NEW | Orchestrator test generation E2E tests (2 tests) | agent, testing, llm, gnn | Nov 23, 2025 |
+| `tests/unit_test_generation_integration.rs` | ✅ NEW | Test generation logic unit tests (4 tests) | testing, llm | Nov 23, 2025 |
 | `tests/integration/gnn_integration_test.rs` | ⚪ To be created | GNN end-to-end integration tests | GNN module | - |
 | `tests/integration/llm_integration_test.rs` | ⚪ To be created | LLM integration tests | LLM module | - |
 | `tests/integration/end_to_end_test.rs` | ⚪ To be created | Complete pipeline test | All modules | - |
@@ -341,6 +360,17 @@
   - test_full_pipeline_success: Complete code generation → validation → execution flow
   - test_missing_dependency_handling: Auto-detection and installation of missing packages
   - test_runtime_error_handling: Error classification (AssertionError, ImportError, RuntimeError)
+- **integration_orchestrator_test_gen.rs (161 lines, 2 tests)**: NEW - Test generation integration tests
+  - test_orchestrator_generates_tests_for_code: Verifies tests are generated for code
+  - test_orchestrator_runs_generated_tests: Verifies generated tests are executed
+  - **Status:** Created, requires ANTHROPIC_API_KEY for full E2E run
+  - **Impact:** Validates MVP blocker fix (automatic test generation)
+- **unit_test_generation_integration.rs (73 lines, 4 tests)**: NEW - Test generation unit tests (all passing ✅)
+  - test_test_generation_request_structure: Data structure validation
+  - test_llm_config_has_required_fields: Config validation
+  - test_test_file_path_generation: File naming logic
+  - test_orchestrator_phases_include_test_generation: Integration verification
+  - **Status:** 100% passing, no API keys needed
   - test_terminal_streaming: Real-time output streaming validation
   - test_concurrent_execution: Multiple script execution handling
   - test_execution_timeout: Timeout handling for long-running scripts
