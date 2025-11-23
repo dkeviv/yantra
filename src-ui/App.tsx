@@ -1,17 +1,19 @@
 // File: src-ui/App.tsx
-// Purpose: Main application component with 4-panel layout
+// Purpose: Main application component with 4-panel layout + bottom terminal
 // Dependencies: solid-js, components
-// Last Updated: November 20, 2025
+// Last Updated: November 22, 2025
 
 import { Component, createSignal, onMount } from 'solid-js';
 import FileTree from './components/FileTree';
 import ChatPanel from './components/ChatPanel';
 import CodeViewer from './components/CodeViewer';
 import BrowserPreview from './components/BrowserPreview';
+import TerminalOutput from './components/TerminalOutput';
 import { appStore } from './stores/appStore';
 
 const App: Component = () => {
   const [isDragging, setIsDragging] = createSignal<number | null>(null);
+  const [terminalHeight, setTerminalHeight] = createSignal(30); // Terminal height in %
 
   // Handle panel resizing
   const handleMouseDown = (panelIndex: number) => (e: MouseEvent) => {
@@ -21,6 +23,18 @@ const App: Component = () => {
 
   const handleMouseMove = (e: MouseEvent) => {
     if (isDragging() === null) return;
+
+    if (isDragging() === 3) {
+      // Dragging terminal vertical divider
+      const containerHeight = window.innerHeight - 56; // Subtract top bar height
+      const mouseY = e.clientY - 56; // Adjust for top bar
+      const percentage = (mouseY / containerHeight) * 100;
+      const newMainHeight = Math.min(Math.max(percentage, 50), 85); // Main area: 50-85%
+      const newTerminalHeight = 100 - newMainHeight;
+      
+      setTerminalHeight(newTerminalHeight);
+      return;
+    }
 
     const containerWidth = window.innerWidth;
     const mouseX = e.clientX;
@@ -101,41 +115,55 @@ const App: Component = () => {
         </div>
       </div>
 
-      {/* Main 4-Panel Layout */}
-      <div class="flex h-[calc(100vh-3.5rem)]">
-        {/* File Tree - 15% fixed */}
-        <div class="w-64">
-          <FileTree />
+      {/* Main Layout with Terminal */}
+      <div class="flex flex-col h-[calc(100vh-3.5rem)]">
+        {/* Top 4-Panel Layout */}
+        <div class="flex" style={{ height: `${100 - terminalHeight()}%` }}>
+          {/* File Tree - 15% fixed */}
+          <div class="w-64">
+            <FileTree />
+          </div>
+
+          {/* Resize Handle FileTree-Chat */}
+          <div class="w-1 bg-gray-700" />
+
+          {/* Chat Panel - 45% default */}
+          <div style={{ width: `${appStore.chatWidth()}%` }}>
+            <ChatPanel />
+          </div>
+
+          {/* Resize Handle 1 */}
+          <div
+            class="w-1 resize-handle cursor-col-resize hover:bg-primary-500 transition-colors"
+            onMouseDown={handleMouseDown(1)}
+          />
+
+          {/* Code Viewer - 25% default */}
+          <div style={{ width: `${appStore.codeWidth()}%` }}>
+            <CodeViewer />
+          </div>
+
+          {/* Resize Handle 2 */}
+          <div
+            class="w-1 resize-handle cursor-col-resize hover:bg-primary-500 transition-colors"
+            onMouseDown={handleMouseDown(2)}
+          />
+
+          {/* Browser Preview - 15% default */}
+          <div style={{ width: `${appStore.previewWidth()}%` }}>
+            <BrowserPreview />
+          </div>
         </div>
 
-        {/* Resize Handle FileTree-Chat */}
-        <div class="w-1 bg-gray-700" />
-
-        {/* Chat Panel - 45% default */}
-        <div style={{ width: `${appStore.chatWidth()}%` }}>
-          <ChatPanel />
-        </div>
-
-        {/* Resize Handle 1 */}
+        {/* Horizontal Resize Handle for Terminal */}
         <div
-          class="w-1 resize-handle cursor-col-resize hover:bg-primary-500 transition-colors"
-          onMouseDown={handleMouseDown(1)}
+          class="h-1 resize-handle cursor-row-resize hover:bg-primary-500 transition-colors bg-gray-700"
+          onMouseDown={handleMouseDown(3)}
         />
 
-        {/* Code Viewer - 25% default */}
-        <div style={{ width: `${appStore.codeWidth()}%` }}>
-          <CodeViewer />
-        </div>
-
-        {/* Resize Handle 2 */}
-        <div
-          class="w-1 resize-handle cursor-col-resize hover:bg-primary-500 transition-colors"
-          onMouseDown={handleMouseDown(2)}
-        />
-
-        {/* Browser Preview - 15% default */}
-        <div style={{ width: `${appStore.previewWidth()}%` }}>
-          <BrowserPreview />
+        {/* Terminal Output Panel */}
+        <div style={{ height: `${terminalHeight()}%` }}>
+          <TerminalOutput />
         </div>
       </div>
     </div>
