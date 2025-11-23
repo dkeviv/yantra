@@ -1,9 +1,10 @@
 // File: src-ui/App.tsx
-// Purpose: Main application component with 4-panel layout + bottom terminal
-// Dependencies: solid-js, components
-// Last Updated: November 22, 2025
+// Purpose: Main application component with resizable 5-panel layout
+// Dependencies: solid-js, stores/appStore, components
+// Last Updated: November 23, 2025
 
-import { Component, createSignal, onMount } from 'solid-js';
+import { Component, createSignal, onMount, Show } from 'solid-js';
+import { appStore } from './stores/appStore';
 import FileTree from './components/FileTree';
 import ChatPanel from './components/ChatPanel';
 import CodeViewer from './components/CodeViewer';
@@ -11,7 +12,6 @@ import BrowserPreview from './components/BrowserPreview';
 import TerminalOutput from './components/TerminalOutput';
 import { AgentStatus } from './components/AgentStatus';
 import { Notifications } from './components/Notifications';
-import { appStore } from './stores/appStore';
 
 const App: Component = () => {
   const [isDragging, setIsDragging] = createSignal<number | null>(null);
@@ -101,6 +101,26 @@ const App: Component = () => {
           <h1 class="text-xl font-bold">Yantra</h1>
         </div>
         <div class="ml-auto flex items-center space-x-4">
+          {/* Panel Toggle Buttons */}
+          <Show when={!appStore.showCode()}>
+            <button
+              class="px-3 py-1 text-xs bg-gray-700 rounded hover:bg-gray-600 transition-colors"
+              onClick={() => appStore.setShowCode(true)}
+              title="Show code viewer"
+            >
+              Show Code
+            </button>
+          </Show>
+          <Show when={!appStore.showPreview()}>
+            <button
+              class="px-3 py-1 text-xs bg-gray-700 rounded hover:bg-gray-600 transition-colors"
+              onClick={() => appStore.setShowPreview(true)}
+              title="Show preview"
+            >
+              Show Preview
+            </button>
+          </Show>
+          
           <button
             class="px-4 py-2 text-sm bg-gray-700 rounded hover:bg-gray-600 transition-colors"
             onClick={() => {
@@ -143,26 +163,48 @@ const App: Component = () => {
           </div>
 
           {/* Resize Handle 1 */}
-          <div
-            class="w-1 resize-handle cursor-col-resize hover:bg-primary-500 transition-colors"
-            onMouseDown={handleMouseDown(1)}
-          />
+          <Show when={appStore.showCode()}>
+            <div
+              class="w-1 resize-handle cursor-col-resize hover:bg-primary-500 transition-colors"
+              onMouseDown={handleMouseDown(1)}
+            />
+          </Show>
 
-          {/* Code Viewer - 25% default */}
-          <div style={{ width: `${appStore.codeWidth()}%` }}>
-            <CodeViewer />
-          </div>
+          {/* Code Viewer - 25% default with close button */}
+          <Show when={appStore.showCode()}>
+            <div style={{ width: `${appStore.codeWidth()}%` }} class="relative">
+              <button
+                class="absolute top-2 right-2 z-10 w-6 h-6 bg-gray-700 hover:bg-gray-600 rounded flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+                onClick={() => appStore.setShowCode(false)}
+                title="Close code viewer"
+              >
+                ×
+              </button>
+              <CodeViewer />
+            </div>
+          </Show>
 
           {/* Resize Handle 2 */}
-          <div
-            class="w-1 resize-handle cursor-col-resize hover:bg-primary-500 transition-colors"
-            onMouseDown={handleMouseDown(2)}
-          />
+          <Show when={appStore.showPreview()}>
+            <div
+              class="w-1 resize-handle cursor-col-resize hover:bg-primary-500 transition-colors"
+              onMouseDown={handleMouseDown(2)}
+            />
+          </Show>
 
-          {/* Browser Preview - 15% default */}
-          <div style={{ width: `${appStore.previewWidth()}%` }}>
-            <BrowserPreview />
-          </div>
+          {/* Browser Preview - 15% default with close button */}
+          <Show when={appStore.showPreview()}>
+            <div style={{ width: `${appStore.previewWidth()}%` }} class="relative">
+              <button
+                class="absolute top-2 right-2 z-10 w-6 h-6 bg-gray-700 hover:bg-gray-600 rounded flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+                onClick={() => appStore.setShowPreview(false)}
+                title="Close preview"
+              >
+                ×
+              </button>
+              <BrowserPreview />
+            </div>
+          </Show>
         </div>
 
         {/* Horizontal Resize Handle for Terminal */}

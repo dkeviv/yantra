@@ -43,6 +43,10 @@ const [chatWidth, setChatWidth] = createSignal<number>(60);
 const [codeWidth, setCodeWidth] = createSignal<number>(25);
 const [previewWidth, setPreviewWidth] = createSignal<number>(15);
 
+// Panel visibility
+const [showCode, setShowCode] = createSignal<boolean>(true);
+const [showPreview, setShowPreview] = createSignal<boolean>(true);
+
 export const appStore = {
   // Getters
   messages,
@@ -52,12 +56,16 @@ export const appStore = {
   chatWidth,
   codeWidth,
   previewWidth,
+  showCode,
+  showPreview,
 
   // Setters
   setMessages,
   setCurrentCode,
   setProjectPath,
   setIsGenerating,
+  setShowCode,
+  setShowPreview,
   setChatWidth,
   setCodeWidth,
   setPreviewWidth,
