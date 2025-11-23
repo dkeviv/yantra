@@ -414,6 +414,12 @@ pub struct HierarchicalContext {
     pub related_tokens: usize,
 }
 
+impl Default for HierarchicalContext {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl HierarchicalContext {
     /// Create a new hierarchical context
     pub fn new() -> Self {

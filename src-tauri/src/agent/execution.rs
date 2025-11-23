@@ -15,6 +15,9 @@
 // - Script execution: Depends on code
 // - Error classification: <5ms
 
+// Most types in this module are not yet fully integrated
+#![allow(dead_code)]
+
 use crate::agent::dependencies::{DependencyInstaller, ProjectType};
 use crate::agent::terminal::{ExecutionResult, TerminalExecutor, TerminalOutput};
 use serde::{Deserialize, Serialize};

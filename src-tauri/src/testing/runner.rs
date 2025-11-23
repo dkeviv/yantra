@@ -14,6 +14,10 @@
 // - XML parsing: <100ms for 1000 tests
 // - Result processing: <50ms
 
+// Most of this module is not yet integrated with the agent orchestrator
+// but will be used in future test execution features
+#![allow(dead_code)]
+
 use crate::agent::terminal::{ExecutionResult, TerminalExecutor, TerminalOutput};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -58,6 +62,7 @@ pub enum FailureType {
 }
 
 impl FailureType {
+    #[allow(dead_code)]
     fn from_error_type(error_type: &str) -> Self {
         match error_type {
             s if s.contains("AssertionError") => FailureType::AssertionError,
@@ -193,19 +198,19 @@ impl TestRunner {
         for line in output_text.lines() {
             if line.contains("passed") || line.contains("failed") || line.contains("error") {
                 // Try to parse counts
-                if let Some(passed_count) = extract_count(&line, "passed") {
+                if let Some(passed_count) = extract_count(line, "passed") {
                     passed = passed_count;
                     total_tests += passed_count;
                 }
-                if let Some(failed_count) = extract_count(&line, "failed") {
+                if let Some(failed_count) = extract_count(line, "failed") {
                     failed = failed_count;
                     total_tests += failed_count;
                 }
-                if let Some(skipped_count) = extract_count(&line, "skipped") {
+                if let Some(skipped_count) = extract_count(line, "skipped") {
                     skipped = skipped_count;
                     total_tests += skipped_count;
                 }
-                if let Some(error_count) = extract_count(&line, "error") {
+                if let Some(error_count) = extract_count(line, "error") {
                     errors = error_count;
                     total_tests += error_count;
                 }

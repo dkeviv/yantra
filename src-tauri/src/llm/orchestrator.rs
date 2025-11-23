@@ -103,6 +103,11 @@ impl LLMOrchestrator {
         }
     }
 
+    /// Get a reference to the LLM configuration
+    pub fn config(&self) -> &LLMConfig {
+        &self.config
+    }
+
     /// Generate code using primary provider with automatic failover
     pub async fn generate_code(
         &self,

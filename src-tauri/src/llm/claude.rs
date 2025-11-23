@@ -15,6 +15,7 @@ const CLAUDE_MODEL: &str = "claude-sonnet-4-20250514"; // Latest model as of Nov
 pub struct ClaudeClient {
     client: Client,
     api_key: String,
+    #[allow(dead_code)]
     timeout: Duration,
 }
 
@@ -34,6 +35,7 @@ struct ClaudeMessage {
 
 #[derive(Debug, Deserialize)]
 struct ClaudeResponse {
+    #[allow(dead_code)]
     id: String,
     content: Vec<ClaudeContent>,
     usage: ClaudeUsage,
@@ -42,6 +44,7 @@ struct ClaudeResponse {
 #[derive(Debug, Deserialize)]
 struct ClaudeContent {
     #[serde(rename = "type")]
+    #[allow(dead_code)]
     content_type: String,
     text: String,
 }
@@ -161,9 +164,9 @@ If generating tests, separate them with:
             prompt.push_str("Context (existing code):\n");
             for ctx in &request.context {
                 prompt.push_str(ctx);
-                prompt.push_str("\n");
+                prompt.push('\n');
             }
-            prompt.push_str("\n");
+            prompt.push('\n');
         }
 
         if !request.dependencies.is_empty() {
@@ -171,7 +174,7 @@ If generating tests, separate them with:
             for dep in &request.dependencies {
                 prompt.push_str(&format!("- {}\n", dep));
             }
-            prompt.push_str("\n");
+            prompt.push('\n');
         }
 
         prompt.push_str("Generate production-quality Python code with tests.");

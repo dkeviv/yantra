@@ -9,6 +9,8 @@ import ChatPanel from './components/ChatPanel';
 import CodeViewer from './components/CodeViewer';
 import BrowserPreview from './components/BrowserPreview';
 import TerminalOutput from './components/TerminalOutput';
+import { AgentStatus } from './components/AgentStatus';
+import { Notifications } from './components/Notifications';
 import { appStore } from './stores/appStore';
 
 const App: Component = () => {
@@ -77,6 +79,9 @@ const App: Component = () => {
 
   return (
     <div class="h-screen w-screen bg-gray-900 text-white overflow-hidden">
+      {/* Notifications Overlay */}
+      <Notifications />
+      
       {/* Top Bar */}
       <div class="h-14 bg-gray-800 border-b border-gray-700 flex items-center px-6">
         <div class="flex items-center space-x-3">
@@ -119,9 +124,14 @@ const App: Component = () => {
       <div class="flex flex-col h-[calc(100vh-3.5rem)]">
         {/* Top 4-Panel Layout */}
         <div class="flex" style={{ height: `${100 - terminalHeight()}%` }}>
-          {/* File Tree - 15% fixed */}
-          <div class="w-64">
-            <FileTree />
+          {/* Left Sidebar - File Tree + Agent Status */}
+          <div class="w-64 flex flex-col bg-gray-800">
+            <div class="flex-1 overflow-y-auto">
+              <FileTree />
+            </div>
+            <div class="border-t border-gray-700 p-2">
+              <AgentStatus />
+            </div>
           </div>
 
           {/* Resize Handle FileTree-Chat */}

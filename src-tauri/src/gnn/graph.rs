@@ -123,23 +123,25 @@ impl CodeGraph {
         self.graph.node_weights().collect()
     }
     
-    /// Get node by ID
+    /// Get a node by ID
+    #[allow(dead_code)]
     pub fn get_node(&self, node_id: &str) -> Option<&CodeNode> {
-        self.node_map
-            .get(node_id)
-            .and_then(|&idx| self.graph.node_weight(idx))
+        let idx = self.node_map.get(node_id)?;
+        self.graph.node_weight(*idx)
     }
-    
-    /// Get number of nodes in graph
+
+    /// Get total number of nodes
+    #[allow(dead_code)]
     pub fn node_count(&self) -> usize {
         self.graph.node_count()
     }
-    
-    /// Get number of edges in graph
+
+    /// Get total number of edges
+    #[allow(dead_code)]
     pub fn edge_count(&self) -> usize {
         self.graph.edge_count()
     }
-    
+
     /// Clear the graph
     pub fn clear(&mut self) {
         self.graph.clear();

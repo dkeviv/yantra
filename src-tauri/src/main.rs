@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 
 mod gnn;
 mod llm;
+mod agent;
 mod testing;
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -3,7 +3,7 @@
 // Dependencies: vitest, appStore
 // Last Updated: November 20, 2025
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { appStore } from './appStore';
 
 describe('appStore', () => {

@@ -31,8 +31,8 @@ const LLMSettings: Component = () => {
       const cfg = await llmApi.getConfig();
       setConfig(cfg);
       setMessage(`Primary provider set to ${provider}`);
-    } catch (error: any) {
-      setMessage(`Error: ${error}`);
+    } catch (error: unknown) {
+      setMessage(`Error: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setLoading(false);
     }
@@ -52,8 +52,8 @@ const LLMSettings: Component = () => {
       setConfig(cfg);
       setClaudeKey(''); // Clear input for security
       setMessage('Claude API key saved');
-    } catch (error: any) {
-      setMessage(`Error: ${error}`);
+    } catch (error: unknown) {
+      setMessage(`Error: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setLoading(false);
     }
@@ -73,8 +73,8 @@ const LLMSettings: Component = () => {
       setConfig(cfg);
       setOpenaiKey(''); // Clear input for security
       setMessage('OpenAI API key saved');
-    } catch (error: any) {
-      setMessage(`Error: ${error}`);
+    } catch (error: unknown) {
+      setMessage(`Error: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setLoading(false);
     }
@@ -88,8 +88,8 @@ const LLMSettings: Component = () => {
       const cfg = await llmApi.getConfig();
       setConfig(cfg);
       setMessage(`${provider} API key cleared`);
-    } catch (error: any) {
-      setMessage(`Error: ${error}`);
+    } catch (error: unknown) {
+      setMessage(`Error: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setLoading(false);
     }

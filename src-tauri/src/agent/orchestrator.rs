@@ -22,15 +22,17 @@
 // 13. Otherwise: commit and return success
 
 use super::confidence::ConfidenceScore;
-use super::dependencies::{DependencyInstaller, ProjectType};
+use super::dependencies::DependencyInstaller;
+#[cfg(test)]
+use super::dependencies::ProjectType;
 use super::execution::{ErrorType, ScriptExecutor};
 use super::state::{AgentPhase, AgentState, AgentStateManager};
 use super::validation::{validate_dependencies, ValidationResult};
 use crate::gnn::GNNEngine;
 use crate::llm::context::{assemble_hierarchical_context, HierarchicalContext};
 use crate::llm::orchestrator::LLMOrchestrator;
-use crate::llm::{CodeGenerationRequest, CodeGenerationResponse};
-use crate::testing::TestRunner;
+use crate::llm::{CodeGenerationRequest, CodeGenerationResponse, LLMConfig};
+use crate::testing::{TestRunner, TestGenerationRequest};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -451,6 +453,46 @@ pub async fn orchestrate_with_execution(
             }
         }
 
+        // Phase 3.5: Test Generation (NEW - Generate tests for the code)
+        state.transition_to(AgentPhase::UnitTesting); // Reuse UnitTesting phase for generation
+        let _ = state_manager.save_state(&state);
+
+        let test_file_path = if file_path.ends_with(".py") {
+            file_path.replace(".py", "_test.py")
+        } else {
+            format!("{}_test.py", file_path)
+        };
+
+        // Generate tests using testing::generator
+        let test_gen_request = TestGenerationRequest {
+            code: response.code.clone(),
+            language: response.language.clone(),
+            file_path: file_path.clone(),
+            coverage_target: 0.8, // Target 80% coverage
+        };
+
+        let test_generation_result = crate::testing::generator::generate_tests(
+            test_gen_request,
+            llm.config().clone(), // Use same LLM config
+        ).await;
+
+        let generated_tests = match test_generation_result {
+            Ok(test_resp) => {
+                // Write tests to file
+                let test_file = workspace_path.join(&test_file_path);
+                if let Err(e) = std::fs::write(&test_file, &test_resp.tests) {
+                    eprintln!("Warning: Failed to write test file: {}", e);
+                    None
+                } else {
+                    Some(test_resp.tests)
+                }
+            }
+            Err(e) => {
+                eprintln!("Warning: Test generation failed: {}", e);
+                None
+            }
+        };
+
         // If execute_code is false, skip execution phases
         if !execute_code {
             let mut confidence = ConfidenceScore::new();
@@ -784,7 +826,7 @@ mod tests {
     fn test_script_executor_integration() {
         // Test that ScriptExecutor can be created with workspace
         let temp_dir = tempdir().unwrap();
-        let executor = ScriptExecutor::new(temp_dir.path().to_path_buf());
+        let _executor = ScriptExecutor::new(temp_dir.path().to_path_buf());
         
         // Verify executor is created
         assert!(true); // If we got here, creation succeeded
@@ -816,7 +858,7 @@ mod tests {
     fn test_test_runner_integration() {
         // Test that TestRunner can be created with workspace
         let temp_dir = tempdir().unwrap();
-        let runner = TestRunner::new(temp_dir.path().to_path_buf());
+        let _runner = TestRunner::new(temp_dir.path().to_path_buf());
         
         // Verify runner is created
         assert!(true); // If we got here, creation succeeded

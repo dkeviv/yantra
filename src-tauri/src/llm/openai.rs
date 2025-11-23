@@ -15,6 +15,9 @@ const OPENAI_MODEL: &str = "gpt-4-turbo-2024-04-09";
 pub struct OpenAIClient {
     client: Client,
     api_key: String,
+    #[allow(dead_code)]
+    model: String,
+    #[allow(dead_code)]
     timeout: Duration,
 }
 
@@ -58,6 +61,7 @@ impl OpenAIClient {
         Self {
             client,
             api_key,
+            model: OPENAI_MODEL.to_string(),
             timeout: Duration::from_secs(timeout_seconds),
         }
     }
@@ -156,9 +160,9 @@ If generating tests:
             prompt.push_str("Context (existing code):\n");
             for ctx in &request.context {
                 prompt.push_str(ctx);
-                prompt.push_str("\n");
+                prompt.push('\n');
             }
-            prompt.push_str("\n");
+            prompt.push('\n');
         }
 
         if !request.dependencies.is_empty() {

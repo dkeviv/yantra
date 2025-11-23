@@ -108,6 +108,7 @@ pub struct HealingAction {
 /// Monitoring manager
 pub struct MonitoringManager {
     /// Application name
+    #[allow(dead_code)]
     app_name: String,
     /// Active alerts
     alerts: Vec<Alert>,
@@ -229,7 +230,7 @@ impl MonitoringManager {
             .metrics
             .iter()
             .filter(|m| m.name == "cpu_usage")
-            .last()
+            .next_back()
             .map(|m| m.value)
             .unwrap_or(0.0);
 
@@ -237,7 +238,7 @@ impl MonitoringManager {
             .metrics
             .iter()
             .filter(|m| m.name == "memory_usage")
-            .last()
+            .next_back()
             .map(|m| m.value)
             .unwrap_or(0.0);
 
@@ -245,7 +246,7 @@ impl MonitoringManager {
             .metrics
             .iter()
             .filter(|m| m.name == "disk_usage")
-            .last()
+            .next_back()
             .map(|m| m.value)
             .unwrap_or(0.0);
 

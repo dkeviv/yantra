@@ -41,14 +41,24 @@ pub mod packaging;
 pub mod deployment;
 pub mod monitoring;
 
-// Re-export key types
+// Re-export key types (many not yet used but part of public API)
+#[allow(unused_imports)]
 pub use state::{AgentPhase, AgentState, AgentStateManager};
+#[allow(unused_imports)]
 pub use confidence::{ConfidenceScore, ConfidenceFactor};
+#[allow(unused_imports)]
 pub use validation::{ValidationResult, ValidationError, validate_dependencies};
+#[allow(unused_imports)]
 pub use orchestrator::{orchestrate_code_generation, OrchestrationResult};
+#[allow(unused_imports)]
 pub use terminal::{TerminalExecutor, TerminalOutput, ExecutionResult};
+#[allow(unused_imports)]
 pub use dependencies::{DependencyInstaller, ProjectType, InstallationResult};
+#[allow(unused_imports)]
 pub use execution::{ScriptExecutor, ScriptExecutionResult, ErrorType};
+#[allow(unused_imports)]
 pub use packaging::{PackageBuilder, PackageType, PackageConfig, PackageBuildResult};
+#[allow(unused_imports)]
 pub use deployment::{DeploymentManager, DeploymentTarget, DeploymentConfig, DeploymentResult, Environment};
+#[allow(unused_imports)]
 pub use monitoring::{MonitoringManager, Alert, Severity, PerformanceMetrics, HealingAction};

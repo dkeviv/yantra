@@ -1,4 +1,7 @@
 // File: src-tauri/src/agent/state.rs
+
+// Module types not yet fully integrated
+#![allow(dead_code)]
 // Purpose: Agent state machine with SQLite persistence for crash recovery
 // Last Updated: November 21, 2025
 

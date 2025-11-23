@@ -34,9 +34,9 @@
     "bundle": {
       "active": true,
       "category": "DeveloperTool",
-      "copyright": "",
+      "copyright": "Copyright © 2024 Yantra. All rights reserved.",
       "deb": {
-        "depends": []
+        "depends": ["libwebkit2gtk-4.0-37", "libgtk-3-0"]
       },
       "externalBin": [],
       "icon": [
@@ -46,22 +46,26 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "com.yantra.dev",
-      "longDescription": "",
+      "identifier": "com.yantra.app",
+      "longDescription": "Yantra is an AI-first development platform that generates production-quality code with a revolutionary guarantee: code that never breaks. The platform makes AI the primary developer, with humans providing intent and oversight. Features include autonomous code generation, comprehensive testing, security scanning, browser validation, and Git integration.",
       "macOS": {
         "entitlements": null,
         "exceptionDomain": "",
         "frameworks": [],
         "providerShortName": null,
-        "signingIdentity": null
+        "signingIdentity": null,
+        "minimumSystemVersion": "10.15"
       },
       "resources": [],
-      "shortDescription": "",
+      "shortDescription": "AI-first development platform - Code that never breaks",
       "targets": "all",
       "windows": {
         "certificateThumbprint": null,
         "digestAlgorithm": "sha256",
-        "timestampUrl": ""
+        "timestampUrl": "",
+        "wix": {
+          "language": "en-US"
+        }
       }
     },
     "security": {

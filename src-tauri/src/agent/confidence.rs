@@ -1,4 +1,7 @@
 // File: src-tauri/src/agent/confidence.rs
+
+// Module types not yet fully integrated
+#![allow(dead_code)]
 // Purpose: Confidence scoring system for auto-retry decisions
 // Last Updated: November 21, 2025
 

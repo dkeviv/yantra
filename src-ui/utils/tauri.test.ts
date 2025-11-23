@@ -3,7 +3,7 @@
 // Dependencies: vitest, tauri API
 // Last Updated: November 20, 2025
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 describe('Tauri API utilities', () => {
   describe('file operations', () => {

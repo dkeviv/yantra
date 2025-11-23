@@ -1,4 +1,7 @@
 // File: src-tauri/src/agent/validation.rs
+
+// Module types not yet fully integrated
+#![allow(dead_code)]
 // Purpose: Dependency validation via GNN
 // Last Updated: November 21, 2025
 

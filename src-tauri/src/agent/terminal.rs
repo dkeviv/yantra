@@ -149,14 +149,13 @@ impl CommandWhitelist {
                 (args.get(i-1).map(|s| s.as_str()) == Some("-c") || 
                  args.get(i-1).map(|s| s.as_str()) == Some("--command"));
             
-            if !is_python_code {
-                if arg.contains(';') || arg.contains('|') || arg.contains('&') {
+            if !is_python_code
+                && (arg.contains(';') || arg.contains('|') || arg.contains('&')) {
                     return Err(format!(
                         "Argument contains shell metacharacters: {}",
                         arg
                     ));
                 }
-            }
         }
 
         Ok(())

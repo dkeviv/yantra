@@ -3,12 +3,14 @@
 // Dependencies: tokio, serde, std::fs, std::process
 // Last Updated: November 22, 2025
 
+// Packaging functionality not yet fully integrated
+#![allow(dead_code)]
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 use tokio::fs;
-use tokio::io::AsyncWriteExt;
 
 /// Package type to build
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -148,7 +150,7 @@ impl PackageBuilder {
 
         // Build wheel using python -m build
         let output = Command::new("python")
-            .args(&["-m", "build", "--wheel"])
+            .args(["-m", "build", "--wheel"])
             .current_dir(&self.workspace_path)
             .output()
             .map_err(|e| format!("Failed to execute build command: {}", e))?;
@@ -201,7 +203,7 @@ impl PackageBuilder {
         // Build Docker image
         let image_tag = format!("{}:{}", config.name, config.version);
         let output = Command::new("docker")
-            .args(&["build", "-t", &image_tag, "."])
+            .args(["build", "-t", &image_tag, "."])
             .current_dir(&self.workspace_path)
             .output()
             .map_err(|e| format!("Failed to execute docker build: {}", e))?;
@@ -230,7 +232,7 @@ impl PackageBuilder {
 
         // Run npm pack
         let output = Command::new("npm")
-            .args(&["pack"])
+            .args(["pack"])
             .current_dir(&self.workspace_path)
             .output()
             .map_err(|e| format!("Failed to execute npm pack: {}", e))?;
@@ -283,7 +285,7 @@ impl PackageBuilder {
     ) -> Result<(Option<PathBuf>, String), String> {
         // Run cargo build --release
         let output = Command::new("cargo")
-            .args(&["build", "--release"])
+            .args(["build", "--release"])
             .current_dir(&self.workspace_path)
             .output()
             .map_err(|e| format!("Failed to execute cargo build: {}", e))?;
@@ -354,9 +356,7 @@ requires-python = ">=3.7"
     /// Generate Dockerfile
     fn generate_dockerfile(&self, config: &PackageConfig) -> Result<String, String> {
         let entry_point = config
-            .entry_point
-            .as_ref()
-            .map(|s| s.as_str())
+            .entry_point.as_deref()
             .unwrap_or("main.py");
 
         Ok(format!(

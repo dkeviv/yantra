@@ -5,7 +5,8 @@
 pub mod generator;
 pub mod runner;
 
-// Re-export key types
+// Re-export key types (not yet fully integrated)
+#[allow(unused_imports)]
 pub use runner::{TestRunner, TestResult, FailureType};
 
 use serde::{Deserialize, Serialize};

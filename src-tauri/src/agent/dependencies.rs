@@ -14,6 +14,9 @@
 // - Dependency detection: <10ms
 // - Installation: <15s per package
 
+// Dependency management not yet fully integrated
+#![allow(dead_code)]
+
 use crate::agent::terminal::TerminalExecutor;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
