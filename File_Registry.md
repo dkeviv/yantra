@@ -1,7 +1,7 @@
 # Yantra - File Registry
 
 **Version:** MVP 1.0  
-**Last Updated:** November 20, 2025 - 5:30 PM  
+**Last Updated:** November 22, 2025 - 8:00 PM  
 **Purpose:** Track all project files, their purposes, implementations, and dependencies
 
 ---
@@ -14,12 +14,12 @@
 |------|--------|---------|--------------|--------------|
 | `README.md` | ⚪ To be created | Project overview and quick start | None | - |
 | `Specifications.md` | ✅ Exists | Complete technical specification | None | Nov 20, 2025 |
-| `Project_Plan.md` | ✅ Created | Task tracking and timeline | None | Nov 20, 2025 |
-| `Features.md` | ✅ Created | Feature documentation with use cases | None | Nov 20, 2025 |
-| `UX.md` | ✅ Created | User flows and experience guide | None | Nov 20, 2025 |
-| `Technical_Guide.md` | ✅ Created | Developer technical reference | None | Nov 20, 2025 |
-| `File_Registry.md` | ✅ Created | This file - tracks all files | None | Nov 20, 2025 |
-| `Decision_Log.md` | ✅ Created | Architecture and design decisions | None | Nov 20, 2025 |
+| `Project_Plan.md` | ✅ Updated | Task tracking and timeline | None | Nov 22, 2025 |
+| `Features.md` | ✅ Updated | Feature documentation with use cases | None | Nov 20, 2025 |
+| `UX.md` | ✅ Updated | User flows and experience guide | None | Nov 20, 2025 |
+| `Technical_Guide.md` | ✅ Updated | Developer technical reference | None | Nov 20, 2025 |
+| `File_Registry.md` | ✅ Updated | This file - tracks all files | None | Nov 22, 2025 |
+| `Decision_Log.md` | ✅ Updated | Architecture and design decisions | None | Nov 20, 2025 |
 | `Known_Issues.md` | ✅ Created | Bug tracking and fixes | None | Nov 20, 2025 |
 | `Unit_Test_Results.md` | ✅ Created | Unit test results tracking | None | Nov 20, 2025 |
 | `Integration_Test_Results.md` | ✅ Created | Integration test results | None | Nov 20, 2025 |
@@ -113,15 +113,47 @@
 - `src-ui/api/llm.ts` (60 lines): TypeScript API wrapper for all LLM config Tauri commands
 - `src-ui/components/LLMSettings.tsx` (230+ lines): Full-featured SolidJS settings UI with provider selection, API key inputs, status indicators
 
-### Testing Module (Week 5-6)
+### Testing Module (Week 5-6) - ✅ COMPLETE
 
 | File | Status | Purpose | Dependencies | Last Updated |
 |------|--------|---------|--------------|--------------|
-| `src/testing/mod.rs` | ⚪ To be created | Testing module root | All testing submodules | - |
-| `src/testing/generator.rs` | ⚪ To be created | Test generation logic | LLM module | - |
-| `src/testing/runner.rs` | ⚪ To be created | pytest subprocess runner | tokio | - |
-| `src/testing/parser.rs` | ⚪ To be created | Test result parser (JUnit XML) | None | - |
-| `src/testing/tests.rs` | ⚪ To be created | Testing module unit tests | All testing modules | - |
+| `src/testing/mod.rs` | ✅ Complete | Testing module root | All testing submodules | Nov 21, 2025 |
+| `src/testing/generator.rs` | ✅ Complete | Test generation with LLM | LLM module | Nov 21, 2025 |
+| `src/testing/runner.rs` | ✅ Complete | pytest subprocess runner + JUnit XML parser | tokio, quick-xml | Nov 21, 2025 |
+
+**Implementation Details:**
+- **generator.rs (410 lines)**: Test prompt generation, coverage estimation, fixture extraction, test function counting, integration with LLM
+- **runner.rs (549 lines)**: Execute pytest in subprocess, parse JUnit XML output, coverage analysis, test failure classification (3 types: assertion/import/runtime)
+- **Tests**: 4 tests passing (pytest execution, XML parsing, coverage, failure classification)
+
+### Agent Module (Week 5-8) - ✅ COMPLETE
+
+| File | Status | Purpose | Dependencies | Last Updated |
+|------|--------|---------|--------------|--------------|
+| `src/agent/mod.rs` | ✅ Complete | Agent module root with exports | All agent submodules | Nov 22, 2025 |
+| `src/agent/state.rs` | ✅ Complete | Agent state machine (16 phases) | serde, std::fs | Nov 22, 2025 |
+| `src/agent/confidence.rs` | ✅ Complete | Confidence scoring system | serde | Nov 21, 2025 |
+| `src/agent/validation.rs` | ✅ Complete | Dependency validation | GNN module | Nov 21, 2025 |
+| `src/agent/orchestrator.rs` | ✅ Complete | Main orchestration with execution | All agent modules | Nov 22, 2025 |
+| `src/agent/terminal.rs` | ✅ Complete | Terminal command executor | tokio, Command | Nov 21, 2025 |
+| `src/agent/dependencies.rs` | ✅ Complete | Dependency installer with auto-fix | terminal.rs | Nov 21, 2025 |
+| `src/agent/execution.rs` | ✅ Complete | Script executor with error classification | terminal.rs | Nov 21, 2025 |
+| `src/agent/packaging.rs` | ✅ Complete | Package builder (wheel/docker/npm/binary) | tokio::fs, Command | Nov 22, 2025 |
+| `src/agent/deployment.rs` | ✅ Complete | Multi-cloud deployment automation | Command, chrono | Nov 22, 2025 |
+| `src/agent/monitoring.rs` | ✅ Complete | Production monitoring & self-healing | serde, std::time | Nov 22, 2025 |
+
+**Implementation Details:**
+- **state.rs (150 lines)**: 16-phase state machine with crash recovery, serialization, JSON persistence
+- **confidence.rs (314 lines)**: Multi-factor confidence scoring (LLM/tests/complexity/deps), auto-retry decision logic
+- **validation.rs (200 lines)**: GNN-based dependency validation, breaking change detection
+- **orchestrator.rs (726 lines)**: Full autonomous pipeline with 13 tests, orchestrate_with_execution() for runtime validation
+- **terminal.rs (529 lines)**: Secure command execution with whitelist, streaming output, 6 tests
+- **dependencies.rs (410 lines)**: Auto-install missing packages, import-to-package mapping, 7 tests
+- **execution.rs (603 lines)**: Runtime execution with 6 error types, entry point detection, 8 tests
+- **packaging.rs (607 lines)**: Multi-format packaging (Python wheel, Docker, npm, static, binary), 8 tests
+- **deployment.rs (731 lines)**: 8-platform deployment (AWS/GCP/Azure/K8s/Heroku/DO/Vercel/Netlify), 6 tests
+- **monitoring.rs (611 lines)**: Real-time metrics, alerts (4 severities), self-healing (4 actions), Prometheus export, 8 tests
+- **Total Tests**: 60 agent tests, all passing
 
 ### Security Module (Week 7)
 
@@ -176,8 +208,16 @@
 | File | Status | Purpose | Dependencies | Last Updated |
 |------|--------|---------|--------------|--------------|
 | `src-ui/index.tsx` | ✅ Created | Application entry point | App.tsx | Nov 20, 2025 |
-| `src-ui/App.tsx` | ✅ Created | Main app with 3-panel layout | All components, appStore | Nov 20, 2025 |
+| `src-ui/App.tsx` | ✅ Updated | Main app with 5-panel layout | All components, appStore | Nov 22, 2025 |
 | `src-ui/styles/index.css` | ✅ Created | Global styles and Tailwind imports | TailwindCSS | Nov 20, 2025 |
+
+**App.tsx Details (180 lines):**
+- 5-panel layout: FileTree (15%) + ChatPanel (25%) + CodeViewer (30%) + BrowserPreview (15%) + TerminalOutput (15%)
+- Horizontal resizing for top 4 panels with drag handles
+- Vertical resizing for terminal panel (15-50% height range)
+- State management: panel widths (widths[]) and terminal height (terminalHeight)
+- Mouse event handlers for horizontal and vertical resizing
+- Integrated components: FileTree, ChatPanel, CodeViewer, BrowserPreview, TerminalOutput
 
 ### Components (Week 1-2)
 
@@ -187,10 +227,24 @@
 | `src-ui/components/CodeViewer.tsx` | ✅ Updated | Monaco Editor with Python highlighting | stores/appStore.ts, monaco-editor | Nov 20, 2025 |
 | `src-ui/components/BrowserPreview.tsx` | ✅ Created | Browser preview placeholder | None | Nov 20, 2025 |
 | `src-ui/components/FileTree.tsx` | ✅ Created | File tree for project navigation | stores/appStore.ts, utils/tauri.ts | Nov 20, 2025 |
+| `src-ui/components/TerminalOutput.tsx` | ✅ Created | Real-time terminal output display | @tauri-apps/api | Nov 22, 2025 |
 | `src-ui/components/MessageList.tsx` | ⚪ To be created | Chat message list | None | - |
 | `src-ui/components/MessageInput.tsx` | ⚪ To be created | Chat input field | None | - |
 | `src-ui/components/LoadingIndicator.tsx` | ⚪ To be created | Loading spinner component | None | - |
 | `src-ui/components/ErrorDisplay.tsx` | ⚪ To be created | Error message display | None | - |
+
+**TerminalOutput.tsx Details (370 lines):**
+- Real-time terminal output streaming via Tauri events
+- Event listeners: terminal-stdout, terminal-stderr, terminal-start, terminal-end
+- Color-coded output with 6 types: stdout (white), stderr (red), command (blue), info (cyan), error (red), success (green)
+- Search/filter functionality for output lines
+- Timestamp toggle (ISO format)
+- Auto-scroll with manual override on user scroll
+- Copy to clipboard and clear functionality
+- Execution status tracking: idle, running, completed, error
+- Visual indicators: loading spinner, exit codes, execution duration
+- OutputLine interface: type, content, timestamp, className
+- ExecutionStatus interface: state, startTime, endTime, exitCode
 
 ### State Management (Week 1-2)
 

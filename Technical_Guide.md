@@ -881,7 +881,592 @@ Yantra:
 
 ---
 
-### 8. Graph Neural Network (GNN) Engine (EXISTING)
+### 8. Terminal Command Executor
+
+**Status:** ✅ Fully Implemented (November 21, 2025)  
+**Files:** `src/agent/terminal.rs` (529 lines, 6 tests passing)
+
+#### Purpose
+Execute shell commands securely with real-time output streaming to UI.
+
+#### Implementation Approach
+
+**Security Model:**
+- Command whitelist (git, python, pip, npm, cargo, docker, kubectl)
+- Blocks dangerous commands (rm -rf, sudo, eval, curl | sh)
+- Environment sandboxing (restricted PATH, env vars)
+- Argument validation
+
+**Why This Approach:**
+- Prevents malicious code execution
+- Maintains security without containerization overhead
+- Allows legitimate developer workflows
+- Tauri event system for real-time streaming
+
+**Algorithm Overview:**
+
+1. **Command Validation (`validate_command`)**
+   - Check against whitelist
+   - Detect dangerous patterns (rm -rf, sudo, eval)
+   - Return ValidationResult (Allowed/Blocked with reason)
+
+2. **Secure Execution (`execute_command`)**
+   - Validate command first
+   - Spawn subprocess with tokio::process::Command
+   - Configure stdio pipes (inherit/piped)
+   - Execute with timeout
+   - Return CommandResult with stdout/stderr/exit_code
+
+3. **Streaming Output (`execute_with_streaming`)**
+   - Spawn command with piped stdout/stderr
+   - Create async tasks for each stream
+   - Emit Tauri events as data arrives (terminal-stdout, terminal-stderr)
+   - Collect output in buffer
+   - Return full result when complete
+
+**Reference Files:**
+- `src/agent/terminal.rs` - Terminal executor implementation
+- `src-ui/components/TerminalOutput.tsx` - UI component for output display
+
+**Performance Targets:**
+- Command spawn: <50ms
+- Streaming latency: <10ms per line
+- Event emission: <5ms overhead
+
+**Test Coverage:** 6 tests
+- Terminal creation
+- Command validation (allowed/blocked)
+- Simple command execution
+- Command with arguments
+- Command with output capture
+
+---
+
+### 9. Dependency Auto-Installer
+
+**Status:** ✅ Fully Implemented (November 21, 2025)  
+**Files:** `src/agent/dependencies.rs` (410 lines, 7 tests passing)
+
+#### Purpose
+Automatically detect and install missing Python packages when import errors occur.
+
+#### Implementation Approach
+
+**Import Resolution:**
+- Map import statements to PyPI package names
+- Handle common mismatches (sklearn → scikit-learn, cv2 → opencv-python)
+- Parse requirements.txt and pyproject.toml for existing dependencies
+- Install missing packages via pip
+
+**Why This Approach:**
+- Eliminates manual package installation
+- Reduces context switches during development
+- Handles edge cases (import name ≠ package name)
+- Integrates with terminal executor for secure pip commands
+
+**Algorithm Overview:**
+
+1. **Missing Package Detection (`detect_missing_packages`)**
+   - Parse Python file for import statements
+   - Extract module names (import X, from X import Y)
+   - Map to package names using IMPORT_TO_PACKAGE dictionary
+   - Check against installed packages (pip list)
+   - Return list of missing packages
+
+2. **Auto-Install (`install_dependencies`)**
+   - For each missing package:
+     - Construct pip command: pip install <package>
+     - Execute via terminal executor
+     - Parse output for success/failure
+   - Update requirements.txt if successful
+   - Return InstallResult with installed/failed packages
+
+3. **Smart Retry (`install_with_fallback`)**
+   - Attempt primary package name
+   - If fails, try alternative names
+   - Log all attempts
+   - Return aggregated result
+
+**Import Mapping Examples:**
+```rust
+"sklearn" → "scikit-learn"
+"cv2" → "opencv-python"
+"PIL" → "Pillow"
+"yaml" → "pyyaml"
+```
+
+**Reference Files:**
+- `src/agent/dependencies.rs` - Dependency installer
+- `src/agent/terminal.rs` - Used for pip commands
+
+**Performance Targets:**
+- Detection: <100ms for typical file
+- Installation: <30s per package (network-dependent)
+- Batch install: Parallel where possible
+
+**Test Coverage:** 7 tests
+- Dependency manager creation
+- Missing package detection
+- Package installation
+- Import-to-package mapping
+- requirements.txt parsing
+- Failure handling
+
+---
+
+### 10. Script Runtime Executor
+
+**Status:** ✅ Fully Implemented (November 21, 2025)  
+**Files:** `src/agent/execution.rs` (603 lines, 8 tests passing)
+
+#### Purpose
+Execute generated Python scripts with comprehensive error detection and classification.
+
+#### Implementation Approach
+
+**Execution Pipeline:**
+1. Detect entry point (main(), if __name__ == "__main__", or first executable code)
+2. Execute script via terminal executor
+3. Monitor stdout/stderr in real-time
+4. Classify errors into 6 types
+5. Extract actionable error information
+6. Return detailed execution result
+
+**Error Classification (6 Types):**
+- **ImportError**: Missing module (triggers dependency installer)
+- **AttributeError**: Wrong attribute access
+- **TypeError**: Type mismatch
+- **ValueError**: Invalid value
+- **SyntaxError**: Parse error
+- **RuntimeError**: Generic runtime error
+
+**Why This Approach:**
+- Comprehensive error detection enables automated fixes
+- Real-time monitoring provides fast feedback
+- Classification enables targeted recovery strategies
+- Integration with terminal executor reuses security model
+
+**Algorithm Overview:**
+
+1. **Entry Point Detection (`detect_entry_point`)**
+   - Parse Python file with tree-sitter
+   - Look for `if __name__ == "__main__":`
+   - Look for `def main():`
+   - Fall back to first executable statement
+   - Return EntryPoint enum
+
+2. **Script Execution (`execute_script`)**
+   - Detect entry point
+   - Construct python command
+   - Execute via terminal executor with streaming
+   - Parse stdout/stderr for errors
+   - Classify error type
+   - Return ExecutionResult
+
+3. **Error Parsing (`parse_error`)**
+   - Regex patterns for each error type
+   - Extract: error type, line number, column, message, traceback
+   - Return ExecutionError struct
+
+**Error Detection Examples:**
+```python
+# ImportError: No module named 'pandas'
+→ Trigger dependency installer
+
+# AttributeError: 'NoneType' object has no attribute 'price'
+→ Suggest null check
+
+# TypeError: unsupported operand type(s) for +: 'int' and 'str'
+→ Suggest type conversion
+```
+
+**Reference Files:**
+- `src/agent/execution.rs` - Script executor
+- `src/agent/terminal.rs` - Used for python commands
+- `src/agent/dependencies.rs` - Called for ImportError recovery
+
+**Performance Targets:**
+- Entry point detection: <50ms
+- Script execution: <3s for typical script
+- Error parsing: <10ms
+
+**Test Coverage:** 8 tests
+- Executor creation
+- Entry point detection (main, __name__, fallback)
+- Script execution (success/failure)
+- Error classification (all 6 types)
+- Streaming integration
+
+---
+
+### 11. Package Builder System
+
+**Status:** ✅ Fully Implemented (November 22, 2025)  
+**Files:** `src/agent/packaging.rs` (607 lines, 8 tests passing)
+
+#### Purpose
+Build distributable packages for multiple formats (Python wheels, Docker images, npm packages, binaries, static sites).
+
+#### Implementation Approach
+
+**Multi-Format Support:**
+- **Python Wheel**: Generate setup.py/pyproject.toml, run `python -m build`
+- **Docker Image**: Generate Dockerfile/.dockerignore, run `docker build`
+- **npm Package**: Generate package.json, run `npm pack`
+- **Binary**: Run `cargo build --release`
+- **Static Site**: Bundle assets to dist/
+
+**Auto-Detection:**
+- Scan workspace for indicators (setup.py, Cargo.toml, package.json, etc.)
+- Detect project type automatically
+- Suggest appropriate package format
+
+**Why This Approach:**
+- Single interface for multiple package types
+- Automatic project type detection reduces manual configuration
+- Generates proper metadata files
+- Integrates with terminal executor for build commands
+
+**Algorithm Overview:**
+
+1. **Project Type Detection (`detect_package_type`)**
+   - Check for setup.py or pyproject.toml → PythonWheel
+   - Check for Dockerfile → DockerImage
+   - Check for package.json → NpmPackage
+   - Check for index.html in public/ → StaticSite
+   - Check for Cargo.toml → Binary
+   - Return PackageType enum
+
+2. **Python Wheel Build (`build_python_wheel`)**
+   - Generate setup.py with metadata from PackageConfig
+   - Generate pyproject.toml with build-system requirements
+   - Execute: `python -m build`
+   - Wait for dist/*.whl file
+   - Return PackageBuildResult with artifact path
+
+3. **Docker Image Build (`build_docker_image`)**
+   - Generate Dockerfile based on project type
+   - Generate .dockerignore (node_modules, __pycache__, .git, etc.)
+   - Execute: `docker build -t <image_name>:<version> .`
+   - Parse build output for image ID
+   - Return PackageBuildResult
+
+4. **npm Package Build (`build_npm_package`)**
+   - Generate package.json from PackageConfig
+   - Execute: `npm pack`
+   - Wait for <name>-<version>.tgz
+   - Return PackageBuildResult
+
+**Configuration Generation Examples:**
+
+**setup.py:**
+```python
+from setuptools import setup, find_packages
+
+setup(
+    name="my-package",
+    version="1.0.0",
+    description="Package description",
+    author="Author Name",
+    packages=find_packages(),
+    install_requires=[...],
+    python_requires=">=3.8"
+)
+```
+
+**Dockerfile:**
+```dockerfile
+FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY . .
+CMD ["python", "app.py"]
+```
+
+**Reference Files:**
+- `src/agent/packaging.rs` - Package builder
+- `src/agent/terminal.rs` - Used for build commands
+
+**Performance Targets:**
+- Type detection: <100ms
+- Python wheel: <30s
+- Docker image: <2 minutes
+- npm package: <15s
+
+**Test Coverage:** 8 tests
+- Builder creation
+- Project type detection
+- setup.py generation
+- pyproject.toml generation
+- Dockerfile generation
+- .dockerignore generation
+- package.json generation
+- Build execution
+
+---
+
+### 12. Multi-Cloud Deployment System
+
+**Status:** ✅ Fully Implemented (November 22, 2025)  
+**Files:** `src/agent/deployment.rs` (731 lines, 6 tests passing)
+
+#### Purpose
+Deploy applications to 8 cloud platforms with health checks, auto-scaling, and rollback support.
+
+#### Implementation Approach
+
+**Supported Platforms (8):**
+1. **AWS**: Elastic Beanstalk, ECS, Lambda
+2. **GCP**: Cloud Run, App Engine
+3. **Azure**: App Service
+4. **Kubernetes**: kubectl apply with generated manifests
+5. **Heroku**: git push heroku
+6. **DigitalOcean**: App Platform
+7. **Vercel**: Static sites and Next.js
+8. **Netlify**: Static sites
+
+**Deployment Pipeline:**
+1. Validate deployment config
+2. Execute platform-specific deployment commands
+3. Wait for deployment completion
+4. Run health check on deployed URL
+5. Monitor initial traffic
+6. Auto-rollback if health check fails
+
+**Why This Approach:**
+- Single API for multiple clouds
+- Platform-specific optimizations
+- Built-in health checking
+- Automatic rollback on failure
+- Environment-specific configurations (dev/staging/prod)
+
+**Algorithm Overview:**
+
+1. **Deployment Orchestration (`deploy`)**
+   - Validate DeploymentConfig
+   - Select deployment method based on target
+   - Execute platform-specific deployment
+   - Parse deployment output for URL/ID
+   - Run health check
+   - Return DeploymentResult
+
+2. **Kubernetes Deployment (`deploy_to_kubernetes`)**
+   - Generate Deployment manifest (replicas, image, resources, env vars)
+   - Generate Service manifest (LoadBalancer/ClusterIP)
+   - Execute: `kubectl apply -f deployment.yaml`
+   - Execute: `kubectl apply -f service.yaml`
+   - Wait for pods ready: `kubectl wait --for=condition=ready`
+   - Get LoadBalancer IP
+   - Return URL
+
+3. **Health Check (`health_check`)**
+   - HTTP GET to health_check_path (default: /health)
+   - Retry up to 5 times with exponential backoff
+   - Parse response: expect 200 status
+   - Return boolean success
+
+4. **Rollback (`rollback`)**
+   - Execute: `kubectl rollout undo deployment/<app_name>`
+   - Wait for rollback completion
+   - Verify pods healthy
+
+**Kubernetes Manifest Examples:**
+
+**Deployment:**
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+      - name: my-app
+        image: my-app:1.0.0
+        ports:
+        - containerPort: 8080
+        env:
+        - name: DATABASE_URL
+          value: postgres://...
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "500m"
+          limits:
+            memory: "512Mi"
+            cpu: "1000m"
+```
+
+**Service:**
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-app-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: my-app
+  ports:
+  - port: 80
+    targetPort: 8080
+```
+
+**Reference Files:**
+- `src/agent/deployment.rs` - Deployment manager
+- `src/agent/terminal.rs` - Used for cloud CLI commands
+
+**Performance Targets:**
+- Kubernetes deployment: 3-5 minutes
+- Heroku deployment: 2-4 minutes
+- Vercel deployment: 1-2 minutes
+- Health check: <60 seconds
+
+**Test Coverage:** 6 tests
+- Manager creation
+- Config validation
+- Kubernetes manifest generation (Deployment + Service)
+- Health check execution
+- Deployment flow
+
+---
+
+### 13. Production Monitoring & Self-Healing
+
+**Status:** ✅ Fully Implemented (November 22, 2025)  
+**Files:** `src/agent/monitoring.rs` (611 lines, 8 tests passing)
+
+#### Purpose
+Monitor production applications, detect issues, and automatically execute healing actions.
+
+#### Implementation Approach
+
+**Monitoring Components:**
+- **Health Checks**: Periodic HTTP checks
+- **Metrics**: Latency (p50/p95/p99), throughput, error rate, CPU, memory, disk
+- **Alerts**: 4 severity levels (Info, Warning, Error, Critical)
+- **Issue Detection**: Threshold-based anomaly detection
+- **Self-Healing**: 4 automated actions
+
+**Self-Healing Actions (4):**
+1. **scale_up**: Increase resources (CPU/memory)
+2. **rollback**: Revert to previous version
+3. **scale_horizontal**: Add more replicas
+4. **restart**: Restart application
+
+**Why This Approach:**
+- Real-time metrics enable fast issue detection
+- Percentile calculations provide accurate latency insights
+- Severity-based alerts prioritize critical issues
+- Automated healing reduces MTTR (Mean Time To Recovery)
+- Prometheus export enables integration with external tools
+
+**Algorithm Overview:**
+
+1. **Health Monitoring (`health_check`)**
+   - HTTP GET to endpoint
+   - Parse response status
+   - Record latency
+   - Create alert if failure
+
+2. **Metric Recording (`record_metric`)**
+   - Store MetricPoint with tags
+   - Maintain rolling window (last 1000 points)
+   - Update aggregations
+
+3. **Performance Metrics Calculation (`calculate_performance_metrics`)**
+   - Collect latency metrics from last 5 minutes
+   - Sort values
+   - Calculate percentiles: p50, p95, p99
+   - Calculate throughput: requests per second
+   - Calculate error rate: errors / total requests
+
+4. **Issue Detection (`detect_issues`)**
+   - Check latency: p95 > 1000ms → Warning
+   - Check error rate: >5% → Error
+   - Check CPU: >80% → Warning
+   - Check memory: >85% → Warning
+   - Check disk: >90% → Critical
+   - Return list of detected issues
+
+5. **Self-Healing (`self_heal`)**
+   - Analyze issue type
+   - Select healing action:
+     - High latency → scale_up
+     - High error rate → rollback
+     - High CPU → scale_horizontal
+     - High memory → restart
+   - Execute healing command
+   - Record HealingAction
+   - Verify issue resolved
+
+6. **Percentile Calculation (`calculate_percentiles`)**
+   - Sort metric values
+   - Calculate index: `ceil(len * percentile) - 1`
+   - Clamp to valid range
+   - Return value at index
+
+**Metrics Export Formats:**
+
+**Prometheus:**
+```
+# HELP latency_ms Request latency in milliseconds
+# TYPE latency_ms gauge
+latency_ms{service="api"} 45.2
+
+# HELP error_rate Request error rate
+# TYPE error_rate gauge
+error_rate{service="api"} 0.02
+```
+
+**JSON:**
+```json
+{
+  "latency_ms": {
+    "p50": 45.2,
+    "p95": 120.5,
+    "p99": 250.0
+  },
+  "throughput": 150.0,
+  "error_rate": 0.02,
+  "cpu_usage": 0.65,
+  "memory_usage": 0.72
+}
+```
+
+**Reference Files:**
+- `src/agent/monitoring.rs` - Monitoring manager
+- `src/agent/deployment.rs` - Used for scaling/rollback
+- `src/agent/terminal.rs` - Used for infrastructure commands
+
+**Performance Targets:**
+- Health check: <500ms
+- Metric recording: <1ms
+- Issue detection: <100ms
+- Self-healing execution: 30-90 seconds
+
+**Test Coverage:** 8 tests
+- Manager creation
+- Health check
+- Metric recording and retrieval
+- Alert creation and resolution
+- Performance metrics calculation
+- Percentile calculation
+- Issue detection
+- Self-healing execution
+
+---
+
+### 14. Graph Neural Network (GNN) Engine (EXISTING)
 
 **Status:** ✅ Partially Implemented (November 20, 2025)
 **Previous Status:** 🔴 Not Implemented (Week 3-4)
