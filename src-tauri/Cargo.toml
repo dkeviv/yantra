@@ -25,6 +25,7 @@ reqwest = { version = "0.12.24", features = ["json", "rustls-tls"] }
 tiktoken-rs = "0.5"
 uuid = { version = "1.18.1", features = ["v4", "serde"] }
 chrono = { version = "0.4.42", features = ["serde"] }
+regex = "1.12.2"
 
 [dev-dependencies]
 tempfile = "3.8"
@@ -39,3 +40,4 @@ codegen-units = 1
 lto = true
 opt-level = "z"
 strip = true
+regex = "1.10"
