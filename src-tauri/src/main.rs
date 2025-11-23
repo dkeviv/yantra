@@ -14,6 +14,7 @@ mod gnn;
 mod llm;
 mod agent;
 mod testing;
+mod git;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct FileEntry {
@@ -348,6 +349,78 @@ fn set_llm_retry_config(
     manager.set_retry_config(max_retries, timeout_seconds)
 }
 
+// Git commands
+
+/// Get git status
+#[tauri::command]
+fn git_status(workspace_path: String) -> Result<String, String> {
+    let git_mcp = git::GitMcp::new(PathBuf::from(workspace_path));
+    git_mcp.status()
+}
+
+/// Add files to git staging
+#[tauri::command]
+fn git_add(workspace_path: String, files: Vec<String>) -> Result<(), String> {
+    let git_mcp = git::GitMcp::new(PathBuf::from(workspace_path));
+    git_mcp.add_files(&files)
+}
+
+/// Commit staged changes
+#[tauri::command]
+fn git_commit(workspace_path: String, message: String) -> Result<String, String> {
+    let git_mcp = git::GitMcp::new(PathBuf::from(workspace_path));
+    git_mcp.commit(&message)
+}
+
+/// Get git diff
+#[tauri::command]
+fn git_diff(workspace_path: String, file: Option<String>) -> Result<String, String> {
+    let git_mcp = git::GitMcp::new(PathBuf::from(workspace_path));
+    git_mcp.diff(file.as_deref())
+}
+
+/// Get git log
+#[tauri::command]
+fn git_log(workspace_path: String, max_count: usize) -> Result<String, String> {
+    let git_mcp = git::GitMcp::new(PathBuf::from(workspace_path));
+    git_mcp.log(max_count)
+}
+
+/// List git branches
+#[tauri::command]
+fn git_branch_list(workspace_path: String) -> Result<String, String> {
+    let git_mcp = git::GitMcp::new(PathBuf::from(workspace_path));
+    git_mcp.branch_list()
+}
+
+/// Get current branch
+#[tauri::command]
+fn git_current_branch(workspace_path: String) -> Result<String, String> {
+    let git_mcp = git::GitMcp::new(PathBuf::from(workspace_path));
+    git_mcp.current_branch()
+}
+
+/// Checkout branch
+#[tauri::command]
+fn git_checkout(workspace_path: String, branch: String) -> Result<String, String> {
+    let git_mcp = git::GitMcp::new(PathBuf::from(workspace_path));
+    git_mcp.checkout(&branch)
+}
+
+/// Git pull
+#[tauri::command]
+fn git_pull(workspace_path: String) -> Result<String, String> {
+    let git_mcp = git::GitMcp::new(PathBuf::from(workspace_path));
+    git_mcp.pull()
+}
+
+/// Git push
+#[tauri::command]
+fn git_push(workspace_path: String) -> Result<String, String> {
+    let git_mcp = git::GitMcp::new(PathBuf::from(workspace_path));
+    git_mcp.push()
+}
+
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
@@ -367,7 +440,17 @@ fn main() {
             clear_llm_key,
             set_llm_retry_config,
             generate_code,
-            generate_tests
+            generate_tests,
+            git_status,
+            git_add,
+            git_commit,
+            git_diff,
+            git_log,
+            git_branch_list,
+            git_current_branch,
+            git_checkout,
+            git_pull,
+            git_push
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

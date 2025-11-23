@@ -8,7 +8,6 @@ import { appStore } from './stores/appStore';
 import FileTree from './components/FileTree';
 import ChatPanel from './components/ChatPanel';
 import CodeViewer from './components/CodeViewer';
-import BrowserPreview from './components/BrowserPreview';
 import TerminalOutput from './components/TerminalOutput';
 import { AgentStatus } from './components/AgentStatus';
 import { Notifications } from './components/Notifications';
@@ -101,26 +100,6 @@ const App: Component = () => {
           <h1 class="text-xl font-bold">Yantra</h1>
         </div>
         <div class="ml-auto flex items-center space-x-4">
-          {/* Panel Toggle Buttons */}
-          <Show when={!appStore.showCode()}>
-            <button
-              class="px-3 py-1 text-xs bg-gray-700 rounded hover:bg-gray-600 transition-colors"
-              onClick={() => appStore.setShowCode(true)}
-              title="Show code viewer"
-            >
-              Show Code
-            </button>
-          </Show>
-          <Show when={!appStore.showPreview()}>
-            <button
-              class="px-3 py-1 text-xs bg-gray-700 rounded hover:bg-gray-600 transition-colors"
-              onClick={() => appStore.setShowPreview(true)}
-              title="Show preview"
-            >
-              Show Preview
-            </button>
-          </Show>
-          
           <button
             class="px-4 py-2 text-sm bg-gray-700 rounded hover:bg-gray-600 transition-colors"
             onClick={() => {
@@ -140,83 +119,59 @@ const App: Component = () => {
         </div>
       </div>
 
-      {/* Main Layout with Terminal */}
-      <div class="flex flex-col h-[calc(100vh-3.5rem)]">
-        {/* Top 4-Panel Layout */}
-        <div class="flex" style={{ height: `${100 - terminalHeight()}%` }}>
-          {/* Left Sidebar - File Tree + Agent Status */}
-          <div class="w-64 flex flex-col bg-gray-800">
+      {/* Main Layout - 3 Column Design */}
+      <div class="flex h-[calc(100vh-3.5rem)]">
+        {/* Left Column - File Tree (20% width) */}
+        <Show when={appStore.showFileTree()}>
+          <div class="w-64 flex flex-col bg-gray-800 border-r border-gray-700">
             <div class="flex-1 overflow-y-auto">
               <FileTree />
             </div>
+            {/* Agent Status at bottom */}
             <div class="border-t border-gray-700 p-2">
               <AgentStatus />
             </div>
           </div>
+        </Show>
 
-          {/* Resize Handle FileTree-Chat */}
-          <div class="w-1 bg-gray-700" />
+        {/* Resize Handle FileTree-Chat */}
+        <Show when={appStore.showFileTree()}>
+          <div class="w-1 bg-gray-700 hover:bg-primary-500 transition-colors cursor-col-resize" />
+        </Show>
 
-          {/* Chat Panel - 45% default */}
-          <div style={{ width: `${appStore.chatWidth()}%` }}>
-            <ChatPanel />
-          </div>
+        {/* Center Column - Chat Panel (Full Height, 45% default) */}
+        <div class="flex-1 flex flex-col" style={{ width: `${appStore.chatWidth()}%` }}>
+          <ChatPanel />
+        </div>
 
-          {/* Resize Handle 1 */}
-          <Show when={appStore.showCode()}>
-            <div
-              class="w-1 resize-handle cursor-col-resize hover:bg-primary-500 transition-colors"
-              onMouseDown={handleMouseDown(1)}
-            />
-          </Show>
+        {/* Resize Handle Chat-Code */}
+        <Show when={appStore.showCode()}>
+          <div
+            class="w-1 resize-handle cursor-col-resize hover:bg-primary-500 transition-colors bg-gray-700"
+            onMouseDown={handleMouseDown(1)}
+          />
+        </Show>
 
-          {/* Code Viewer - 25% default with close button */}
-          <Show when={appStore.showCode()}>
-            <div style={{ width: `${appStore.codeWidth()}%` }} class="relative">
-              <button
-                class="absolute top-2 right-2 z-10 w-6 h-6 bg-gray-700 hover:bg-gray-600 rounded flex items-center justify-center text-gray-400 hover:text-white transition-colors"
-                onClick={() => appStore.setShowCode(false)}
-                title="Close code viewer"
-              >
-                ×
-              </button>
+        {/* Right Column - Code + Terminal Stack (35% default) */}
+        <Show when={appStore.showCode()}>
+          <div class="flex flex-col" style={{ width: `${appStore.codeWidth()}%` }}>
+            {/* Code Viewer - resizable height */}
+            <div class="flex-1 overflow-hidden" style={{ height: `${100 - terminalHeight()}%` }}>
               <CodeViewer />
             </div>
-          </Show>
 
-          {/* Resize Handle 2 */}
-          <Show when={appStore.showPreview()}>
+            {/* Horizontal Resize Handle for Terminal */}
             <div
-              class="w-1 resize-handle cursor-col-resize hover:bg-primary-500 transition-colors"
+              class="h-1 resize-handle cursor-row-resize hover:bg-primary-500 transition-colors bg-gray-700"
               onMouseDown={handleMouseDown(2)}
             />
-          </Show>
 
-          {/* Browser Preview - 15% default with close button */}
-          <Show when={appStore.showPreview()}>
-            <div style={{ width: `${appStore.previewWidth()}%` }} class="relative">
-              <button
-                class="absolute top-2 right-2 z-10 w-6 h-6 bg-gray-700 hover:bg-gray-600 rounded flex items-center justify-center text-gray-400 hover:text-white transition-colors"
-                onClick={() => appStore.setShowPreview(false)}
-                title="Close preview"
-              >
-                ×
-              </button>
-              <BrowserPreview />
+            {/* Terminal Output - in same column as code */}
+            <div class="overflow-hidden" style={{ height: `${terminalHeight()}%` }}>
+              <TerminalOutput />
             </div>
-          </Show>
-        </div>
-
-        {/* Horizontal Resize Handle for Terminal */}
-        <div
-          class="h-1 resize-handle cursor-row-resize hover:bg-primary-500 transition-colors bg-gray-700"
-          onMouseDown={handleMouseDown(3)}
-        />
-
-        {/* Terminal Output Panel */}
-        <div style={{ height: `${terminalHeight()}%` }}>
-          <TerminalOutput />
-        </div>
+          </div>
+        </Show>
       </div>
     </div>
   );
