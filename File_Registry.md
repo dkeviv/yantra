@@ -1,7 +1,7 @@
 # Yantra - File Registry
 
 **Version:** MVP 1.0  
-**Last Updated:** November 22, 2025 - 8:00 PM  
+**Last Updated:** November 23, 2025 - 8:30 PM  
 **Purpose:** Track all project files, their purposes, implementations, and dependencies
 
 ---
@@ -257,8 +257,10 @@
 | `src-ui/components/ChatPanel.tsx` | ✅ Updated | Chat interface with mock code generation | stores/appStore.ts | Nov 20, 2025 |
 | `src-ui/components/CodeViewer.tsx` | ✅ Updated | Monaco Editor with Python highlighting | stores/appStore.ts, monaco-editor | Nov 20, 2025 |
 | `src-ui/components/BrowserPreview.tsx` | ✅ Created | Browser preview placeholder | None | Nov 20, 2025 |
-| `src-ui/components/FileTree.tsx` | ✅ Created | File tree for project navigation | stores/appStore.ts, utils/tauri.ts | Nov 20, 2025 |
-| `src-ui/components/TerminalOutput.tsx` | ✅ Created | Real-time terminal output display | @tauri-apps/api | Nov 22, 2025 |
+| `src-ui/components/FileTree.tsx` | ✅ Complete | Recursive file tree with lazy loading | stores/appStore.ts, utils/tauri.ts | Nov 23, 2025 |
+| `src-ui/components/TerminalOutput.tsx` | ~~✅ Replaced~~ | ~~Real-time terminal output display~~ | ~~@tauri-apps/api~~ | ~~Nov 22, 2025~~ |
+| `src-ui/components/MultiTerminal.tsx` | ✅ Complete | Multi-terminal UI with tabs and controls | stores/terminalStore.ts | Nov 23, 2025 |
+| `src-ui/components/DependencyGraph.tsx` | ✅ Complete | Interactive dependency graph visualization | cytoscape, @tauri-apps/api | Nov 23, 2025 |
 | `src-ui/components/AgentStatus.tsx` | ✅ Complete | Real-time agent status display | @tauri-apps/api, solid-js | Nov 23, 2025 |
 | `src-ui/components/ProgressIndicator.tsx` | ✅ Complete | Pipeline progress tracking | @tauri-apps/api, solid-js | Nov 23, 2025 |
 | `src-ui/components/Notifications.tsx` | ✅ Complete | Toast notification system | @tauri-apps/api, solid-js | Nov 23, 2025 |
@@ -267,17 +269,41 @@
 | `src-ui/components/LoadingIndicator.tsx` | ⚪ To be created | Loading spinner component | None | - |
 | `src-ui/components/ErrorDisplay.tsx` | ⚪ To be created | Error message display | None | - |
 
-**TerminalOutput.tsx Details (370 lines):**
-- Real-time terminal output streaming via Tauri events
-- Event listeners: terminal-stdout, terminal-stderr, terminal-start, terminal-end
-- Color-coded output with 6 types: stdout (white), stderr (red), command (blue), info (cyan), error (red), success (green)
-- Search/filter functionality for output lines
-- Timestamp toggle (ISO format)
-- Auto-scroll with manual override on user scroll
-- Copy to clipboard and clear functionality
-- Execution status tracking: idle, running, completed, error
-- Visual indicators: loading spinner, exit codes, execution duration
-- OutputLine interface: type, content, timestamp, className
+**MultiTerminal.tsx Details (175 lines, Nov 23, 2025):**
+- Multi-terminal instance management (up to 10 terminals)
+- Terminal tabs with status indicators (🟢 Idle, 🟡 Busy, 🔴 Error)
+- Intelligent command routing via terminalStore
+- Terminal controls: + New, Close, Clear
+- Stats bar: total/idle/busy/error counts
+- Real-time output display with streaming
+- Command input and Execute button
+- Automatic terminal creation when all busy
+- Visual feedback for terminal status changes
+
+**DependencyGraph.tsx Details (410 lines, Nov 23, 2025):**
+- Interactive dependency visualization using cytoscape.js
+- Force-directed graph layout with animation
+- Node types: file (blue), function (green), class (orange), import (purple)
+- Edge types: calls, imports, uses, inherits
+- Filter by node type: All, Files, Functions, Classes
+- Interactive features: zoom, pan, node selection
+- Export to PNG functionality
+- Node click for details (type, name, file path)
+- Real-time data from GNN via get_graph_dependencies command
+- Empty state handling with user-friendly message
+- Legend and keyboard navigation hints
+
+**TerminalOutput.tsx Details (370 lines, REPLACED BY MultiTerminal.tsx):**
+- ~~Real-time terminal output streaming via Tauri events~~
+- ~~Event listeners: terminal-stdout, terminal-stderr, terminal-start, terminal-end~~
+- ~~Color-coded output with 6 types: stdout (white), stderr (red), command (blue), info (cyan), error (red), success (green)~~
+- ~~Search/filter functionality for output lines~~
+- ~~Timestamp toggle (ISO format)~~
+- ~~Auto-scroll with manual override on user scroll~~
+- ~~Copy to clipboard and clear functionality~~
+- ~~Execution status tracking: idle, running, completed, error~~
+- ~~Visual indicators: loading spinner, exit codes, execution duration~~
+- ~~OutputLine interface: type, content, timestamp, className~~
 - ExecutionStatus interface: state, startTime, endTime, exitCode
 
 **AgentStatus.tsx Details (176 lines):**
@@ -314,10 +340,26 @@
 
 | File | Status | Purpose | Dependencies | Last Updated |
 |------|--------|---------|--------------|--------------|
-| `src-ui/stores/appStore.ts` | ✅ Updated | Global app state with signals | SolidJS | Nov 20, 2025 |
+| `src-ui/stores/appStore.ts` | ✅ Complete | Global app state with multi-file management | SolidJS | Nov 23, 2025 |
+| `src-ui/stores/terminalStore.ts` | ✅ Complete | Multi-terminal state with intelligent routing | SolidJS, @tauri-apps/api | Nov 23, 2025 |
 | `src-ui/stores/chatStore.ts` | ⚪ To be created | Chat state management | SolidJS | - |
 | `src-ui/stores/fileStore.ts` | ⚪ To be created | File system state | SolidJS | - |
 | `src-ui/stores/codeStore.ts` | ⚪ To be created | Code editor state | SolidJS | - |
+
+**terminalStore.ts Details (227 lines, Nov 23, 2025):**
+- Multi-terminal instance management (up to 10 terminals)
+- Terminal interface: id, name, status, currentCommand, output[], timestamps
+- Intelligent command routing algorithm:
+  * Prefers specified terminal if idle
+  * Finds any idle terminal
+  * Auto-creates new terminal if all busy
+  * Returns error if limit reached
+- Terminal lifecycle: create, close, setActive, execute, complete
+- Status tracking: idle, busy, error
+- Event listeners for backend streaming: terminal-output, terminal-complete
+- Real command execution via Tauri execute_terminal_command
+- Stats tracking: total, idle, busy, error counts
+- Backend integration with async/await
 
 ### Styles (Week 1-2)
 
