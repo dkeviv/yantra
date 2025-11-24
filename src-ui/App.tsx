@@ -5,6 +5,7 @@
 
 import { Component, createSignal, onMount, Show } from 'solid-js';
 import { appStore } from './stores/appStore';
+import { terminalStore } from './stores/terminalStore';
 import { listen } from '@tauri-apps/api/event';
 import FileTree from './components/FileTree';
 import ChatPanel from './components/ChatPanel';
@@ -71,6 +72,9 @@ const App: Component = () => {
   onMount(() => {
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
+
+    // Initialize terminal event listeners
+    terminalStore.initializeEventListeners();
 
     // Listen for menu events
     const unlistenTogglePanel = listen<string>('toggle-panel', (event) => {

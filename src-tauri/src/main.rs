@@ -493,6 +493,96 @@ fn get_graph_dependencies(app_handle: tauri::AppHandle) -> Result<serde_json::Va
     }
 }
 
+/// Execute terminal command with streaming output
+#[tauri::command]
+async fn execute_terminal_command(
+    terminal_id: String,
+    command: String,
+    working_dir: Option<String>,
+    window: tauri::Window,
+) -> Result<i32, String> {
+    use std::process::{Command, Stdio};
+    use std::io::{BufRead, BufReader};
+    use tokio::task;
+    
+    // Determine working directory
+    let work_dir = working_dir.unwrap_or_else(|| {
+        std::env::current_dir()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string()
+    });
+    
+    // Execute command in separate thread to avoid blocking
+    let terminal_id_clone = terminal_id.clone();
+    let window_clone = window.clone();
+    
+    let exit_code = task::spawn_blocking(move || {
+        // Use shell to execute command (supports pipes, redirects, etc.)
+        let mut child = Command::new("sh")
+            .arg("-c")
+            .arg(&command)
+            .current_dir(&work_dir)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|e| format!("Failed to execute command: {}", e))?;
+        
+        // Stream stdout
+        if let Some(stdout) = child.stdout.take() {
+            let reader = BufReader::new(stdout);
+            let tid = terminal_id_clone.clone();
+            let win = window_clone.clone();
+            
+            std::thread::spawn(move || {
+                for line in reader.lines() {
+                    if let Ok(line) = line {
+                        let _ = win.emit("terminal-output", serde_json::json!({
+                            "terminal_id": tid,
+                            "output": line,
+                            "stream": "stdout",
+                        }));
+                    }
+                }
+            });
+        }
+        
+        // Stream stderr
+        if let Some(stderr) = child.stderr.take() {
+            let reader = BufReader::new(stderr);
+            let tid = terminal_id_clone.clone();
+            let win = window_clone.clone();
+            
+            std::thread::spawn(move || {
+                for line in reader.lines() {
+                    if let Ok(line) = line {
+                        let _ = win.emit("terminal-output", serde_json::json!({
+                            "terminal_id": tid,
+                            "output": line,
+                            "stream": "stderr",
+                        }));
+                    }
+                }
+            });
+        }
+        
+        // Wait for process to complete
+        let status = child.wait()
+            .map_err(|e| format!("Failed to wait for command: {}", e))?;
+        
+        // Send completion event
+        let _ = window_clone.emit("terminal-complete", serde_json::json!({
+            "terminal_id": terminal_id_clone,
+            "exit_code": status.code().unwrap_or(-1),
+        }));
+        
+        Ok::<i32, String>(status.code().unwrap_or(-1))
+    }).await
+    .map_err(|e| format!("Task join error: {}", e))??;
+    
+    Ok(exit_code)
+}
+
 // Menu event handler
 fn handle_menu_event(event: tauri::WindowMenuEvent) {
     match event.menu_item_id() {
@@ -589,7 +679,8 @@ fn main() {
             git_checkout,
             git_pull,
             git_push,
-            get_graph_dependencies
+            get_graph_dependencies,
+            execute_terminal_command
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

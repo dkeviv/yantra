@@ -1,9 +1,11 @@
 // File: src-ui/stores/terminalStore.ts
 // Purpose: Multi-terminal management with intelligent command execution
-// Dependencies: solid-js
-// Last Updated: November 23, 2025
+// Dependencies: solid-js, @tauri-apps/api
+// Last Updated: November 23, 2025 - Added backend integration
 
 import { createSignal } from 'solid-js';
+import { invoke } from '@tauri-apps/api/tauri';
+import { listen } from '@tauri-apps/api/event';
 
 export interface Terminal {
   id: string;
@@ -138,35 +140,65 @@ export const terminalStore = {
     setTerminals(updated);
   },
 
-  // Intelligent command execution
+  // Intelligent command execution with backend integration
   // Returns terminal ID where command will be executed, or null if all busy
   executeCommand: async (command: string, preferredTerminalId?: string): Promise<string | null> => {
     // Check if preferred terminal is available
+    let terminalId: string | null = null;
+    
     if (preferredTerminalId) {
       const terminal = terminals().find(t => t.id === preferredTerminalId);
       if (terminal && terminal.status === 'idle') {
-        terminalStore.setTerminalStatus(preferredTerminalId, 'busy');
-        terminalStore.setCurrentCommand(preferredTerminalId, command);
-        terminalStore.addOutput(preferredTerminalId, `$ ${command}`);
-        return preferredTerminalId;
+        terminalId = preferredTerminalId;
       }
     }
 
-    // Find any idle terminal
-    const idleTerminal = terminalStore.findIdleTerminal();
-    if (idleTerminal) {
-      terminalStore.setTerminalStatus(idleTerminal.id, 'busy');
-      terminalStore.setCurrentCommand(idleTerminal.id, command);
-      terminalStore.addOutput(idleTerminal.id, `$ ${command}`);
-      return idleTerminal.id;
+    // Find any idle terminal if preferred not available
+    if (!terminalId) {
+      const idleTerminal = terminalStore.findIdleTerminal();
+      if (idleTerminal) {
+        terminalId = idleTerminal.id;
+      }
     }
 
     // All terminals busy - create new one
-    const newId = terminalStore.createTerminal();
-    terminalStore.setTerminalStatus(newId, 'busy');
-    terminalStore.setCurrentCommand(newId, command);
-    terminalStore.addOutput(newId, `$ ${command}`);
-    return newId;
+    if (!terminalId) {
+      terminalId = terminalStore.createTerminal();
+    }
+
+    if (!terminalId) {
+      return null; // Failed to create terminal
+    }
+
+    // Set terminal to busy and show command
+    terminalStore.setTerminalStatus(terminalId, 'busy');
+    terminalStore.setCurrentCommand(terminalId, command);
+    terminalStore.addOutput(terminalId, `$ ${command}`);
+
+    try {
+      // Execute command via Tauri backend
+      const exitCode = await invoke<number>('execute_terminal_command', {
+        terminalId,
+        command,
+        workingDir: null, // Use current directory
+      });
+
+      // Mark as complete
+      terminalStore.completeCommand(
+        terminalId, 
+        exitCode === 0 ? '✅ Command completed successfully' : `❌ Command failed with exit code ${exitCode}`,
+        exitCode === 0
+      );
+    } catch (error) {
+      // Handle error
+      terminalStore.completeCommand(
+        terminalId,
+        `❌ Error: ${error}`,
+        false
+      );
+    }
+
+    return terminalId;
   },
 
   // Complete command execution
@@ -190,5 +222,23 @@ export const terminalStore = {
       busy: allTerminals.filter(t => t.status === 'busy').length,
       error: allTerminals.filter(t => t.status === 'error').length,
     };
+  },
+
+  // Initialize event listeners for terminal output streaming
+  initializeEventListeners: () => {
+    // Listen for terminal output
+    listen<{ terminal_id: string; output: string; stream: string }>('terminal-output', (event) => {
+      const { terminal_id, output, stream } = event.payload;
+      const prefix = stream === 'stderr' ? '🔴 ' : '';
+      terminalStore.addOutput(terminal_id, `${prefix}${output}`);
+    });
+
+    // Listen for terminal completion
+    listen<{ terminal_id: string; exit_code: number }>('terminal-complete', (event) => {
+      const { terminal_id, exit_code } = event.payload;
+      const success = exit_code === 0;
+      terminalStore.setTerminalStatus(terminal_id, success ? 'idle' : 'error');
+      terminalStore.setCurrentCommand(terminal_id, null);
+    });
   },
 };
