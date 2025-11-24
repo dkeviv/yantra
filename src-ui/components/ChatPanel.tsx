@@ -1,81 +1,58 @@
 // File: src-ui/components/ChatPanel.tsx
-// Purpose: Chat interface component for user interaction
-// Dependencies: solid-js, appStore
-// Last Updated: November 20, 2025
+// Purpose: Chat interface component for user interaction with agent-first commands
+// Dependencies: solid-js, appStore, agentStore
+// Last Updated: November 23, 2025
 
-import { Component, For, createSignal } from 'solid-js';
+import { Component, For, createSignal, Show } from 'solid-js';
 import { appStore } from '../stores/appStore';
+import { agentStore, getCommandSuggestions } from '../stores/agentStore';
 
 const ChatPanel: Component = () => {
   const [input, setInput] = createSignal('');
+  const [showSuggestions, setShowSuggestions] = createSignal(false);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const message = input().trim();
     if (!message) return;
 
     // Add user message
     appStore.addMessage('user', message);
     setInput('');
+    setShowSuggestions(false);
 
-    // TODO: Send to backend for processing
-    appStore.setIsGenerating(true);
+    // Check if it's an agent command (starts with action words)
+    const commandKeywords = ['open', 'close', 'show', 'hide', 'run', 'execute', 'create', 'list', 'reset', 'maximize'];
+    const isCommand = commandKeywords.some(keyword => message.toLowerCase().startsWith(keyword));
 
-    // Mock response with sample Python code for testing Monaco Editor
-    setTimeout(() => {
-      appStore.addMessage(
-        'assistant',
-        'I\'ve generated a Python function for you. Check the Code panel to see it with syntax highlighting!'
-      );
+    if (isCommand) {
+      // Execute as agent command
+      appStore.setIsGenerating(true);
       
-      // Update the code viewer with sample Python code
-      const sampleCode = `# Generated Python Code
-# Request: ${message}
+      try {
+        const result = await agentStore.executeCommand(message);
+        appStore.addMessage('assistant', result);
+      } catch (error) {
+        appStore.addMessage('assistant', `❌ Error: ${error}`);
+      } finally {
+        appStore.setIsGenerating(false);
+      }
+    } else {
+      // Regular chat message - send to LLM (TODO: implement LLM integration)
+      appStore.setIsGenerating(true);
 
-def fibonacci(n: int) -> list[int]:
-    """
-    Generate Fibonacci sequence up to n terms.
-    
-    Args:
-        n: Number of terms to generate
-        
-    Returns:
-        List of Fibonacci numbers
-    """
-    if n <= 0:
-        return []
-    elif n == 1:
-        return [0]
-    elif n == 2:
-        return [0, 1]
-    
-    fib_sequence = [0, 1]
-    for i in range(2, n):
-        fib_sequence.append(fib_sequence[i-1] + fib_sequence[i-2])
-    
-    return fib_sequence
-
-
-def main():
-    """Main function to demonstrate Fibonacci sequence."""
-    print("Fibonacci Sequence Generator")
-    print("-" * 40)
-    
-    n = 10
-    sequence = fibonacci(n)
-    print(f"First {n} Fibonacci numbers:")
-    print(sequence)
-    
-    # Calculate sum
-    total = sum(sequence)
-    print(f"\\nSum of sequence: {total}")
-
-
-if __name__ == "__main__":
-    main()
-`;
-      appStore.updateCode(sampleCode);
-      appStore.setIsGenerating(false);
-    }, 1500);
+      // Mock response for now
+      setTimeout(() => {
+        appStore.addMessage(
+          'assistant',
+          'I can help you with code generation. Try commands like:\n' +
+          '• "run npm test" - Execute commands in terminal\n' +
+          '• "show dependencies" - View dependency graph\n' +
+          '• "open new terminal" - Create a new terminal\n' +
+          '• "list files" - See open files'
+        );
+        appStore.setIsGenerating(false);
+      }, 500);
+    }
   };
 
   const handleKeyPress = (e: KeyboardEvent) => {
@@ -89,8 +66,8 @@ if __name__ == "__main__":
     <div class="flex flex-col h-full bg-gray-900">
       {/* Header */}
       <div class="px-6 py-4 border-b border-gray-700">
-        <h2 class="text-xl font-bold text-white">Chat</h2>
-        <p class="text-sm text-gray-400 mt-1">Describe what you want to build</p>
+        <h2 class="text-xl font-bold text-white inline-block">Chat</h2>
+        <span class="text-sm text-gray-400 ml-3">- Describe what you want to build</span>
       </div>
 
       {/* Messages */}
@@ -109,11 +86,11 @@ if __name__ == "__main__":
                     : 'bg-gray-800 text-gray-100'
                 }`}
               >
-                <div class="text-sm font-medium mb-1">
+                <div class="text-[10px] font-medium mb-1">
                   {message.role === 'user' ? 'You' : message.role === 'system' ? 'System' : 'Yantra'}
                 </div>
-                <div class="whitespace-pre-wrap">{message.content}</div>
-                <div class="text-xs opacity-60 mt-2">
+                <div class="whitespace-pre-wrap text-[10px]">{message.content}</div>
+                <div class="text-[10px] opacity-60 mt-2">
                   {message.timestamp.toLocaleTimeString()}
                 </div>
               </div>
@@ -135,12 +112,36 @@ if __name__ == "__main__":
 
       {/* Input */}
       <div class="px-6 py-4 border-t border-gray-700">
+        {/* Command Suggestions */}
+        <Show when={showSuggestions() && input().trim()}>
+          <div class="mb-2 flex flex-wrap gap-2">
+            <For each={getCommandSuggestions()}>
+              {(suggestion) => (
+                <button
+                  onClick={() => {
+                    setInput(suggestion);
+                    setShowSuggestions(false);
+                  }}
+                  class="px-3 py-1 text-xs bg-gray-700 text-gray-300 rounded hover:bg-gray-600 transition-colors"
+                >
+                  {suggestion}
+                </button>
+              )}
+            </For>
+          </div>
+        </Show>
+
         <div class="flex space-x-2">
           <textarea
             value={input()}
-            onInput={(e) => setInput(e.currentTarget.value)}
+            onInput={(e) => {
+              setInput(e.currentTarget.value);
+              setShowSuggestions(true);
+            }}
             onKeyPress={handleKeyPress}
-            placeholder="Type your request... (Shift+Enter for new line)"
+            onFocus={() => setShowSuggestions(true)}
+            onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+            placeholder="Type a command or message... (e.g., 'open new terminal', 'show dependencies')"
             class="flex-1 bg-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
             rows="3"
             disabled={appStore.isGenerating()}

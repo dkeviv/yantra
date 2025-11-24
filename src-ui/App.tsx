@@ -118,41 +118,14 @@ const App: Component = () => {
       {/* Notifications Overlay */}
       <Notifications />
       
-      {/* Top Bar */}
+      {/* Top Bar - Removed redundant Yantra branding and Open Project button (agent-driven) */}
       <div class="h-14 bg-gray-800 border-b border-gray-700 flex items-center px-6">
-        <div class="flex items-center space-x-3">
-          <svg
-            class="w-8 h-8 text-primary-500"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
-            />
-          </svg>
-          <h1 class="text-xl font-bold">Yantra</h1>
-        </div>
-        <div class="ml-auto flex items-center space-x-4">
-          <button
-            class="px-4 py-2 text-sm bg-gray-700 rounded hover:bg-gray-600 transition-colors"
-            onClick={() => {
-              // TODO: Implement project loading
-              appStore.loadProject('/path/to/project');
-            }}
-          >
-            Open Project
-          </button>
-          <div class="text-sm text-gray-400">
-            {appStore.projectPath() ? (
-              <span class="text-primary-400">Project loaded</span>
-            ) : (
-              'No project'
-            )}
-          </div>
+        <div class="text-sm text-gray-400">
+          {appStore.projectPath() ? (
+            <span class="text-primary-400">Project: {appStore.projectPath()}</span>
+          ) : (
+            <span>Use "open project [path]" command to load a project</span>
+          )}
         </div>
       </div>
 
@@ -202,7 +175,7 @@ const App: Component = () => {
                 }`}
                 onClick={() => appStore.setActiveView('editor')}
               >
-                📝 Code Editor
+                📝 Editor
               </button>
               <button
                 class={`px-4 py-2 text-sm transition-colors ${
