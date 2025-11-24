@@ -16,6 +16,7 @@ mod llm;
 mod agent;
 mod testing;
 mod git;
+mod documentation;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct FileEntry {
@@ -241,7 +242,108 @@ fn clear_llm_key(app_handle: tauri::AppHandle, provider: String) -> Result<(), S
 }
 
 /// Update retry configuration
-// LLM commands (Configuration already implemented above)
+#[tauri::command]
+fn set_llm_retry_config(
+    app_handle: tauri::AppHandle,
+    max_retries: u32,
+    timeout_seconds: u64,
+) -> Result<(), String> {
+    let config_dir = app_handle.path_resolver()
+        .app_config_dir()
+        .ok_or_else(|| "Failed to get config directory".to_string())?;
+    
+    let mut manager = llm::config::LLMConfigManager::new(&config_dir)?;
+    manager.set_retry_config(max_retries, timeout_seconds)
+}
+
+// Documentation commands
+
+/// Get all features
+#[tauri::command]
+fn get_features(workspace_path: String) -> Result<Vec<documentation::Feature>, String> {
+    let mut manager = documentation::DocumentationManager::new(PathBuf::from(&workspace_path));
+    manager.load_from_files()?;
+    Ok(manager.get_features().to_vec())
+}
+
+/// Get all decisions
+#[tauri::command]
+fn get_decisions(workspace_path: String) -> Result<Vec<documentation::Decision>, String> {
+    let mut manager = documentation::DocumentationManager::new(PathBuf::from(&workspace_path));
+    manager.load_from_files()?;
+    Ok(manager.get_decisions().to_vec())
+}
+
+/// Get all changes
+#[tauri::command]
+fn get_changes(workspace_path: String) -> Result<Vec<documentation::Change>, String> {
+    let mut manager = documentation::DocumentationManager::new(PathBuf::from(&workspace_path));
+    manager.load_from_files()?;
+    Ok(manager.get_changes().to_vec())
+}
+
+/// Get all tasks from plan
+#[tauri::command]
+fn get_tasks(workspace_path: String) -> Result<Vec<documentation::Task>, String> {
+    let mut manager = documentation::DocumentationManager::new(PathBuf::from(&workspace_path));
+    manager.load_from_files()?;
+    Ok(manager.get_tasks().to_vec())
+}
+
+/// Add a new feature from chat
+#[tauri::command]
+fn add_feature(
+    workspace_path: String,
+    title: String,
+    description: String,
+    extracted_from: String,
+) -> Result<(), String> {
+    let mut manager = documentation::DocumentationManager::new(PathBuf::from(&workspace_path));
+    manager.load_from_files()?;
+    manager.add_feature(title, description, extracted_from);
+    Ok(())
+}
+
+/// Add a new decision
+#[tauri::command]
+fn add_decision(
+    workspace_path: String,
+    title: String,
+    context: String,
+    decision: String,
+    rationale: String,
+) -> Result<(), String> {
+    let mut manager = documentation::DocumentationManager::new(PathBuf::from(&workspace_path));
+    manager.load_from_files()?;
+    manager.add_decision(title, context, decision, rationale);
+    Ok(())
+}
+
+/// Add a change log entry
+#[tauri::command]
+fn add_change(
+    workspace_path: String,
+    change_type: String,
+    description: String,
+    files: Vec<String>,
+) -> Result<(), String> {
+    let mut manager = documentation::DocumentationManager::new(PathBuf::from(&workspace_path));
+    manager.load_from_files()?;
+    
+    let change_type_enum = match change_type.to_lowercase().as_str() {
+        "file-added" => documentation::ChangeType::FileAdded,
+        "file-modified" => documentation::ChangeType::FileModified,
+        "file-deleted" => documentation::ChangeType::FileDeleted,
+        "function-added" => documentation::ChangeType::FunctionAdded,
+        "function-removed" => documentation::ChangeType::FunctionRemoved,
+        _ => return Err(format!("Invalid change type: {}", change_type)),
+    };
+    
+    manager.add_change(change_type_enum, description, files);
+    Ok(())
+}
+
+// LLM commands
 
 /// Generate code using LLM with GNN context
 #[tauri::command]
@@ -334,20 +436,6 @@ async fn generate_tests(
     
     // Generate tests
     testing::generator::generate_tests(request, llm_config).await
-}
-
-#[tauri::command]
-fn set_llm_retry_config(
-    app_handle: tauri::AppHandle,
-    max_retries: u32,
-    timeout_seconds: u64,
-) -> Result<(), String> {
-    let config_dir = app_handle.path_resolver()
-        .app_config_dir()
-        .ok_or_else(|| "Failed to get config directory".to_string())?;
-    
-    let mut manager = llm::config::LLMConfigManager::new(&config_dir)?;
-    manager.set_retry_config(max_retries, timeout_seconds)
 }
 
 // Git commands
@@ -685,7 +773,14 @@ fn main() {
             git_pull,
             git_push,
             get_graph_dependencies,
-            execute_terminal_command
+            execute_terminal_command,
+            get_features,
+            get_decisions,
+            get_changes,
+            get_tasks,
+            add_feature,
+            add_decision,
+            add_change
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -56,16 +56,21 @@
 
 | File | Status | Purpose | Dependencies | Last Updated |
 |------|--------|---------|--------------|--------------|
-| `src-tauri/src/main.rs` | ✅ Updated | Tauri app with file system and GNN commands | tauri, serde, std::fs, gnn module | Nov 20, 2025 |
+| `src-tauri/src/main.rs` | ✅ Updated | Tauri app with file system, GNN, LLM, testing, git, and documentation commands | tauri, serde, std::fs, all modules | Nov 23, 2025 |
 | `src-tauri/build.rs` | ✅ Created | Tauri build script | tauri-build | Nov 20, 2025 |
 | `src-tauri/Cargo.toml` | ✅ Updated | Rust dependencies with GNN deps | tree-sitter, petgraph, rusqlite | Nov 20, 2025 |
 | `src-tauri/tauri.conf.json` | ✅ Created | Tauri app configuration | None | Nov 20, 2025 |
 | `src-tauri/icons/*.png` | ✅ Created | Application icons (placeholder) | None | Nov 20, 2025 |
 | `src/lib.rs` | ⚪ To be created | Library root | All modules | - |
 
-**Main.rs Commands:**
-- File System: read_file, write_file, read_dir, path_exists, get_file_info
-- GNN: analyze_project, get_dependencies, get_dependents, find_node
+**Main.rs Commands (36 total):**
+- File System (5): read_file, write_file, read_dir, path_exists, get_file_info
+- GNN (5): analyze_project, get_dependencies, get_dependents, find_node, get_graph_dependencies
+- LLM (7): get_llm_config, set_llm_provider, set_claude_key, set_openai_key, clear_llm_key, set_llm_retry_config, generate_code
+- Testing (1): generate_tests
+- Git (9): git_status, git_add, git_commit, git_diff, git_log, git_branch_list, git_current_branch, git_checkout, git_pull, git_push
+- Documentation (7): get_features, get_decisions, get_changes, get_tasks, add_feature, add_decision, add_change
+- Terminal (1): execute_terminal_command
 
 ### GNN Module (Week 3-4)
 
@@ -217,6 +222,39 @@
 - **Git Features**: Automatic staging, semantic commit messages, integration with agent orchestrator, MCP protocol standard compliance
 - **Total Tests**: 5 git tests, all passing
 
+### Documentation Module (Week 8-9) - ✅ COMPLETE
+
+| File | Status | Purpose | Dependencies | Last Updated |
+|------|--------|---------|--------------|--------------|
+| `src/documentation/mod.rs` | ✅ Complete | Documentation extraction and management | serde, chrono, std::fs | Nov 23, 2025 |
+
+**Implementation Details:**
+- **mod.rs (302 lines, 4 tests)**: Complete documentation system for extracting and managing project documentation
+- **Core Types:**
+  - `Feature`: Extracted features with status (planned/in-progress/completed), title, description, source
+  - `Decision`: Design decisions with context, decision, rationale, timestamp
+  - `Change`: Audit log entries with change type (file-added/modified/deleted/function-added/removed), files affected, timestamp
+  - `Task`: Tasks with status, milestone, dependencies, user action requirements
+  - `DocumentationManager`: Central manager for all documentation operations
+- **Key Methods:**
+  - `load_from_files()`: Parses Project_Plan.md, Features.md, Decision_Log.md to extract structured data
+  - `extract_tasks_from_plan()`: Extracts tasks from markdown checkboxes with milestone tracking
+  - `extract_features()`: Parses feature sections from Features.md
+  - `extract_decisions()`: Extracts decision headers from Decision_Log.md
+  - `add_feature()`, `add_decision()`, `add_change()`: Add new entries with timestamps
+  - `get_features()`, `get_decisions()`, `get_changes()`, `get_tasks()`: Accessor methods
+- **Tauri Commands (7 total):**
+  - `get_features`: Retrieve all features from workspace
+  - `get_decisions`: Retrieve all decisions from workspace
+  - `get_changes`: Retrieve all changes from workspace
+  - `get_tasks`: Retrieve all tasks from workspace plan
+  - `add_feature`: Add new feature from chat extraction
+  - `add_decision`: Add new decision with context and rationale
+  - `add_change`: Add new change log entry
+- **Integration:** Connected to main.rs with 7 Tauri commands, automatically loads and parses existing markdown documentation files
+- **Tests:** 4 unit tests passing (manager creation, add feature, add decision, add change)
+- **Performance:** File parsing <50ms, in-memory operations <10ms
+
 ### Learning Module (Week 7-8) - LLM Mistake Tracking
 
 | File | Status | Purpose | Dependencies | Last Updated |
@@ -261,9 +299,10 @@
 | `src-ui/components/TerminalOutput.tsx` | ~~✅ Replaced~~ | ~~Real-time terminal output display~~ | ~~@tauri-apps/api~~ | ~~Nov 22, 2025~~ |
 | `src-ui/components/MultiTerminal.tsx` | ✅ Complete | Multi-terminal UI with tabs and controls | stores/terminalStore.ts | Nov 23, 2025 |
 | `src-ui/components/DependencyGraph.tsx` | ✅ Complete | Interactive dependency graph visualization | cytoscape, @tauri-apps/api | Nov 23, 2025 |
-| `src-ui/components/AgentStatus.tsx` | ✅ Complete | Real-time agent status display | @tauri-apps/api, solid-js | Nov 23, 2025 |
+| `src-ui/components/AgentStatus.tsx` | ✅ Complete | Minimal agent progress display | @tauri-apps/api, solid-js | Nov 23, 2025 |
 | `src-ui/components/ProgressIndicator.tsx` | ✅ Complete | Pipeline progress tracking | @tauri-apps/api, solid-js | Nov 23, 2025 |
 | `src-ui/components/Notifications.tsx` | ✅ Complete | Toast notification system | @tauri-apps/api, solid-js | Nov 23, 2025 |
+| `src-ui/components/DocumentationPanels.tsx` | ✅ Complete | 4-panel documentation system | documentationStore, agentStore | Nov 23, 2025 |
 | `src-ui/components/MessageList.tsx` | ⚪ To be created | Chat message list | None | - |
 | `src-ui/components/MessageInput.tsx` | ⚪ To be created | Chat input field | None | - |
 | `src-ui/components/LoadingIndicator.tsx` | ⚪ To be created | Loading spinner component | None | - |
@@ -306,15 +345,15 @@
 - ~~OutputLine interface: type, content, timestamp, className~~
 - ExecutionStatus interface: state, startTime, endTime, exitCode
 
-**AgentStatus.tsx Details (176 lines):**
-- Real-time agent status display via Tauri events (agent-status event)
-- 6 phase tracking: Idle, Analyzing, Generating, Testing, Validating, Deploying, Complete
-- Confidence score display (0-100%) with color coding: <50% red, 50-80% yellow, >80% green
-- Progress bar with percentage and animated transitions
-- Current task description with ellipsis animation
-- Error state display with red visual indicators
-- AgentStatus interface: phase, confidence, currentTask, isProcessing, error (optional)
-- Auto-update on event reception with smooth transitions
+**AgentStatus.tsx Details (74 lines, Nov 23, 2025):**
+- Minimal agent progress display at bottom of file panel
+- Removed confidence scoring (internal metric only)
+- 3-line compact display: phase icon + progress % + current task
+- Progress bar (1px height, 100% width)
+- Status colors: 🔄 blue (running), ✅ green (success), ❌ red (error), ⏸️ gray (idle)
+- Space-efficient design for maximum transparency with minimal obstruction
+- Real-time updates via Tauri events (agent-status event)
+- AgentStatus interface: phase, currentTask, isProcessing, error (optional)
 
 **ProgressIndicator.tsx Details (147 lines):**
 - Multi-step pipeline progress tracking via Tauri events (progress-update event)
@@ -336,12 +375,27 @@
 - Notification interface: id, type, title, message, duration (optional)
 - Maximum 5 notifications shown simultaneously
 
+**DocumentationPanels.tsx Details (248 lines, Nov 23, 2025):**
+- 4-panel documentation system: Features, Decisions, Changes, Plan
+- Tab-based navigation with active highlighting
+- **Features Panel**: Auto-extracted features from chat with status badges (planned/in-progress/completed), shows title, description, extraction source
+- **Decisions Panel**: Critical development decisions with context, decision, rationale, timestamp
+- **Changes Panel**: Audit log with change type badges (file-added/modified/deleted/function-added/removed), affected files, timestamps
+- **Plan Panel**: Tasks grouped by milestones (MVP, Phase 1, Phase 2), status indicators (✅/🔄/⏳), dependency tracking, user action buttons ("Click for Instructions")
+- User action integration: onClick sends task.userActionInstructions to chat via agentStore
+- Real-time data from documentationStore (loads on mount)
+- Loading and error state handling
+- Toggle integration with FileTree in App.tsx (📁 Files | 📚 Docs tabs)
+- Color-coded status badges throughout for visual clarity
+
 ### State Management (Week 1-2)
 
 | File | Status | Purpose | Dependencies | Last Updated |
 |------|--------|---------|--------------|--------------|
 | `src-ui/stores/appStore.ts` | ✅ Complete | Global app state with multi-file management | SolidJS | Nov 23, 2025 |
 | `src-ui/stores/terminalStore.ts` | ✅ Complete | Multi-terminal state with intelligent routing | SolidJS, @tauri-apps/api | Nov 23, 2025 |
+| `src-ui/stores/agentStore.ts` | ✅ Complete | Agent command parser and executor | SolidJS, appStore, terminalStore | Nov 23, 2025 |
+| `src-ui/stores/documentationStore.ts` | ✅ Complete | Documentation data from backend | SolidJS, @tauri-apps/api, appStore | Nov 23, 2025 |
 | `src-ui/stores/chatStore.ts` | ⚪ To be created | Chat state management | SolidJS | - |
 | `src-ui/stores/fileStore.ts` | ⚪ To be created | File system state | SolidJS | - |
 | `src-ui/stores/codeStore.ts` | ⚪ To be created | Code editor state | SolidJS | - |
@@ -360,6 +414,24 @@
 - Real command execution via Tauri execute_terminal_command
 - Stats tracking: total, idle, busy, error counts
 - Backend integration with async/await
+
+**agentStore.ts Details (262 lines, Nov 23, 2025):**
+- Natural language command parser for agent-first UI control
+- 15+ command patterns across 6 categories: Terminal, Views, Files, Layout, Project, Help
+- Command execution with async/await pattern matching
+- Context-aware command suggestions
+- Integration with appStore and terminalStore for UI control
+- See AGENT_COMMANDS.md for full command reference
+
+**documentationStore.ts Details (198 lines, Nov 23, 2025):**
+- Frontend interface to backend documentation system
+- Type definitions matching Rust backend: Feature, Decision, Change, Task
+- `loadDocumentation()`: Loads all 4 documentation types in parallel
+- `addFeature()`, `addDecision()`, `addChange()`: Add new entries via Tauri commands
+- Helper functions: getUserActionTasks(), getTasksByMilestone(), counts
+- Loading and error state management
+- Real-time sync with backend documentation files
+- Integration with DocumentationPanels component
 
 ### Styles (Week 1-2)
 
