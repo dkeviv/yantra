@@ -10,6 +10,7 @@ import FileTree from './components/FileTree';
 import ChatPanel from './components/ChatPanel';
 import CodeViewer from './components/CodeViewer';
 import MultiTerminal from './components/MultiTerminal';
+import DependencyGraph from './components/DependencyGraph';
 import { AgentStatus } from './components/AgentStatus';
 import { Notifications } from './components/Notifications';
 
@@ -217,9 +218,7 @@ const App: Component = () => {
                 <CodeViewer />
               </Show>
               <Show when={appStore.activeView() === 'dependencies'}>
-                <div class="flex items-center justify-center h-full bg-gray-900 text-gray-400">
-                  Dependency Graph View - Coming Soon
-                </div>
+                <DependencyGraph />
               </Show>
             </div>
 

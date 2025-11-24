@@ -422,6 +422,77 @@ fn git_push(workspace_path: String) -> Result<String, String> {
     git_mcp.push()
 }
 
+/// Get graph dependencies for visualization
+#[tauri::command]
+fn get_graph_dependencies(app_handle: tauri::AppHandle) -> Result<serde_json::Value, String> {
+    // Get workspace path from app state or config
+    // For now, return empty graph if no workspace is open
+    let workspace_path = app_handle
+        .path_resolver()
+        .app_data_dir()
+        .ok_or_else(|| "Failed to get app data directory".to_string())?;
+    
+    let db_path = workspace_path.join("yantra.db");
+    
+    // Try to load existing GNN engine
+    let gnn_result = gnn::GNNEngine::new(&db_path)
+        .and_then(|mut engine| {
+            engine.load()?;
+            Ok(engine)
+        });
+    
+    match gnn_result {
+        Ok(engine) => {
+            let graph = engine.get_graph();
+            let all_nodes = graph.get_all_nodes();
+            
+            // Transform nodes to frontend format
+            let nodes: Vec<serde_json::Value> = all_nodes
+                .iter()
+                .map(|node| {
+                    serde_json::json!({
+                        "id": node.id,
+                        "label": node.name,
+                        "type": match node.node_type {
+                            gnn::NodeType::Function => "function",
+                            gnn::NodeType::Class => "class",
+                            gnn::NodeType::Import => "import",
+                            gnn::NodeType::Variable => "variable",
+                            gnn::NodeType::Module => "file",
+                        },
+                        "file_path": node.file_path,
+                    })
+                })
+                .collect();
+            
+            // Get edges by checking dependencies for each node
+            let mut edges: Vec<serde_json::Value> = Vec::new();
+            for node in all_nodes.iter() {
+                let deps = engine.get_dependencies(&node.id);
+                for dep in deps {
+                    edges.push(serde_json::json!({
+                        "source": node.id,
+                        "target": dep.id,
+                        "type": "uses", // Simplified for MVP
+                    }));
+                }
+            }
+            
+            Ok(serde_json::json!({
+                "nodes": nodes,
+                "edges": edges,
+            }))
+        }
+        Err(_) => {
+            // Return empty graph if no GNN data exists yet
+            Ok(serde_json::json!({
+                "nodes": [],
+                "edges": [],
+            }))
+        }
+    }
+}
+
 // Menu event handler
 fn handle_menu_event(event: tauri::WindowMenuEvent) {
     match event.menu_item_id() {
@@ -517,7 +588,8 @@ fn main() {
             git_current_branch,
             git_checkout,
             git_pull,
-            git_push
+            git_push,
+            get_graph_dependencies
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
