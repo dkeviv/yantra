@@ -10,6 +10,8 @@ import { agentStore, getCommandSuggestions } from '../stores/agentStore';
 const ChatPanel: Component = () => {
   const [input, setInput] = createSignal('');
   const [showSuggestions, setShowSuggestions] = createSignal(false);
+  const [selectedModel, setSelectedModel] = createSignal('claude-sonnet-4');
+  const [showApiConfig, setShowApiConfig] = createSignal(false);
 
   const handleSend = async () => {
     const message = input().trim();
@@ -110,7 +112,7 @@ const ChatPanel: Component = () => {
         )}
       </div>
 
-      {/* Input */}
+      {/* Input Area */}
       <div class="px-6 py-4 border-t border-gray-700">
         {/* Command Suggestions */}
         <Show when={showSuggestions() && input().trim()}>
@@ -131,7 +133,8 @@ const ChatPanel: Component = () => {
           </div>
         </Show>
 
-        <div class="flex space-x-2">
+        {/* Input with icon send button */}
+        <div class="flex space-x-2 mb-3">
           <textarea
             value={input()}
             onInput={(e) => {
@@ -146,14 +149,83 @@ const ChatPanel: Component = () => {
             rows="3"
             disabled={appStore.isGenerating()}
           />
+        </div>
+
+        {/* LLM Configuration Panel */}
+        <div class="flex items-center justify-between bg-gray-800 rounded-lg px-3 py-2">
+          <div class="flex items-center space-x-3 flex-1">
+            {/* Model Selection */}
+            <div class="flex items-center space-x-2">
+              <label class="text-xs text-gray-400">Model:</label>
+              <select
+                value={selectedModel()}
+                onChange={(e) => setSelectedModel(e.currentTarget.value)}
+                class="bg-gray-700 text-white text-xs rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                title="Select LLM model"
+              >
+                <option value="claude-sonnet-4">Claude Sonnet 4</option>
+                <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                <option value="claude-opus">Claude Opus</option>
+                <option value="gpt-4">GPT-4</option>
+              </select>
+            </div>
+
+            {/* API Config Button */}
+            <button
+              onClick={() => setShowApiConfig(!showApiConfig())}
+              class="text-xs text-gray-400 hover:text-white transition-colors"
+              title="Configure API settings"
+            >
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Send Icon Button */}
           <button
             onClick={handleSend}
             disabled={!input().trim() || appStore.isGenerating()}
-            class="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            class="p-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            title="Send message (Enter)"
           >
-            Send
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
           </button>
         </div>
+
+        {/* API Configuration Modal */}
+        <Show when={showApiConfig()}>
+          <div class="mt-2 bg-gray-800 rounded-lg p-3 space-y-2">
+            <div>
+              <label class="text-xs text-gray-400 block mb-1">API Key</label>
+              <input
+                type="password"
+                placeholder="Enter your API key..."
+                class="w-full bg-gray-700 text-white text-xs rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+            </div>
+            <div class="flex justify-end space-x-2">
+              <button
+                onClick={() => setShowApiConfig(false)}
+                class="text-xs px-3 py-1 bg-gray-700 text-gray-300 rounded hover:bg-gray-600 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  // TODO: Save API key
+                  setShowApiConfig(false);
+                }}
+                class="text-xs px-3 py-1 bg-primary-600 text-white rounded hover:bg-primary-700 transition-colors"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </Show>
       </div>
     </div>
   );

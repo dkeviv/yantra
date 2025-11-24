@@ -586,65 +586,70 @@ async fn execute_terminal_command(
 // Menu event handler
 fn handle_menu_event(event: tauri::WindowMenuEvent) {
     match event.menu_item_id() {
-        "toggle_file_tree" => {
-            let _ = event.window().emit("toggle-panel", "fileTree");
+        // File menu
+        "new_file" => {
+            let _ = event.window().emit("menu-new-file", ());
         }
-        "toggle_code_editor" => {
-            let _ = event.window().emit("toggle-panel", "codeEditor");
+        "new_folder" => {
+            let _ = event.window().emit("menu-new-folder", ());
         }
-        "toggle_terminal" => {
-            let _ = event.window().emit("toggle-panel", "terminal");
+        "open_folder" => {
+            let _ = event.window().emit("menu-open-folder", ());
         }
-        "show_dependencies" => {
-            let _ = event.window().emit("show-view", "dependencies");
+        "save" => {
+            let _ = event.window().emit("menu-save", ());
         }
-        "reset_layout" => {
-            let _ = event.window().emit("reset-layout", ());
+        "save_all" => {
+            let _ = event.window().emit("menu-save-all", ());
         }
-        "documentation" => {
-            let _ = event.window().emit("open-documentation", ());
+        "close_folder" => {
+            let _ = event.window().emit("menu-close-folder", ());
         }
-        "about" => {
-            let _ = event.window().emit("show-about", ());
+        "close_window" => {
+            let _ = event.window().close();
+        }
+        // Edit menu
+        "find" => {
+            let _ = event.window().emit("menu-find", ());
+        }
+        "replace" => {
+            let _ = event.window().emit("menu-replace", ());
         }
         _ => {}
     }
 }
 
 fn main() {
-    // Build custom menu
+    // Build minimal custom menu
     let file_menu = Submenu::new(
         "File",
         Menu::new()
-            .add_native_item(MenuItem::Copy)
-            .add_native_item(MenuItem::Paste)
+            .add_item(CustomMenuItem::new("new_file", "New File").accelerator("Cmd+N"))
+            .add_item(CustomMenuItem::new("new_folder", "New Folder").accelerator("Cmd+Shift+N"))
+            .add_item(CustomMenuItem::new("open_folder", "Open Folder...").accelerator("Cmd+O"))
+            .add_native_item(MenuItem::Separator)
+            .add_item(CustomMenuItem::new("save", "Save").accelerator("Cmd+S"))
+            .add_item(CustomMenuItem::new("save_all", "Save All").accelerator("Cmd+Alt+S"))
+            .add_native_item(MenuItem::Separator)
+            .add_item(CustomMenuItem::new("close_folder", "Close Folder"))
+            .add_item(CustomMenuItem::new("close_window", "Close Window").accelerator("Cmd+W"))
             .add_native_item(MenuItem::Separator)
             .add_native_item(MenuItem::Quit),
     );
 
-    let view_menu = Submenu::new(
-        "View",
+    let edit_menu = Submenu::new(
+        "Edit",
         Menu::new()
-            .add_item(CustomMenuItem::new("toggle_file_tree", "Toggle File Tree").accelerator("Cmd+B"))
-            .add_item(CustomMenuItem::new("toggle_code_editor", "Toggle Code Editor").accelerator("Cmd+E"))
-            .add_item(CustomMenuItem::new("toggle_terminal", "Toggle Terminal").accelerator("Cmd+`"))
+            .add_native_item(MenuItem::Copy)
+            .add_native_item(MenuItem::Paste)
             .add_native_item(MenuItem::Separator)
-            .add_item(CustomMenuItem::new("show_dependencies", "Show Dependencies").accelerator("Cmd+D"))
-            .add_native_item(MenuItem::Separator)
-            .add_item(CustomMenuItem::new("reset_layout", "Reset Layout")),
-    );
-
-    let help_menu = Submenu::new(
-        "Help",
-        Menu::new()
-            .add_item(CustomMenuItem::new("documentation", "Documentation"))
-            .add_item(CustomMenuItem::new("about", "About Yantra")),
+            .add_item(CustomMenuItem::new("find", "Find").accelerator("Cmd+F"))
+            .add_item(CustomMenuItem::new("replace", "Replace").accelerator("Cmd+H")),
     );
 
     let menu = Menu::new()
         .add_submenu(file_menu)
-        .add_submenu(view_menu)
-        .add_submenu(help_menu);
+        .add_submenu(edit_menu);
 
     tauri::Builder::default()
         .menu(menu)
