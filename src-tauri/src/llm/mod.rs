@@ -79,6 +79,13 @@ impl Default for LLMConfig {
     }
 }
 
+impl LLMConfig {
+    /// Check if at least one API key is configured
+    pub fn has_api_key(&self) -> bool {
+        self.claude_api_key.is_some() || self.openai_api_key.is_some()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -89,6 +96,19 @@ mod tests {
         assert_eq!(config.primary_provider, LLMProvider::Claude);
         assert_eq!(config.max_retries, 3);
         assert_eq!(config.timeout_seconds, 30);
+    }
+
+    #[test]
+    fn test_llm_config_has_api_key() {
+        let mut config = LLMConfig::default();
+        assert!(!config.has_api_key());
+        
+        config.claude_api_key = Some("test_key".to_string());
+        assert!(config.has_api_key());
+        
+        config.claude_api_key = None;
+        config.openai_api_key = Some("test_key".to_string());
+        assert!(config.has_api_key());
     }
 
     #[test]

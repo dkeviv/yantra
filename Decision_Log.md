@@ -1467,3 +1467,54 @@ Use existing markdown documentation files (Project_Plan.md, Features.md, Decisio
 
 **Last Updated:** November 24, 2025  
 **Next Update:** As decisions are made
+
+
+---
+
+## November 24, 2025 - GNN-Based Project Instructions (vs Static Markdown Files)
+
+**Status:** Proposed  
+**Deciders:** Development Team  
+**Impact:** HIGH - Core Differentiator vs VS Code
+
+See detailed design document: `docs/Project_Instructions_System.md` (700+ lines)
+
+### Summary
+
+Implement a revolutionary **GNN-based Project Instructions System** that treats instructions as active, verified, context-aware rules rather than passive markdown files.
+
+**Key Innovation:** Leverage GNN graph to make instructions structural and enforceable, not textual and hopeful.
+
+### Decision
+
+1. **Instructions as GNN Nodes** - Store as first-class citizens in graph
+2. **Context-Aware Injection** - GNN ensures relevant rules ALWAYS in context
+3. **Automatic Validation** - Verify generated code against instructions
+4. **Learning Loop** - System learns from violations, strengthens prompts
+5. **Compliance Metrics** - Track and display adherence
+
+### Why This Beats VS Code's .github/copilot-instructions.md
+
+| VS Code | Yantra |
+|---------|---------|
+| Hope AI reads it | GNN guarantees injection |
+| No verification | Automated validation |
+| One-size-fits-all | Context-specific rules |
+| Static | Auto-adjusts from violations |
+| No metrics | Compliance dashboard |
+| Wastes tokens | Only relevant rules |
+
+### Implementation Phases
+
+**Phase 1 (Week 9):** Core infrastructure (instruction types, GNN integration)  
+**Phase 2 (Week 10):** Context integration (automatic injection)  
+**Phase 3 (Week 11):** Validation layer (regex + LLM-based)  
+**Phase 4 (Week 12):** Learning loop (compliance metrics, suggestions)
+
+### Related Decisions
+- GNN for Dependencies (Week 3-4)
+- Agent-First Architecture (Session 8)
+- Hierarchical Context (Dec 21, 2025)
+
+---
+

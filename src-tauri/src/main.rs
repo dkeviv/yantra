@@ -343,6 +343,36 @@ fn add_change(
     Ok(())
 }
 
+/// Extract features from chat message using LLM
+#[tauri::command]
+async fn extract_features_from_chat(
+    app_handle: tauri::AppHandle,
+    chat_message: String,
+    context: Option<String>,
+) -> Result<documentation::extractor::FeatureExtractionResponse, String> {
+    // Get LLM configuration
+    let config_dir = app_handle.path_resolver()
+        .app_config_dir()
+        .ok_or_else(|| "Failed to get config directory".to_string())?;
+    
+    let manager = llm::config::LLMConfigManager::new(&config_dir)?;
+    let llm_config = manager.get_config();
+    
+    // Verify API key is configured
+    if !llm_config.has_api_key() {
+        return Err("No LLM API key configured. Please configure at least one provider.".to_string());
+    }
+    
+    // Create extraction request
+    let request = documentation::extractor::FeatureExtractionRequest {
+        chat_message,
+        context,
+    };
+    
+    // Extract features using LLM
+    documentation::extractor::extract_features_from_chat(request, llm_config).await
+}
+
 // LLM commands
 
 /// Generate code using LLM with GNN context
@@ -780,7 +810,8 @@ fn main() {
             get_tasks,
             add_feature,
             add_decision,
-            add_change
+            add_change,
+            extract_features_from_chat
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

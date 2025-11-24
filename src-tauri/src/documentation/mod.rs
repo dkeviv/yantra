@@ -1,11 +1,13 @@
 // File: src-tauri/src/documentation/mod.rs
 // Purpose: Documentation extraction and management system
 // Dependencies: serde, chrono, rusqlite
-// Last Updated: November 23, 2025
+// Last Updated: November 24, 2025
 
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
+
+pub mod extractor;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Feature {
