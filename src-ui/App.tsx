@@ -14,10 +14,12 @@ import MultiTerminal from './components/MultiTerminal';
 import DependencyGraph from './components/DependencyGraph';
 import { AgentStatus } from './components/AgentStatus';
 import { Notifications } from './components/Notifications';
+import DocumentationPanels from './components/DocumentationPanels';
 
 const App: Component = () => {
   const [isDragging, setIsDragging] = createSignal<number | null>(null);
   const [terminalHeight, setTerminalHeight] = createSignal(30); // Terminal height in %
+  const [showDocsPanels, setShowDocsPanels] = createSignal(false); // Toggle between Files and Docs
 
   // Handle panel resizing
   const handleMouseDown = (panelIndex: number) => (e: MouseEvent) => {
@@ -131,16 +133,44 @@ const App: Component = () => {
 
       {/* Main Layout - 3 Column Design */}
       <div class="flex h-[calc(100vh-3.5rem)]">
-        {/* Left Column - File Tree (20% width) */}
+        {/* Left Column - File Tree OR Documentation Panels (20% width) */}
         <Show when={appStore.showFileTree()}>
           <div class="w-64 flex flex-col bg-gray-800 border-r border-gray-700">
+            {/* Toggle Buttons */}
+            <div class="flex border-b border-gray-700">
+              <button
+                onClick={() => setShowDocsPanels(false)}
+                class={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
+                  !showDocsPanels()
+                    ? 'bg-gray-700 text-white border-b-2 border-primary-500'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                📁 Files
+              </button>
+              <button
+                onClick={() => setShowDocsPanels(true)}
+                class={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
+                  showDocsPanels()
+                    ? 'bg-gray-700 text-white border-b-2 border-primary-500'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                📚 Docs
+              </button>
+            </div>
+
+            {/* Content */}
             <div class="flex-1 overflow-y-auto">
-              <FileTree />
+              <Show when={!showDocsPanels()}>
+                <FileTree />
+              </Show>
+              <Show when={showDocsPanels()}>
+                <DocumentationPanels />
+              </Show>
             </div>
             {/* Agent Status at bottom */}
-            <div class="border-t border-gray-700 p-2">
-              <AgentStatus />
-            </div>
+            <AgentStatus />
           </div>
         </Show>
 
