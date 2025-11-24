@@ -88,11 +88,11 @@ const ChatPanel: Component = () => {
                     : 'bg-gray-800 text-gray-100'
                 }`}
               >
-                <div class="text-[10px] font-medium mb-1">
+                <div class="text-[11px] font-medium mb-1">
                   {message.role === 'user' ? 'You' : message.role === 'system' ? 'System' : 'Yantra'}
                 </div>
-                <div class="whitespace-pre-wrap text-[10px]">{message.content}</div>
-                <div class="text-[10px] opacity-60 mt-2">
+                <div class="whitespace-pre-wrap text-[11px]">{message.content}</div>
+                <div class="text-[11px] opacity-60 mt-2">
                   {message.timestamp.toLocaleTimeString()}
                 </div>
               </div>
