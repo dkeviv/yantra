@@ -5,10 +5,11 @@
 
 import { Component, createSignal, onMount, Show } from 'solid-js';
 import { appStore } from './stores/appStore';
+import { listen } from '@tauri-apps/api/event';
 import FileTree from './components/FileTree';
 import ChatPanel from './components/ChatPanel';
 import CodeViewer from './components/CodeViewer';
-import TerminalOutput from './components/TerminalOutput';
+import MultiTerminal from './components/MultiTerminal';
 import { AgentStatus } from './components/AgentStatus';
 import { Notifications } from './components/Notifications';
 
@@ -70,9 +71,40 @@ const App: Component = () => {
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
 
+    // Listen for menu events
+    const unlistenTogglePanel = listen<string>('toggle-panel', (event) => {
+      const panel = event.payload;
+      if (panel === 'fileTree') {
+        appStore.setShowFileTree(!appStore.showFileTree());
+      } else if (panel === 'codeEditor') {
+        appStore.setShowCode(!appStore.showCode());
+      } else if (panel === 'terminal') {
+        // Toggle terminal visibility
+        setTerminalHeight(terminalHeight() > 0 ? 0 : 30);
+      }
+    });
+
+    const unlistenShowView = listen<string>('show-view', (event) => {
+      const view = event.payload;
+      if (view === 'dependencies') {
+        appStore.setActiveView('dependencies');
+      }
+    });
+
+    const unlistenResetLayout = listen('reset-layout', () => {
+      appStore.setShowFileTree(true);
+      appStore.setShowCode(true);
+      setTerminalHeight(30);
+      appStore.setChatWidth(45);
+      appStore.setCodeWidth(35);
+    });
+
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
+      unlistenTogglePanel.then(fn => fn());
+      unlistenShowView.then(fn => fn());
+      unlistenResetLayout.then(fn => fn());
     };
   });
 
@@ -155,9 +187,40 @@ const App: Component = () => {
         {/* Right Column - Code + Terminal Stack (35% default) */}
         <Show when={appStore.showCode()}>
           <div class="flex flex-col" style={{ width: `${appStore.codeWidth()}%` }}>
+            {/* View Selector Tabs */}
+            <div class="flex bg-gray-800 border-b border-gray-700">
+              <button
+                class={`px-4 py-2 text-sm transition-colors ${
+                  appStore.activeView() === 'editor'
+                    ? 'bg-gray-900 text-white border-b-2 border-primary-500'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+                onClick={() => appStore.setActiveView('editor')}
+              >
+                📝 Code Editor
+              </button>
+              <button
+                class={`px-4 py-2 text-sm transition-colors ${
+                  appStore.activeView() === 'dependencies'
+                    ? 'bg-gray-900 text-white border-b-2 border-primary-500'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+                onClick={() => appStore.setActiveView('dependencies')}
+              >
+                🔗 Dependencies
+              </button>
+            </div>
+
             {/* Code Viewer - resizable height */}
             <div class="flex-1 overflow-hidden" style={{ height: `${100 - terminalHeight()}%` }}>
-              <CodeViewer />
+              <Show when={appStore.activeView() === 'editor'}>
+                <CodeViewer />
+              </Show>
+              <Show when={appStore.activeView() === 'dependencies'}>
+                <div class="flex items-center justify-center h-full bg-gray-900 text-gray-400">
+                  Dependency Graph View - Coming Soon
+                </div>
+              </Show>
             </div>
 
             {/* Horizontal Resize Handle for Terminal */}
@@ -167,9 +230,11 @@ const App: Component = () => {
             />
 
             {/* Terminal Output - in same column as code */}
-            <div class="overflow-hidden" style={{ height: `${terminalHeight()}%` }}>
-              <TerminalOutput />
-            </div>
+            <Show when={terminalHeight() > 0}>
+              <div class="overflow-hidden" style={{ height: `${terminalHeight()}%` }}>
+                <MultiTerminal />
+              </div>
+            </Show>
           </div>
         </Show>
       </div>

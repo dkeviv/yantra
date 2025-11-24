@@ -52,6 +52,9 @@ const [showFileTree, setShowFileTree] = createSignal<boolean>(true);
 const [openFiles, setOpenFiles] = createSignal<Array<{path: string, name: string, content: string}>>([]);
 const [activeFileIndex, setActiveFileIndex] = createSignal<number>(-1);
 
+// Active view in code panel ('editor' | 'dependencies' | 'terminal')
+const [activeView, setActiveView] = createSignal<string>('editor');
+
 export const appStore = {
   // Getters
   messages,
@@ -66,6 +69,7 @@ export const appStore = {
   showFileTree,
   openFiles,
   activeFileIndex,
+  activeView,
 
   // Setters
   setMessages,
@@ -77,6 +81,7 @@ export const appStore = {
   setShowFileTree,
   setOpenFiles,
   setActiveFileIndex,
+  setActiveView,
   setChatWidth,
   setCodeWidth,
   setPreviewWidth,

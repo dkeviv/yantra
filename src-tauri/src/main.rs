@@ -9,6 +9,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
+use tauri::{CustomMenuItem, Menu, MenuItem, Submenu};
 
 mod gnn;
 mod llm;
@@ -421,8 +422,74 @@ fn git_push(workspace_path: String) -> Result<String, String> {
     git_mcp.push()
 }
 
+// Menu event handler
+fn handle_menu_event(event: tauri::WindowMenuEvent) {
+    match event.menu_item_id() {
+        "toggle_file_tree" => {
+            let _ = event.window().emit("toggle-panel", "fileTree");
+        }
+        "toggle_code_editor" => {
+            let _ = event.window().emit("toggle-panel", "codeEditor");
+        }
+        "toggle_terminal" => {
+            let _ = event.window().emit("toggle-panel", "terminal");
+        }
+        "show_dependencies" => {
+            let _ = event.window().emit("show-view", "dependencies");
+        }
+        "reset_layout" => {
+            let _ = event.window().emit("reset-layout", ());
+        }
+        "documentation" => {
+            let _ = event.window().emit("open-documentation", ());
+        }
+        "about" => {
+            let _ = event.window().emit("show-about", ());
+        }
+        _ => {}
+    }
+}
+
 fn main() {
+    // Build custom menu
+    let file_menu = Submenu::new(
+        "File",
+        Menu::new()
+            .add_native_item(MenuItem::Copy)
+            .add_native_item(MenuItem::Paste)
+            .add_native_item(MenuItem::Separator)
+            .add_native_item(MenuItem::Quit),
+    );
+
+    let view_menu = Submenu::new(
+        "View",
+        Menu::new()
+            .add_item(CustomMenuItem::new("toggle_file_tree", "Toggle File Tree").accelerator("Cmd+B"))
+            .add_item(CustomMenuItem::new("toggle_code_editor", "Toggle Code Editor").accelerator("Cmd+E"))
+            .add_item(CustomMenuItem::new("toggle_terminal", "Toggle Terminal").accelerator("Cmd+`"))
+            .add_native_item(MenuItem::Separator)
+            .add_item(CustomMenuItem::new("show_dependencies", "Show Dependencies").accelerator("Cmd+D"))
+            .add_native_item(MenuItem::Separator)
+            .add_item(CustomMenuItem::new("reset_layout", "Reset Layout")),
+    );
+
+    let help_menu = Submenu::new(
+        "Help",
+        Menu::new()
+            .add_item(CustomMenuItem::new("documentation", "Documentation"))
+            .add_item(CustomMenuItem::new("about", "About Yantra")),
+    );
+
+    let menu = Menu::new()
+        .add_submenu(file_menu)
+        .add_submenu(view_menu)
+        .add_submenu(help_menu);
+
     tauri::Builder::default()
+        .menu(menu)
+        .on_menu_event(|event| {
+            handle_menu_event(event);
+        })
         .invoke_handler(tauri::generate_handler![
             read_file,
             write_file,
