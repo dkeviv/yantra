@@ -1,7 +1,7 @@
 # Yantra - Decision Log
 
 **Purpose:** Track all significant design and architecture decisions  
-**Last Updated:** November 20, 2025
+**Last Updated:** November 24, 2025
 
 ---
 
@@ -48,6 +48,951 @@ Links to related decision entries
 ---
 
 ## Decisions
+
+### November 25, 2025 - Architecture View System
+
+**Status:** Accepted  
+**Deciders:** Product Team  
+**Impact:** High
+
+#### Context
+Users need a way to visualize and manage conceptual architecture separately from code dependency graphs. Large projects require design-first approach where architecture is defined before implementation. Need governance mechanism to ensure code stays aligned with architectural intent.
+
+#### Decision
+Implement comprehensive Architecture View System with:
+1. **Design-First Approach**: Create conceptual architecture diagrams before coding
+2. **Hierarchical Sliding Navigation**: Multi-level tabs for complex architectures (Frontend/Backend/Services)
+3. **Hybrid Storage**: SQLite database (primary) + JSON/Markdown exports (git-friendly)
+4. **AI-Powered Generation**: Generate architecture from user intent, specifications, or existing code
+5. **Bidirectional Sync**: Architecture changes update code; code changes validate against architecture
+6. **File-Component Mapping**: Link implementation files to conceptual components
+7. **Alignment Governance**: Continuous checking to prevent architecture drift
+
+#### Rationale
+- **Separation of Concerns**: Architecture (conceptual design) vs. Dependency Graph (code structure)
+- **Design Validation**: Approve architecture before expensive implementation
+- **Team Alignment**: Visual architecture creates shared understanding
+- **Quality Enforcement**: Automated governance prevents architectural erosion
+- **Scalability**: Hierarchical views make large systems navigable
+- **AI-First Development**: LLM generates both architecture and code that matches it
+
+#### Alternatives Considered
+
+**Alternative 1: Code-Only Dependency Graph**
+- Pros: Simpler, no dual representation
+- Cons: Reactive (code first), no design phase, harder for non-technical stakeholders
+- Rejected: Doesn't support design-first workflow
+
+**Alternative 2: External Diagramming Tools (Draw.io, Lucidchart)**
+- Pros: Mature tools, rich features
+- Cons: Manual sync with code, no governance, not AI-integrated
+- Rejected: Doesn't enable AI-driven architecture
+
+**Alternative 3: Mermaid-Only (Text-Based)**
+- Pros: Git-friendly, simple
+- Cons: Not interactive, limited to small diagrams, poor UX for large systems
+- Rejected: Doesn't scale to complex projects
+
+**Alternative 4: File-Based JSON Storage**
+- Pros: Simple, git-friendly
+- Cons: Corruption risk, no transactions, slower queries
+- Rejected: Chose hybrid approach (SQLite + JSON export)
+
+#### Storage Decision Details
+
+**Chosen: Hybrid SQLite + Export**
+- **Primary**: SQLite with ACID guarantees, WAL mode, automatic backups
+- **Secondary**: JSON/Markdown exports for git diffs and human review
+- **Recovery**: Multi-layer fallback (SQLite → JSON → GNN regeneration)
+
+**Rejected Alternatives:**
+- Pure JSON: Risk of corruption, no transactions
+- Pure Database: Not git-friendly, hard to review changes
+- In-Memory Only: Lost on crash, no persistence
+
+#### Consequences
+
+**Positive:**
+- ✅ Users can design architecture before coding (design-first)
+- ✅ Automatic architecture generation for imported projects
+- ✅ Continuous alignment checking prevents drift
+- ✅ Hierarchical navigation makes large systems understandable
+- ✅ AI can reason about architecture when generating code
+- ✅ Architecture becomes enforceable contract
+- ✅ Git-friendly exports enable code review of architecture changes
+
+**Negative:**
+- ⚠️ Increased complexity (two representations: architecture + code)
+- ⚠️ Requires keeping architecture and code in sync (governance overhead)
+- ⚠️ Additional storage (SQLite DB + JSON exports)
+- ⚠️ Learning curve for users (new concept: architecture governance)
+
+**Mitigations:**
+- Automatic sync wherever possible
+- Clear UX for handling misalignments
+- Background alignment checks with debounce
+- Progressive disclosure (optional for simple projects)
+
+#### Technical Decisions
+
+**UI Framework**: React Flow
+- Best for interactive node-based diagrams
+- Supports grouping, hierarchies, custom nodes
+- Good performance for large graphs
+
+**Backend**: Rust/Tauri
+- New `architecture/` module
+- SQLite storage with rusqlite
+- Integration with existing GNN for code analysis
+
+**LLM Integration**: 
+- Architecture generation prompts (intent → architecture)
+- Alignment checking prompts (code → violations)
+- Multi-LLM orchestration (Claude primary)
+
+**Data Schema**:
+- `components` table: Nodes in architecture
+- `connections` table: Edges between components
+- `component_files` table: Links to implementation
+- `architecture_versions` table: Change history
+
+#### Implementation Phases
+
+**Phase 1: Foundation (Weeks 2-4)**
+- Storage layer (SQLite + exports)
+- Basic React Flow visualization
+- Manual editing
+
+**Phase 2: AI Generation (Weeks 5-7)**
+- Generate from user intent
+- Generate from existing code (GNN)
+- Automatic file linking
+
+**Phase 3: Governance (Weeks 8-10)**
+- Alignment checking
+- Misalignment alerts
+- Pre-change validation
+
+**Phase 4: Polish (Weeks 11-12)**
+- Hierarchical tabs
+- Sliding navigation
+- Performance optimization
+
+#### Related Decisions
+- [Nov 20, 2025 - GNN for Dependency Tracking](#november-20-2025---gnn-for-dependency-tracking)
+- [Nov 24, 2025 - Multi-LLM Orchestration](#november-24-2025---multi-llm-orchestration)
+
+#### Success Metrics
+- **Adoption**: >80% of projects create architecture
+- **Alignment**: >90% code-architecture alignment score
+- **Satisfaction**: 4.5/5 user rating on architecture accuracy
+- **Time Savings**: 80% reduction vs. manual diagramming
+
+---
+
+---
+
+## November 24, 2025 - Multi-Tier Learning with Open-Source Bootstrap (CLARIFIED)
+
+**Status:** Accepted  
+**Deciders:** Product + Engineering  
+**Impact:** 🔥 REVOLUTIONARY - Zero LLM costs, user-first design
+
+### Context
+
+Initial GraphSAGE design relied on expensive premium LLMs (GPT-4/Claude) for knowledge distillation, leading to:
+- **High costs:** $0.02-0.05 per generation = $20-50/month per user
+- **Yantra pays for fallback:** Expensive operational costs
+- **Learn from all output:** Quality issues (learn from LLM mistakes)
+
+**Critical clarification from user:**
+1. Bootstrap distillation: Use ONLY open-source (FREE)
+2. Premium LLMs: User-configured, OPTIONAL (user pays their own costs)
+3. Ongoing learning: Learn from WORKING code only (test-validated, not raw LLM output)
+4. Crowd learning: Aggregate successful patterns from all users (regardless of LLM source)
+
+### Decision
+
+✅ **Simplified 3-tier architecture (user-first, success-only):**
+
+1. **Tier 1: Local GraphSAGE (Primary - FREE)**
+   - Runs on user's machine (140 MB)
+   - Handles 70-85% of requests after training
+   - Instant, private, zero cost
+
+2. **Tier 2: Open-Source Teacher (Bootstrap - FREE)**
+   - **DeepSeek Coder 33B** as ONLY teacher for bootstrap
+   - 78% accuracy on HumanEval (better than GPT-3.5)
+   - FREE to run locally OR $0.0014 per 1K tokens (70x cheaper than GPT-4)
+   - Bootstrap: Train initial model on 10k examples pre-launch → 40% baseline
+   - **NO YANTRA LLM API COSTS** ✅
+
+3. **Tier 3: User-Configured Premium (OPTIONAL)**
+   - User provides their OWN API keys (OpenAI, Anthropic, Google)
+   - User decides when to use premium
+   - **User pays their own API costs** (not Yantra)
+   - GraphSAGE learns from successful generations only
+
+4. **Tier 4: Crowd Learning (Network Effects)**
+   - Learn ONLY from WORKING code (tests passed!)
+   - Aggregate successful patterns from ALL users
+   - Regardless of LLM source (DeepSeek, GPT-4, Claude)
+   - Anonymous patterns (no actual code)
+   - Monthly model updates
+   - Every user makes everyone better! 🚀
+
+### Rationale
+
+**Why Open-Source Bootstrap ONLY?**
+- ✅ **Zero LLM costs:** DeepSeek is FREE or ultra-cheap ($0.0014 vs GPT-4 $0.10)
+- ✅ **Good enough:** 78% HumanEval → 40% bootstrap baseline
+- ✅ **Sustainable:** No ongoing LLM API costs for Yantra
+- ✅ **MIT license:** Commercial use OK
+- ✅ **GraphSAGE improves:** Users reach 85% after training anyway
+
+**Why User-Configured Premium (Not Yantra-Paid)?**
+- ✅ **User choice:** Optional, not required
+- ✅ **Cost transparency:** User sees their own API usage
+- ✅ **Zero Yantra costs:** User pays provider directly
+- ✅ **Multiple providers:** OpenAI, Anthropic, Google (no vendor lock-in)
+- ✅ **Benefits everyone:** Successful patterns shared via crowd learning
+- ✅ **Sustainable:** 98%+ gross margins for Yantra
+
+**Why Learn ONLY from Working Code?** 🎯
+- ✅ **Quality filter:** Tests validate code before learning
+- ✅ **No mistakes:** Don't learn from LLM hallucinations or bugs
+- ✅ **Improves over time:** Only successful patterns accumulated
+- ✅ **Beats LLMs:** LLMs trained on all code (good + bad), GraphSAGE trained on validated code only
+- ✅ **Key insight:** Tests are the quality gate!
+
+**Why Crowd Learning from All Sources?**
+- ✅ **Network effects:** Every successful generation helps everyone
+- ✅ **LLM-agnostic:** Learn from DeepSeek, GPT-4, Claude, Gemini
+- ✅ **Privacy-preserving:** Share patterns only, not code
+- ✅ **Accelerated learning:** New users benefit from 1M+ validated patterns
+- ✅ **Unique moat:** No competitor has success-only crowd learning
+
+### Alternatives Considered
+
+#### Option 1: Pure Premium LLM (Initial Plan)
+```
+Teacher: GPT-4/Claude
+Cost: $20-50/month per user
+Accuracy: 90% (excellent)
+Privacy: ❌ All code sent to cloud
+Adoption: ⚠️ Too expensive for many users
+
+REJECTED: Too expensive, privacy concerns
+```
+
+#### Option 2: Pure Open-Source
+```
+Teacher: DeepSeek/CodeLlama
+Cost: FREE or $1-2/month
+Accuracy: 78% (good)
+Privacy: ✅ Can run locally
+Single-user: ⚠️ Each user learns from scratch
+
+REJECTED: No network effects, slower learning
+```
+
+#### Option 3: Pure Local (No Cloud)
+```
+Teacher: Local DeepSeek
+GraphSAGE: Local only
+Cost: FREE
+Privacy: ✅ 100% local
+Learning: ⚠️ Each user isolated
+
+REJECTED: Misses crowd learning benefits
+```
+
+#### Option 4: Multi-Tier Hybrid (CHOSEN) ⭐
+```
+Bootstrap: DeepSeek (FREE, 40% baseline)
+Primary: GraphSAGE (FREE, 70-85% after training)
+Fallback: GPT-4 (5-10% requests only)
+Crowd: Federated learning (network effects)
+
+Cost: $1-2/month (94% savings)
+Accuracy: 40% → 60% (Day 1) → 85% (Month 3) → 92% (Month 6)
+Privacy: 70%+ local, patterns shared anonymously
+Network effects: ✅ Every user helps everyone
+
+ACCEPTED: Best of all worlds!
+```
+
+### Technical Implementation
+
+**Bootstrap Process (Pre-Launch):**
+```python
+# Collect 10k examples from open-source repos
+bootstrap_data = sample_github_repos(10_000)
+
+# Generate with DeepSeek Coder (teacher)
+for example in bootstrap_data:
+    teacher_output = deepseek_coder.generate(
+        prompt=example.description,
+        return_reasoning=True,
+        temperature=3.0,
+    )
+    train_graphsage(example, teacher_output)
+
+# Ship with 40% baseline accuracy!
+```
+
+**Confidence-Based Routing:**
+```python
+def generate_code(request):
+    # Try GraphSAGE first
+    pred, conf = graphsage.predict(request)
+    
+    if conf >= 0.7:
+        code = pred  # FREE, 70-85% of requests
+        source = "graphsage"
+    else:
+        # Use open-source teacher (FREE)
+        code = deepseek.generate(request)  # $0 for Yantra
+        source = "deepseek"
+        
+        # If user has premium configured (optional)
+        if user.premium_configured and user.wants_premium(conf):
+            code = user.premium_llm.generate(request)  # User pays
+            source = f"premium_{user.provider}"
+    
+    # ⚠️ CRITICAL: Validate BEFORE learning!
+    test_result = run_tests(code)
+    
+    if test_result.passed:
+        # ✅ Learn from SUCCESS only
+        graphsage.learn(request, code, success=True, source=source)
+        
+        # Share with crowd (if opted in)
+        if user.crowd_learning:
+            share_success_pattern(code, test_result, source)
+    else:
+        # ❌ Don't learn from broken code
+        pass  # Or learn to avoid this pattern
+    
+    return code
+
+# Key: Tests filter quality! 🎯
+```
+
+**Success-Only Crowd Learning:**
+```python
+# Share ONLY validated patterns, NOT raw code
+
+def share_success_pattern(code, test_result, llm_source):
+    if not test_result.passed:
+        return  # Don't share failures!
+    
+    pattern = {
+        "graph_structure": extract_graph(code),  # Abstract structure
+        "embeddings": extract_embeddings(code),  # 256-dim vector
+        "validation": {
+            "tests_passed": True,  # ✅ ONLY True patterns
+            "coverage": test_result.coverage,
+            "no_bugs": True
+        },
+        "llm_source": llm_source,  # Track which LLM helped
+        # NO CODE, NO NAMES, NO PROPRIETARY LOGIC
+    }
+    
+    send_to_cloud(pattern, anonymous=True)
+
+# Result: Master GraphSAGE trained on WORKING code only!
+```
+
+### Cost Evolution (Clarified)
+
+**For Yantra (Operational Costs):**
+
+| Component | Cost per User | Notes |
+|-----------|--------------|-------|
+| LLM API costs | **$0.00** | Open-source bootstrap, users pay own premium |
+| Cloud infrastructure | $0.10 | Aggregation, model serving |
+| Storage | $0.02 | Pattern storage |
+| **Total** | **$0.12/user/month** | **98%+ gross margin on paid tiers!** |
+
+**For Users (Monthly Cost):**
+
+| Tier | Base Cost | LLM Usage | Total |
+|------|-----------|-----------|-------|
+| Free | $0 | 500 DeepSeek gens (FREE) | **$0** |
+| Pro | $9 | Unlimited DeepSeek + optional premium (user pays) | **$9 + optional** |
+| Enterprise | $49 | Unlimited + private crowd learning | **$49 + optional** |
+
+**User Premium Usage (Optional):**
+
+| Generations | GraphSAGE (Free) | DeepSeek (Free) | User Premium (User Pays) |
+|------------|------------------|-----------------|--------------------------|
+| 1-100 | 20% | 80% | 0% (not configured) |
+| 100-500 | 50% | 50% | 0% |
+| 500-1000 | 70% | 30% | 0% |
+| 1000+ | 85% | 15% | 0% |
+
+**If user configures premium (5-10% of generations):**
+- User pays: ~$0.10-1.00/month to their LLM provider
+- Yantra pays: $0.00
+- Everyone benefits: Successful patterns shared via crowd learning
+
+### Consequences
+
+**Positive:**
+- ✅ **94% cost reduction** → Accessible to everyone
+- ✅ **40% baseline** → Better UX from Day 1
+- ✅ **Network effects** → Unique competitive moat
+- ✅ **Privacy** → 70%+ requests stay local
+- ✅ **Fast learning** → New users benefit from crowd
+- ✅ **Sustainable business** → Low operational costs
+- ✅ **Viral growth** → Free tier drives adoption
+
+**Challenges:**
+- ⚠️ **Bootstrap effort:** Need to collect 10k examples pre-launch (2 weeks)
+- ⚠️ **Cloud infrastructure:** Need to build federated learning system (4 weeks)
+- ⚠️ **Privacy compliance:** Must ensure GDPR/CCPA compliance for pattern sharing
+- ⚠️ **Quality control:** DeepSeek is 78% accurate (not 90% like GPT-4)
+  * Mitigation: Premium fallback for critical tasks
+- ⚠️ **Cold start:** New users start at 40% (not ideal but acceptable)
+  * Mitigation: Crowd learning brings new users to 60% on Day 1
+
+**Risks Mitigated:**
+- ✅ **Cost risk:** No longer dependent on expensive LLM APIs
+- ✅ **Privacy risk:** Most code stays local
+- ✅ **Vendor lock-in:** Open-source teacher = no dependency
+- ✅ **Adoption risk:** Free/cheap tier = accessible to all
+
+### Performance Targets
+
+| Metric | Target | Actual (Projected) |
+|--------|--------|-------------------|
+| Bootstrap accuracy | 40% | 40% (DeepSeek distillation) |
+| Month 1 accuracy | 60% | 60% (local training) |
+| Month 3 accuracy | 75% | 75-80% |
+| Month 6 accuracy | 90% | 85-92% |
+| Cost per 1k gens (Month 6) | <$2 | **$1.14** ✅ |
+| Local inference time | <100ms | <10ms ✅ |
+| Premium usage | <10% | 5-10% ✅ |
+
+### Pricing Strategy
+
+**Free Tier:**
+- GraphSAGE unlimited
+- DeepSeek 500 gens/month
+- No premium fallback
+- Crowd learning (opt-in)
+- **Cost:** $0/month
+
+**Pro Tier ($9/month):**
+- Everything in Free
+- DeepSeek unlimited
+- GPT-4 fallback (100 gens/month)
+- Priority crowd updates
+
+**Enterprise ($49/seat/month):**
+- Unlimited premium fallback
+- Private crowd learning
+- On-premise deployment
+- Custom model training
+
+### Timeline
+
+**Week 10-11 (Dec 1-14):** Bootstrap infrastructure
+- Set up DeepSeek integration
+- Collect 10k training examples
+- Train initial GraphSAGE
+- Achieve 40% baseline
+
+**Week 12-13 (Dec 15-28):** Ship MVP
+- Deploy local GraphSAGE (140 MB)
+- Confidence-based routing
+- Premium fallback for Pro tier
+- Measure accuracy and costs
+
+**Week 14-16 (Jan 1-21):** Crowd learning
+- Federated learning aggregator
+- Privacy-preserving pattern extraction
+- Monthly model updates
+- Measure network effects
+
+**Month 4-6 (Feb-Apr):** Optimize and scale
+- Reduce premium usage to <5%
+- Achieve 90% accuracy for user's code
+- 10,000 active users
+- Prove network effects
+
+### Success Metrics
+
+**Technical:**
+- ✅ 40% accuracy Day 1 (bootstrap)
+- ✅ 85% accuracy Month 6 (local learning)
+- ✅ 90% accuracy Month 6 (with crowd learning)
+- ✅ <10ms local inference
+- ✅ <5% premium usage
+
+**Business:**
+- ✅ 94% cost savings vs pure LLM
+- ✅ 10,000 active users Month 6
+- ✅ 50%+ retention Month 6
+- ✅ Net Promoter Score >40
+- ✅ Gross margin >70%
+
+**Competitive:**
+- ✅ Only platform with open-source bootstrap
+- ✅ Only platform with crowd learning
+- ✅ Only platform with 94% cost savings
+- ✅ Only platform that gets better with more users
+
+### Related Decisions
+
+- [Nov 24, 2025] Build Real GNN: Yantra Codex (uses this architecture)
+- [Nov 24, 2025] Data Storage Architecture (GraphSAGE is Neural Layer)
+- [Nov 20, 2025] ChromaDB for LLM Mistakes (complements crowd learning)
+
+### References
+
+- `docs/Yantra_Codex_Multi_Tier_Architecture.md` - Complete architecture
+- `docs/Yantra_Codex_GraphSAGE_Knowledge_Distillation.md` - Distillation details
+- `docs/Yantra_Codex_GNN.md` - High-level roadmap
+
+---
+
+### 🆕 November 24, 2025 - Data Storage Architecture: Graph vs Vector DB
+
+**Status:** ✅ Accepted (Final Decision)  
+**Deciders:** Project Team  
+**Impact:** HIGH - Defines all data storage patterns in Yantra
+
+#### Context
+During architecture review, we needed to decide which storage technology to use for different types of data in Yantra:
+1. Code dependencies
+2. File registry and SSOT tracking
+3. LLM mistakes and fixes
+4. Documentation (Features, Decisions, Plan)
+5. Agent instructions
+
+Initial assumption was to use one technology (either Graph or Vector DB) for everything. However, analysis revealed that different data types have fundamentally different query patterns and requirements.
+
+#### Decision
+**Use three complementary storage systems, each optimized for specific use cases:**
+
+| # | Use Case | Architecture | Technology | Rationale |
+|---|----------|--------------|------------|-----------|
+| 1 | Code Dependencies | Pure Dependency Graph | petgraph + SQLite | Structural relationships, deterministic |
+| 2 | File Registry & SSOT | Pure Dependency Graph | Same infrastructure | Reuse graph for duplicate detection, relationships |
+| 3 | LLM Mistakes & Fixes | Pure Vector DB | ChromaDB | Semantic similarity, natural language errors |
+| 4 | Documentation | Simple Parsing | Rust + regex | Structured markdown, keyword search sufficient |
+| 5 | Agent Instructions | Pure Graph (MVP) | Graph + tags | Start simple, upgrade to hybrid later if needed |
+
+**Key Insight:** No one-size-fits-all. Different data types need different storage architectures.
+
+#### Rationale
+
+**1. Code Dependencies → Pure Dependency Graph**
+- Dependencies are inherently structural (Function A calls Function B)
+- Deterministic relationships (not semantic)
+- Graph traversal guarantees completeness
+- Performance: <10ms queries, <5s for 10k LOC
+- Status: ✅ Already implemented (Week 3-4)
+
+**2. File Registry & SSOT → Pure Dependency Graph**
+- Reuses existing graph infrastructure
+- Track "supersedes" edges for duplicate detection
+- Validate integrity with graph algorithms
+- Link documentation ↔ code files naturally
+- Performance: <50ms duplicate detection, <10ms canonical lookup
+- Status: ⏳ Week 9 implementation
+
+Benefits over JSON registry:
+- Native relationship tracking (supersedes, references, duplicates)
+- Graph algorithms for validation
+- SQLite indexed queries (<10ms)
+- Integrated with code dependencies
+- Time-travel history tracking
+- Code ↔ Doc linking
+
+**3. LLM Mistakes → Pure Vector DB**
+- Error messages are natural language (semantic by nature)
+- Need fuzzy matching: "password stored plaintext" ≈ "pwd saved without encryption"
+- Clustering similar errors for learning
+- Graph cannot do semantic similarity without embeddings
+- Performance: ~50ms semantic search
+- Status: ⏳ Weeks 7-8 (ChromaDB already planned Nov 20, 2025)
+
+**4. Documentation → Simple Parsing**
+- Markdown has inherent structure (headings, bullets, conventions)
+- Exact text retrieval sufficient
+- No semantic understanding needed
+- No graph relationships needed
+- Performance: <1ms file parsing
+- Status: ✅ Already implemented (Week 8)
+
+Over-engineering avoided: Graph and Vector DB both overkill for structured markdown.
+
+**5. Agent Instructions → Pure Graph (MVP)**
+- Start with graph + tags (90% effective, 1 week implementation)
+- Tag-based semantic matching: ["security", "password", "authentication"]
+- Can upgrade to hybrid (Graph + Vector) later if needed (Month 3-4)
+- Performance: ~40ms (pure graph) vs ~60ms (hybrid)
+- Status: ⏳ Week 9 implementation
+
+#### Alternatives Considered
+
+**Alternative 1: Pure Graph for Everything**
+- ❌ Pros: Single system, simple architecture
+- ❌ Cons: Cannot do semantic similarity for LLM mistakes
+- ❌ Cons: Would need embeddings anyway (becomes hybrid)
+
+**Alternative 2: Pure Vector DB for Everything**
+- ❌ Pros: Semantic matching for all data
+- ❌ Cons: No guaranteed scope coverage for dependencies
+- ❌ Cons: Non-deterministic for structural relationships
+- ❌ Cons: Slower for exact matching
+
+**Alternative 3: JSON Registry for Files**
+- ❌ Pros: Simple file-based configuration
+- ❌ Cons: No relationship tracking
+- ❌ Cons: Manual duplicate detection
+- ❌ Cons: Separate system from code dependencies
+- ❌ Cons: No validation capabilities
+
+#### Consequences
+
+**Positive:**
+- ✅ Each use case optimized for its specific requirements
+- ✅ Reuse Dependency Graph infrastructure (file registry uses same system as code deps)
+- ✅ Performance targets met for all use cases (<100ms total)
+- ✅ Clear separation of concerns
+- ✅ Can upgrade incrementally (pure graph → hybrid for instructions)
+
+**Negative:**
+- ⚠️ Three different systems to maintain
+- ⚠️ Developers need to understand when to use which
+- ⚠️ Documentation must clearly explain architecture
+
+**Migration Path:**
+1. Week 9: Extend Dependency Graph for file registry
+2. Weeks 7-8: Add ChromaDB for LLM mistakes
+3. Month 3-4: Optionally add hybrid for instructions (only if needed)
+
+#### Related Decisions
+- "LLM Mistake Tracking & Learning System" (Nov 20, 2025) - Already decided on ChromaDB
+- "Documentation Parsing & Extraction System" (Nov 22, 2025) - Simple parsing approach
+
+---
+
+### 🆕 November 24, 2025 - Build Real GNN: Yantra Codex
+
+**Status:** 🟡 Proposed - Awaiting Final Approval  
+**Deciders:** Project Team  
+**Impact:** REVOLUTIONARY - Transforms Yantra from generator to learning system
+
+#### Context
+During architecture review, we realized our current system called "GNN" is technically just a graph database (petgraph + SQLite) without neural networks. Two options emerged:
+
+**Option 1:** Rename to "Dependency Graph" for accuracy  
+**Option 2:** Build REAL GNN with neural networks and embeddings
+
+**Initial Decision:** Rename for accuracy (technically correct).
+
+**Pivot:** User asked: "Can we change it to GNN - any quick wins to enable these use cases?"
+- Predicting bugs from historical patterns
+- Code completion based on learned sequences  
+- Test generation from learned patterns
+- Refactoring suggestions
+- Semantic similarity
+
+**Realization:** We're 80% there! We have the graph infrastructure, just need to add neural network layer on top.
+
+#### Decision
+**Build "Yantra Codex" - A Real Graph Neural Network that learns from every code generation.**
+
+**What We Have Now:**
+```rust
+struct GNNEngine {
+    graph: CodeGraph,    // ✅ Graph structure
+    db: Database,        // ✅ Persistence
+}
+```
+
+**What We'll Add:**
+```rust
+struct YantraCodex {
+    graph: CodeGraph,              // ✅ Existing
+    embeddings: EmbeddingModel,    // 🆕 Node embeddings
+    predictor: GNNModel,           // 🆕 Neural network
+    training_data: TrainingStore,  // 🆕 Learning history
+}
+```
+
+**New Capabilities:**
+1. **Learn from every code generation** - Continuous improvement
+2. **Predict bugs before generation** - Based on historical patterns
+3. **Suggest tests automatically** - Learn what tests are needed
+4. **Code completion** - Predict likely next function calls
+5. **Semantic similarity** - Find similar code by meaning, not just names
+6. **Eventually:** Generate code independently (without LLM)
+
+**Keep "GNN" Name:** It's now aspirational and will become accurate.
+
+#### Rationale
+
+**1. Quick Wins Available (Test Generation: 2 weeks)**
+```
+Current: LLM generates tests (slow, expensive, no learning)
+  → 30s generation time
+  → $0.01 per generation
+  → Starts from scratch every time
+
+With GNN: Learn patterns and predict tests
+  → After 100 generations: 60% accuracy
+  → After 1,000 generations: 85% accuracy  
+  → <1s prediction time
+  → $0.0001 cost
+  → Learns YOUR codebase patterns
+```
+
+**2. Unique Competitive Moat**
+
+| Feature | Copilot | Cursor | Replit | **Yantra Codex** |
+|---------|---------|--------|--------|------------------|
+| Learns from YOUR code | ❌ | ❌ | ❌ | ✅ |
+| Bug prediction | ❌ | ❌ | ❌ | ✅ |
+| Gets better over time | ❌ | ❌ | ❌ | ✅ |
+| Works offline (eventually) | ❌ | ❌ | ❌ | ✅ |
+| User-specific patterns | ❌ | ❌ | ❌ | ✅ |
+
+**Only platform that builds personalized AI for each user's codebase.**
+
+**3. Already 80% There**
+- Have graph infrastructure (petgraph, SQLite)
+- Have code parsing (tree-sitter)
+- Have data collection pipeline
+- Just need: embeddings + neural network layer
+
+**4. Revolutionary Vision**
+```
+Phase 1 (Now): LLM primary, Codex learns
+Phase 2 (Month 3-4): Hybrid - Codex tries first, LLM fallback  
+Phase 3 (Month 6+): Codex primary, LLM validates
+  → 90% code from Codex (fast, free, offline)
+  → 10% from LLM (complex cases only)
+```
+
+**5. On-the-Go Learning**
+Every code generation becomes training data:
+```rust
+User Request → LLM → Code → Tests → ✅/❌
+                                    ↓
+                              Record in Codex
+                                    ↓
+                              Update embeddings
+                                    ↓
+                              Retrain model
+                                    ↓
+                        Next generation uses learned patterns
+```
+
+#### Alternatives Considered
+
+**Alternative 1: Rename to "Dependency Graph"**
+- ✅ Pros: Accurate, simple, 1 hour effort
+- ❌ Cons: No learning, no competitive advantage, just another code generator
+- ❌ **REJECTED:** Misses huge opportunity
+
+**Alternative 2: Build Real GNN (Yantra Codex)**
+- ✅ Pros: Revolutionary, learns continuously, unique moat, eventually autonomous
+- ⚠️ Cons: 2-5 weeks per feature, requires ML expertise, more complexity
+- ✅ **CHOSEN:** Massive value outweighs effort
+
+**Alternative 3: Use external ML service**
+- ⚠️ Pros: Faster initial implementation
+- ❌ Cons: No user-specific learning, privacy concerns, ongoing costs
+- ❌ **REJECTED:** Violates Yantra's privacy guarantee (code stays local)
+
+#### Implementation Roadmap
+
+**Week 10-11: Foundation (2 weeks)**
+- Add PyTorch Geometric (Python for ML)
+- Create Rust ↔ Python bridge (PyO3)
+- Extend GNNEngine to store embeddings
+- Start data collection (record every generation)
+
+**Week 12-13: Test Generation GNN (2 weeks)** ⭐ FIRST QUICK WIN
+- Train model on collected data
+- Predict required tests from function features
+- Integrate into code generation flow
+- Target: 60%+ accuracy, <1s prediction
+
+**Week 14-16: Bug Prediction GNN (3 weeks)** ⭐ SECOND QUICK WIN
+- Collect historical bug patterns
+- Train bug prediction model
+- Pre-generation bug checking
+- Target: Catch 50%+ bugs before generation
+
+**Week 17: Semantic Similarity (1 week)**
+- Generate embeddings for all functions
+- Build similarity index (FAISS)
+- Find similar code by meaning
+
+**Week 18-20: Code Completion (3 weeks)**
+- Learn common call sequences
+- Predict likely next function
+- Target: <10ms latency, works offline
+
+**Month 6+: Autonomous Mode**
+- Codex as primary generator
+- LLM as validator only
+- 90% generations from Codex
+
+#### Consequences
+
+**Positive:**
+- ✅ Revolutionary learning capability
+- ✅ Unique competitive advantage
+- ✅ Continuously improving (gets better with use)
+- ✅ Eventually works offline
+- ✅ Learns user-specific patterns
+- ✅ True "code that never breaks" (predicts bugs)
+- ✅ Cost approaches zero over time
+- ✅ "GNN" name becomes accurate
+
+**Negative:**
+- ⚠️ Increased complexity (ML layer)
+- ⚠️ Requires ML expertise (PyTorch, embeddings)
+- ⚠️ 2-5 weeks development per feature
+- ⚠️ Python ↔ Rust bridge overhead
+- ⚠️ Model versioning complexity
+- ⚠️ Cold start problem (need base model)
+
+**Mitigation:**
+- Start with proven tech (PyTorch Geometric)
+- Incremental implementation (one feature at a time)
+- Pre-trained base model for cold start
+- Transfer learning for user-specific patterns
+
+#### ROI Analysis
+
+**Test Generation GNN:**
+- Investment: 2 weeks
+- Return: Save 2-3s + $0.009 per generation
+- Payback: After 500 generations (~1 month active use)
+
+**Bug Prediction GNN:**
+- Investment: 3 weeks  
+- Return: Catch 70% bugs early, prevent production issues
+- Payback: After first critical bug prevented
+
+**Total Value (All GNNs, 1000 generations):**
+- Time saved: 3 hours
+- Cost saved: $20
+- Bugs prevented: ~50
+- User delight: Priceless 🚀
+
+#### Technical Challenges & Solutions
+
+**Challenge 1: Python ↔ Rust Bridge**
+- Solution: PyO3 for interop (1-2ms overhead, acceptable)
+
+**Challenge 2: Training Data Storage**
+- Solution: Hybrid (SQLite metadata + Pickle embeddings + FAISS index)
+
+**Challenge 3: Model Versioning**
+- Solution: Semantic versioning (codex_v1.0.0.pkl), rollback capability
+
+**Challenge 4: Cold Start (New Users)**
+- Solution: Pre-trained base model + transfer learning
+
+#### Related Decisions
+- "Data Storage Architecture: Graph vs Vector DB" (Nov 24, 2025) - GNN is hybrid of both
+- "LLM Mistake Tracking" (Nov 20, 2025) - ChromaDB feeds into GNN training data
+
+#### Next Steps
+
+**Immediate:**
+1. ✅ Keep "GNN" name (now aspirational)
+2. ✅ Create Yantra Codex design doc (docs/Yantra_Codex_GNN.md)
+3. ⏳ Get approval to proceed
+
+**Week 10 (If Approved):**
+1. Set up PyTorch Geometric
+2. Create Rust ↔ Python bridge
+3. Start data collection pipeline
+4. Accumulate 100+ training examples
+
+**Week 12 (First Model):**
+1. Train test generation GNN
+2. Integrate into workflow
+3. Measure improvements
+4. Celebrate first learning system! 🎉
+
+---
+
+### 🆕 November 24, 2025 - Features.md Consolidation
+
+**Status:** ✅ Accepted  
+**Deciders:** Project Team  
+**Impact:** LOW - Documentation cleanup
+
+#### Context
+Found duplicate `Features.md` files in the workspace:
+- `/Features.md` (root) - 1,681 lines, last updated Dec 21, 2025
+- `/docs/Features.md` - 1,947 lines, last updated Nov 23, 2025 ✅ More complete
+
+The docs version contains all 19 features with full documentation, while the root version was missing some recent updates.
+
+This is exactly the problem we're solving with Dependency Graph-based file registry (Decision: Nov 24, 2025).
+
+#### Decision
+**Consolidate to single canonical Features.md in project root.**
+
+**Actions:**
+1. ✅ Copy more complete version: `docs/Features.md` → `Features.md` (root)
+2. ✅ Deprecate old file: `docs/Features.md` → `docs/Features_deprecated_2025-11-24.md`
+3. ✅ Update Decision_Log.md with this change
+4. ⏳ Implement Dependency Graph file registry to prevent future duplicates (Week 9)
+
+**Canonical Location:** `/Features.md` (project root)
+
+#### Rationale
+
+**1. Single Source of Truth**
+- One canonical file prevents confusion
+- All updates go to same location
+- Documentation stays synchronized
+
+**2. Root Location Standard**
+- Follows Yantra conventions (copilot-instructions.md specifies root location)
+- Consistent with other root docs: Project_Plan.md, Decision_Log.md, Known_Issues.md
+
+**3. Preserve History**
+- Deprecated file kept for reference
+- Clear timestamp in filename (2025-11-24)
+- Can be deleted after verification period
+
+#### Consequences
+
+**Positive:**
+- ✅ Single canonical Features.md location
+- ✅ Most complete version preserved
+- ✅ Clear deprecation marking
+- ✅ Example use case for Dependency Graph file registry
+
+**Negative:**
+- ⚠️ docs/ folder now has deprecated file (will be cleaned up later)
+- ⚠️ Any existing links to docs/Features.md need updating
+
+**Future Prevention:**
+- Dependency Graph file registry (Week 9) will detect duplicates automatically
+- UI will prompt user to resolve conflicts
+- Graph will track canonical vs deprecated files
+
+#### Related Decisions
+- "Data Storage Architecture: Graph vs Vector DB" (Nov 24, 2025) - File registry will use Dependency Graph
+- "File Registry & SSOT Tracking with Dependency Graph" (Nov 24, 2025) - Implementation details
+
+---
 
 ### 🆕 November 22, 2025 - Add Terminal Integration for Full Automation
 
@@ -1468,6 +2413,131 @@ Use existing markdown documentation files (Project_Plan.md, Features.md, Decisio
 **Last Updated:** November 24, 2025  
 **Next Update:** As decisions are made
 
+
+---
+
+## November 24, 2025 - MVP vs Full Architecture: Progressive Autonomy
+
+**Status:** Accepted  
+**Deciders:** Product + Engineering  
+**Impact:** HIGH - Defines 3-phase evolution to full autonomy
+
+### Context
+
+User insight: "Once GraphSAGE is 90-95% of ChatGPT/Claude, can we use GraphSAGE for validation/tests too?"
+
+**Key realization:**
+- Test generation is EASIER than code generation (more formulaic)
+- Tests follow predictable patterns: setup → action → assert
+- CodeContests dataset has 13,328 examples of test patterns
+- After Month 1-2, GraphSAGE will have learned from 1000+ LLM-generated tests
+
+**Challenge:**
+- MVP needs to focus on code generation (single responsibility)
+- But we don't want to miss the opportunity for full test autonomy
+- Need smooth transition path without over-complicating MVP
+
+### Decision
+
+✅ **Implement GraphSAGE autonomy in 3 progressive phases:**
+
+**Phase 1 - MVP (Month 1-2): Code Generation Only**
+```
+User Query → GraphSAGE code (if confidence ≥ 0.7)
+  ↓ (else)
+DeepSeek code
+  ↓
+LLM generates tests ← Using LLM here for reliability
+  ↓
+pytest executes
+  ↓
+GraphSAGE learns from VALIDATED code + test patterns
+```
+
+**Targets:**
+- Code: 45-50% GraphSAGE accuracy
+- Tests: 100% LLM (proven, safe)
+- Cost: $45/month ($540/year)
+
+**Phase 2 - Smart Tests (Month 3-4): GraphSAGE Takes Over Tests**
+```
+User Query → GraphSAGE code (90-95% accuracy)
+  ↓
+GraphSAGE generates tests ← NEW: GraphSAGE handles this too!
+  ↓
+pytest executes
+  ↓
+GraphSAGE learns from both code AND test patterns
+```
+
+**Targets:**
+- Code: 90-95% GraphSAGE accuracy
+- Tests: 90-95% GraphSAGE accuracy
+- Cost: $8/month ($96/year) - 60% cheaper!
+
+**Phase 3 - Full Autonomy (Month 5+): Self-Sufficient System**
+```
+GraphSAGE code → GraphSAGE tests → pytest → Learn → Repeat
+```
+
+**Targets:**
+- Code: 95%+ GraphSAGE accuracy
+- Tests: 95%+ GraphSAGE accuracy
+- Cost: <$5/month (<$50/year) - near-zero LLM costs!
+
+### Rationale
+
+**Why Progressive Phases?**
+- ✅ **Focus MVP:** Single responsibility (code generation) ships faster
+- ✅ **Quality assurance:** LLM-generated tests ensure quality training data in Month 1-2
+- ✅ **Natural progression:** Test generation easier → GraphSAGE masters it faster
+- ✅ **Measurable transition:** Can objectively compare GraphSAGE tests vs LLM tests before switching
+- ✅ **Avoid rework:** Design test prediction heads from Day 1, activate in Phase 2
+
+**Why Test Generation is Easier:**
+- Tests follow formulaic patterns (more structured than code)
+- Limited vocabulary: assert, setup, teardown, mock
+- Graph structure perfect for tracking test coverage
+- CodeContests already has 13,328 test examples
+- GraphSAGE can learn: "sorting function → needs empty/single/multiple element tests"
+
+**The Beautiful Dual Learning Loop:**
+```
+Month 1-2: LLM generates tests → GraphSAGE learns patterns
+Month 3+:  GraphSAGE generates tests → GraphSAGE learns from own tests
+```
+
+**Result:** Self-improving system with exponential improvement
+
+### Implementation
+
+**GraphSAGE Model Architecture (Day 1):**
+```python
+class GraphSAGE:
+    # ACTIVE in MVP (Phase 1):
+    code_predictor = SAGEConv(978, 512)
+    import_predictor = SAGEConv(512, 256)
+    bug_predictor = SAGEConv(512, 128)
+    
+    # DORMANT until Phase 2:
+    test_assertion_predictor = SAGEConv(512, 256)
+    test_fixture_predictor = SAGEConv(512, 128)
+    edge_case_predictor = SAGEConv(512, 128)
+    
+    test_generation_enabled = False  # Flip in Month 3
+```
+
+**Metrics:**
+
+| Phase | Code | Tests | Cost/Year | Timeline |
+|-------|------|-------|-----------|----------|
+| MVP | 45-50% | 100% LLM | $540 | Month 1-2 |
+| Phase 2 | 90-95% | 90% GraphSAGE | $96 | Month 3-4 |
+| Phase 3 | 95%+ | 95%+ GraphSAGE | <$50 | Month 5+ |
+
+### Related Decisions
+- Multi-Tier Learning (Nov 24, 2025)
+- CodeContests Dataset (Nov 24, 2025)
 
 ---
 
