@@ -17,6 +17,7 @@ mod agent;
 mod testing;
 mod git;
 mod documentation;
+mod bridge;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct FileEntry {
@@ -468,6 +469,34 @@ async fn generate_tests(
     testing::generator::generate_tests(request, llm_config).await
 }
 
+/// Execute pytest tests and return results
+#[tauri::command]
+async fn execute_tests(
+    workspace_path: String,
+    test_file: String,
+    timeout_seconds: Option<u64>,
+) -> Result<testing::TestExecutionResult, String> {
+    let workspace = PathBuf::from(workspace_path);
+    let test_path = Path::new(&test_file);
+    
+    let executor = testing::PytestExecutor::new(workspace);
+    executor.execute_tests(test_path, timeout_seconds)
+}
+
+/// Execute pytest tests with coverage
+#[tauri::command]
+async fn execute_tests_with_coverage(
+    workspace_path: String,
+    test_file: String,
+    timeout_seconds: Option<u64>,
+) -> Result<testing::TestExecutionResult, String> {
+    let workspace = PathBuf::from(workspace_path);
+    let test_path = Path::new(&test_file);
+    
+    let executor = testing::PytestExecutor::new(workspace);
+    executor.execute_tests_with_coverage(test_path, timeout_seconds)
+}
+
 // Git commands
 
 /// Get git status
@@ -792,6 +821,8 @@ fn main() {
             set_llm_retry_config,
             generate_code,
             generate_tests,
+            execute_tests,
+            execute_tests_with_coverage,
             git_status,
             git_add,
             git_commit,

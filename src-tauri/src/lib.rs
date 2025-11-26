@@ -9,3 +9,4 @@ pub mod testing;
 pub mod security;
 pub mod browser;
 pub mod git;
+pub mod bridge;

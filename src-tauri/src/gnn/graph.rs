@@ -5,6 +5,7 @@
 
 use super::{CodeNode, CodeEdge, EdgeType};
 use petgraph::graph::{DiGraph, NodeIndex};
+use petgraph::visit::EdgeRef;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
@@ -290,3 +291,80 @@ mod tests {
         assert_eq!(deps[0].name, "func2");
     }
 }
+
+impl CodeGraph {
+    /// Get incoming edges of a specific type for a node
+    pub fn get_incoming_edges(&self, node_id: &str, edge_type: EdgeType) -> Vec<CodeEdge> {
+        if let Some(&node_idx) = self.node_map.get(node_id) {
+            self.graph
+                .edges_directed(node_idx, petgraph::Direction::Incoming)
+                .filter(|edge_ref| *edge_ref.weight() == edge_type)
+                .filter_map(|edge_ref| {
+                    let source_node = self.graph.node_weight(edge_ref.source())?;
+                    let target_node = self.graph.node_weight(edge_ref.target())?;
+                    Some(CodeEdge {
+                        edge_type: edge_type.clone(),
+                        source_id: source_node.id.clone(),
+                        target_id: target_node.id.clone(),
+                    })
+                })
+                .collect()
+        } else {
+            Vec::new()
+        }
+    }
+
+    /// Get outgoing edges of a specific type for a node
+    pub fn get_outgoing_edges(&self, node_id: &str, edge_type: EdgeType) -> Vec<CodeEdge> {
+        if let Some(&node_idx) = self.node_map.get(node_id) {
+            self.graph
+                .edges_directed(node_idx, petgraph::Direction::Outgoing)
+                .filter(|edge_ref| *edge_ref.weight() == edge_type)
+                .filter_map(|edge_ref| {
+                    let source_node = self.graph.node_weight(edge_ref.source())?;
+                    let target_node = self.graph.node_weight(edge_ref.target())?;
+                    Some(CodeEdge {
+                        edge_type: edge_type.clone(),
+                        source_id: source_node.id.clone(),
+                        target_id: target_node.id.clone(),
+                    })
+                })
+                .collect()
+        } else {
+            Vec::new()
+        }
+    }
+
+    /// Get all nodes in a specific file
+    pub fn get_nodes_in_file(&self, file_path: &str) -> Vec<CodeNode> {
+        self.graph
+            .node_weights()
+            .filter(|node| node.file_path == file_path)
+            .cloned()
+            .collect()
+    }
+
+    /// Get all dependencies recursively (all reachable nodes)
+    pub fn get_all_dependencies(&self, node_id: &str) -> Vec<String> {
+        use petgraph::visit::Bfs;
+        use std::collections::HashSet;
+
+        if let Some(&start_idx) = self.node_map.get(node_id) {
+            let mut visited = HashSet::new();
+            let mut bfs = Bfs::new(&self.graph, start_idx);
+
+            while let Some(idx) = bfs.next(&self.graph) {
+                if let Some(node) = self.graph.node_weight(idx) {
+                    visited.insert(node.id.clone());
+                }
+            }
+
+            // Remove the starting node itself
+            visited.remove(node_id);
+            visited.into_iter().collect()
+        } else {
+            Vec::new()
+        }
+    }
+}
+

@@ -115,3 +115,76 @@ fn test_persist_and_load() {
         println!("✅ Persist and Load Test Passed!");
     }
 }
+
+#[test]
+fn test_incremental_updates_performance() {
+    use std::time::Instant;
+    
+    let test_project = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .join("scripts/demo_project");
+    
+    let yantra_dir = test_project.join(".yantra");
+    fs::create_dir_all(&yantra_dir).unwrap();
+    
+    let db_path = yantra_dir.join("graph_incremental_test.db");
+    
+    if db_path.exists() {
+        fs::remove_file(&db_path).unwrap();
+    }
+    
+    // Initial build
+    let mut engine = yantra::gnn::GNNEngine::new(&db_path).unwrap();
+    engine.build_graph(&test_project).unwrap();
+    
+    // Test incremental updates on calculator.py
+    let calc_file = test_project.join("calculator.py");
+    
+    println!("\n⏱️  Testing Incremental Update Performance");
+    println!("   Target: <50ms per file change\n");
+    
+    // Run 10 sequential updates
+    let mut durations = Vec::new();
+    
+    for i in 0..10 {
+        let start = Instant::now();
+        let metrics = engine.incremental_update_file(&calc_file).unwrap();
+        let duration_ms = start.elapsed().as_millis() as u64;
+        
+        durations.push(duration_ms);
+        
+        let status = if duration_ms < 50 { "✅" } else { "⚠️" };
+        println!("   {} Iteration {}: {}ms (reported: {}ms)", 
+                 status, i + 1, duration_ms, metrics.duration_ms);
+        println!("      - Nodes updated: {}", metrics.nodes_updated);
+        println!("      - Edges updated: {}", metrics.edges_updated);
+        println!("      - Cache hits: {}", metrics.cache_hits);
+        println!("      - Cache misses: {}", metrics.cache_misses);
+    }
+    
+    // Calculate statistics
+    let avg = durations.iter().sum::<u64>() as f64 / durations.len() as f64;
+    let max = *durations.iter().max().unwrap();
+    let min = *durations.iter().min().unwrap();
+    
+    println!("\n📈 Performance Results:");
+    println!("   - Average: {:.2}ms", avg);
+    println!("   - Min: {}ms", min);
+    println!("   - Max: {}ms", max);
+    println!("   - Target: <50ms");
+    
+    // Check cache stats
+    let stats = engine.cache_stats();
+    println!("\n📊 Cache Statistics:");
+    println!("   - Cached files: {}", stats.cached_files);
+    println!("   - Cached nodes: {}", stats.cached_nodes);
+    println!("   - Dirty files: {}", stats.dirty_files);
+    println!("   - Dependencies tracked: {}", stats.dependencies);
+    
+    // Assert performance target
+    assert!(avg < 50.0, "Average update time {:.2}ms should be < 50ms", avg);
+    
+    println!("\n✅ Incremental Update Performance Test Passed!");
+    println!("   Average {:.2}ms < 50ms target ✓", avg);
+}

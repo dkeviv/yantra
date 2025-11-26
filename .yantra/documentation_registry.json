@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "version": "1.0.0",
+  "description": "Canonical registry of all documentation files in Yantra project. This is the SINGLE SOURCE OF TRUTH for documentation locations.",
+  "last_updated": "2025-11-24T00:00:00Z",
+  
+  "canonical_documents": {
+    "project_plan": {
+      "path": "Project_Plan.md",
+      "description": "Master project plan with all tasks and status tracking",
+      "required": true,
+      "schema": {
+        "sections": ["MVP Weeks", "Task Status", "Timeline"],
+        "format": "markdown_with_checkboxes"
+      }
+    },
+    
+    "features": {
+      "path": "Features.md",
+      "description": "All implemented features from user perspective with use cases",
+      "required": true,
+      "schema": {
+        "sections": ["Feature ID", "Title", "Status", "Use Cases"],
+        "format": "markdown_numbered_sections"
+      }
+    },
+    
+    "decision_log": {
+      "path": "Decision_Log.md",
+      "description": "All architectural and design decisions with rationale",
+      "required": true,
+      "schema": {
+        "sections": ["Date", "Decision", "Rationale", "Alternatives", "Impact"],
+        "format": "markdown_dated_entries"
+      }
+    },
+    
+    "known_issues": {
+      "path": "Known_Issues.md",
+      "description": "Bug tracking and resolution status",
+      "required": true,
+      "schema": {
+        "sections": ["Issue ID", "Description", "Status", "Fix"],
+        "format": "markdown_numbered_sections"
+      }
+    },
+    
+    "technical_guide": {
+      "path": "Technical_Guide.md",
+      "description": "Developer documentation - implementation details and workflows",
+      "required": true,
+      "schema": {
+        "sections": ["Component", "Implementation", "References"],
+        "format": "markdown_hierarchical"
+      }
+    },
+    
+    "ux": {
+      "path": "UX.md",
+      "description": "User experience flows for admin and end-users",
+      "required": true,
+      "schema": {
+        "sections": ["User Type", "Flow", "Screens"],
+        "format": "markdown_with_diagrams"
+      }
+    },
+    
+    "file_registry": {
+      "path": "File_Registry.md",
+      "description": "Inventory of all project files with purpose and dependencies",
+      "required": true,
+      "schema": {
+        "sections": ["File Path", "Purpose", "Dependencies", "Status"],
+        "format": "markdown_table"
+      }
+    },
+    
+    "session_handoff": {
+      "path": ".github/Session_Handoff.md",
+      "description": "Session continuity context for AI assistants",
+      "required": true,
+      "schema": {
+        "sections": ["Current Status", "Next Steps", "Context"],
+        "format": "markdown_structured"
+      }
+    },
+    
+    "unit_test_results": {
+      "path": "Unit_Test_Results.md",
+      "description": "Unit test tracking with results and fixes",
+      "required": true,
+      "schema": {
+        "sections": ["Test", "Status", "Coverage", "Issues"],
+        "format": "markdown_test_report"
+      }
+    },
+    
+    "integration_test_results": {
+      "path": "Integration_Test_Results.md",
+      "description": "Integration test tracking with results and fixes",
+      "required": true,
+      "schema": {
+        "sections": ["Test", "Status", "Dependencies", "Issues"],
+        "format": "markdown_test_report"
+      }
+    },
+    
+    "regression_test_results": {
+      "path": "Regression_Test_Results.md",
+      "description": "Regression test tracking with results and fixes",
+      "required": true,
+      "schema": {
+        "sections": ["Test", "Status", "Changes", "Issues"],
+        "format": "markdown_test_report"
+      }
+    }
+  },
+  
+  "deprecated_documents": {
+    "old_features": {
+      "path": "docs/Features.md",
+      "reason": "Duplicate - moved to root Features.md",
+      "deprecated_date": "2025-11-24",
+      "migration_status": "merged_to_canonical",
+      "action": "delete_after_verification"
+    },
+    
+    "unit_test_results_old": {
+      "path": "Unit_Test_Results_old.md",
+      "reason": "Replaced by Unit_Test_Results.md",
+      "deprecated_date": "2025-11-20",
+      "migration_status": "archived",
+      "action": "keep_for_history"
+    }
+  },
+  
+  "supplementary_documents": {
+    "specifications": {
+      "path": "Specifications.md",
+      "description": "Original product specifications",
+      "category": "reference"
+    },
+    
+    "agent_commands": {
+      "path": "AGENT_COMMANDS.md",
+      "description": "Quick reference for agent operations",
+      "category": "reference"
+    },
+    
+    "architecture_decisions": {
+      "path": "docs/Architecture_Decision_Instructions_Storage.md",
+      "description": "Deep dive on GNN vs Vector DB architecture",
+      "category": "design_docs"
+    },
+    
+    "project_instructions_system": {
+      "path": "docs/Project_Instructions_System.md",
+      "description": "Design document for instruction system",
+      "category": "design_docs"
+    },
+    
+    "gnn_vs_vscode": {
+      "path": "docs/GNN_vs_VSCode_Instructions.md",
+      "description": "Comparison analysis with VS Code",
+      "category": "design_docs"
+    }
+  },
+  
+  "validation_rules": {
+    "duplicate_detection": {
+      "enabled": true,
+      "description": "Detect multiple files with same purpose",
+      "action": "error_and_prompt_user"
+    },
+    
+    "missing_canonical": {
+      "enabled": true,
+      "description": "Alert if canonical document missing",
+      "action": "error_and_suggest_creation"
+    },
+    
+    "schema_validation": {
+      "enabled": true,
+      "description": "Validate document structure matches schema",
+      "action": "warn_and_suggest_fix"
+    }
+  },
+  
+  "agent_behavior": {
+    "on_ambiguity": {
+      "strategy": "always_use_canonical",
+      "description": "When multiple files exist, ALWAYS use path from canonical_documents",
+      "fallback": "ask_user_to_resolve"
+    },
+    
+    "on_new_document": {
+      "strategy": "check_registry_first",
+      "description": "Before creating, check if canonical path exists",
+      "action": "update_or_error"
+    },
+    
+    "on_user_provided_path": {
+      "strategy": "validate_against_registry",
+      "description": "If user provides path not in registry, warn them",
+      "action": "suggest_canonical_path"
+    }
+  }
+}

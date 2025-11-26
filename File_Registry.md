@@ -1,7 +1,7 @@
 # Yantra - File Registry
 
 **Version:** MVP 1.0  
-**Last Updated:** November 23, 2025 - 8:30 PM  
+**Last Updated:** November 24, 2025 - 10:00 AM  
 **Purpose:** Track all project files, their purposes, implementations, and dependencies
 
 ---
@@ -14,16 +14,51 @@
 |------|--------|---------|--------------|--------------|
 | `README.md` | ⚪ To be created | Project overview and quick start | None | - |
 | `Specifications.md` | ✅ Exists | Complete technical specification | None | Nov 20, 2025 |
-| `Project_Plan.md` | ✅ Updated | Task tracking and timeline | None | Nov 22, 2025 |
-| `Features.md` | ✅ Updated | Feature documentation with use cases | None | Nov 20, 2025 |
+## Documentation Files
+
+| File | Status | Purpose | Dependencies | Last Updated |
+|------|--------|---------|--------------|--------------|
+| `Project_Plan.md` | ✅ Created | 12-month development roadmap with weekly milestones | - | Nov 25, 2025 |
+| `Specifications.md` | ✅ Created | Detailed requirements for features to be implemented (design specs, UX flows, technical implementation) | - | Nov 25, 2025 |
+| `Features.md` | ✅ Created | User-facing feature documentation | - | Nov 20, 2025 |
 | `UX.md` | ✅ Updated | User flows and experience guide | None | Nov 20, 2025 |
 | `Technical_Guide.md` | ✅ Updated | Developer technical reference | None | Nov 20, 2025 |
 | `File_Registry.md` | ✅ Updated | This file - tracks all files | None | Nov 22, 2025 |
 | `Decision_Log.md` | ✅ Updated | Architecture and design decisions | None | Nov 20, 2025 |
 | `Known_Issues.md` | ✅ Created | Bug tracking and fixes | None | Nov 20, 2025 |
-| `Unit_Test_Results.md` | ✅ Created | Unit test results tracking | None | Nov 20, 2025 |
+| `Unit_Test_Results.md` | ✅ Created | Unit test results tracking | None | Nov 25, 2025 |
 | `Integration_Test_Results.md` | ✅ Created | Integration test results | None | Nov 20, 2025 |
 | `Regression_Test_Results.md` | ✅ Created | Regression test results | None | Nov 20, 2025 |
+| `Admin_Guide.md` | ✅ Created | System administrator guide | None | Nov 25, 2025 |
+
+### docs/ Folder - Architecture & Design Documents
+
+| File | Status | Purpose | Dependencies | Last Updated |
+|------|--------|---------|--------------|--------------|
+| `docs/GNN_vs_VSCode_Instructions.md` | ✅ Created | Comparison: Yantra GNN vs VS Code instructions | None | Nov 24, 2025 |
+| `docs/Data_Storage_Architecture.md` | ✅ Created | Master architecture decision for all 6 data types | None | Nov 24, 2025 |
+| `docs/Yantra_Codex_GNN.md` | ✅ Created | High-level GNN design, quick wins, roadmap | None | Nov 24, 2025 |
+| `docs/Yantra_Codex_GraphSAGE_Knowledge_Distillation.md` | ✅ Created | Complete GraphSAGE implementation guide | None | Nov 24, 2025 |
+| `docs/Yantra_Codex_Multi_Tier_Architecture.md` | ✅ Created | 4-tier learning with open-source bootstrap | None | Nov 24, 2025 |
+| `docs/MVP_Architecture_Clarified.md` | ✅ Created | **CLARIFIED MVP**: Open-source only, user-configured premium, success-only learning | None | Nov 24, 2025 |
+| `docs/Why_Multi_Tier_Wins.md` | ✅ Created | Business case for multi-tier architecture | None | Nov 24, 2025 |
+| `docs/Features_deprecated_2025-11-24.md` | 🗑️ Deprecated | Old Features.md (superseded by root version) | None | Nov 24, 2025 |
+
+**Key Architecture Documents:**
+- **MVP_Architecture_Clarified.md:** 🎯 **FINAL MVP DESIGN** - Bootstrap with open-source ONLY (FREE), users configure own premium (optional), learn ONLY from working code
+- **Data_Storage_Architecture.md:** Master table defining storage for dependencies, file registry, LLM mistakes, documentation, instructions, and learning
+- **Yantra_Codex_GraphSAGE_Knowledge_Distillation.md:** Production-ready GraphSAGE implementation with knowledge distillation from LLMs
+
+### .github/ Folder - Session & Training Documentation
+
+| File | Status | Purpose | Dependencies | Last Updated |
+|------|--------|---------|--------------|--------------|
+| `.github/Session_Handoff.md` | ✅ Updated | Session continuity document | None | Nov 26, 2025 |
+| `.github/GraphSAGE_Training_Complete.md` | ✅ Created | Complete training implementation summary | None | Nov 26, 2025 |
+| `.github/TRAINING_QUICKSTART.md` | ✅ Created | Quick start guide for running training | None | Nov 26, 2025 |
+| `.github/GraphSAGE_Inference_Benchmark.md` | ✅ Created | Inference performance benchmark results | None | Nov 26, 2025 |
+- **Yantra_Codex_Multi_Tier_Architecture.md:** Full 4-tier system details (updated with clarifications)
+- **Why_Multi_Tier_Wins.md:** Business analysis showing zero LLM costs for Yantra and network effects
 
 ---
 
@@ -76,19 +111,25 @@
 
 | File | Status | Purpose | Dependencies | Last Updated |
 |------|--------|---------|--------------|--------------|
-| `src-tauri/src/gnn/mod.rs` | ✅ Created | GNN engine with CodeNode, CodeEdge types, main GNNEngine struct | parser, graph, persistence | Nov 20, 2025 |
+| `src-tauri/src/gnn/mod.rs` | ✅ Created | GNN engine with CodeNode, CodeEdge types, main GNNEngine struct + incremental updates + multi-language | parser, parser_js, graph, persistence, incremental | Nov 25, 2025 |
 | `src-tauri/src/gnn/parser.rs` | ✅ Created | tree-sitter Python parser, extracts functions/classes/imports/calls | tree-sitter, tree-sitter-python | Nov 20, 2025 |
+| `src-tauri/src/gnn/parser_js.rs` | ✅ Created | tree-sitter JavaScript/TypeScript parser for multi-language support | tree-sitter, tree-sitter-javascript, tree-sitter-typescript | Nov 25, 2025 |
 | `src-tauri/src/gnn/graph.rs` | ✅ Created | petgraph CodeGraph with dependency tracking | petgraph | Nov 20, 2025 |
 | `src-tauri/src/gnn/persistence.rs` | ✅ Created | SQLite database for graph persistence | rusqlite | Nov 20, 2025 |
-| `src/gnn/incremental.rs` | ⚪ To be created | Incremental graph update logic | graph.rs, persistence.rs | - |
+| `src/gnn/incremental.rs` | ✅ Created | Incremental graph update logic with <50ms per file (achieved 1ms avg) | graph.rs, persistence.rs | Nov 25, 2025 |
 | `src/gnn/validator.rs` | ⚪ To be created | Dependency validation logic | graph.rs | - |
 
 **Implementation Details:**
-- **mod.rs (167 lines)**: Main GNN engine with parse_file(), build_graph(), scan_directory(), persist(), load(), get_dependencies(), get_dependents(), find_node()
+- **mod.rs (310 lines, updated Nov 25)**: Main GNN engine with parse_file() supporting Python/JS/TS/TSX/JSX, build_graph(), incremental_update_file(), incremental_update_files(), is_file_dirty(), cache_stats()
 - **parser.rs (278 lines)**: Python AST parser using tree-sitter, extracts function definitions, class definitions, imports, function calls, inheritance
-- **graph.rs (232 lines)**: Directed graph using petgraph DiGraph, nodes (functions/classes/imports), edges (calls/uses/inherits), with export/import for serialization
-- **persistence.rs (225 lines)**: SQLite schema with nodes and edges tables, indices for fast lookups, save_graph/load_graph methods
-- **Tests**: 8 unit tests passing (parser, graph, persistence, engine creation)
+- **parser_js.rs (300 lines, NEW Nov 25)**: JavaScript/TypeScript parser using tree-sitter with manual tree walking. Extracts functions, classes, imports, variables. Supports .js, .ts, .jsx, .tsx files. 5 unit tests passing.
+- **graph.rs (293 lines)**: Directed graph using petgraph DiGraph, nodes (functions/classes/imports), edges (calls/uses/inherits), with export/import for serialization
+- **persistence.rs (270 lines)**: SQLite schema with nodes and edges tables, indices for fast lookups, save_graph/load_graph methods
+- **incremental.rs (330 lines, Nov 25)**: IncrementalTracker with file timestamp tracking, dirty flag propagation, node caching, dependency mapping. Achieves **1ms average** per file update (50x faster than 50ms target). 4 unit tests + 1 integration test passing.
+- **Tests**: 18 unit tests passing (8 Python parser + 5 JS/TS parser + 4 incremental + 1 engine test)
+- **Integration Tests**: 3 tests in gnn_integration_test.rs (analyze_test_project, persist_and_load, incremental_updates_performance)
+- **Performance**: 1ms avg incremental updates, 4/4 cache hits after first parse, <100ms initial build for small projects
+- **Multi-Language Support**: Python (.py), JavaScript (.js, .jsx), TypeScript (.ts, .tsx)
 - **Tauri Commands**: analyze_project, get_dependencies, get_dependents, find_node
 
 ### LLM Module (Week 5-6) - 40% Complete ✅
@@ -122,13 +163,36 @@
 - `src-ui/api/llm.ts` (60 lines): TypeScript API wrapper for all LLM config Tauri commands
 - `src-ui/components/LLMSettings.tsx` (230+ lines): Full-featured SolidJS settings UI with provider selection, API key inputs, status indicators
 
-### Testing Module (Week 5-6) - ✅ COMPLETE (Integrated Nov 23, 2025)
+### Testing Module (Week 5-6) - ✅ COMPLETE + EXECUTOR ADDED (Nov 25, 2025)
 
 | File | Status | Purpose | Dependencies | Last Updated |
 |------|--------|---------|--------------|--------------|
-| `src/testing/mod.rs` | ✅ Complete | Testing module root | All testing submodules | Nov 23, 2025 |
-| `src/testing/generator.rs` | ✅ Complete + Integrated | Test generation with LLM, now integrated into orchestrator | LLM module | Nov 23, 2025 |
+| `src/testing/mod.rs` | ✅ Updated | Testing module root with exports | generator, runner, executor | Nov 25, 2025 |
+| `src/testing/generator.rs` | ✅ Complete + Integrated | Test generation with LLM, integrated into orchestrator | LLM module | Nov 23, 2025 |
 | `src/testing/runner.rs` | ✅ Complete | pytest subprocess runner + JUnit XML parser | tokio, quick-xml | Nov 21, 2025 |
+| `src/testing/executor.rs` | ✅ Complete | **NEW:** Streamlined pytest executor for GraphSAGE learning loop | serde, serde_json, std::process | Nov 25, 2025 |
+
+**Implementation Details:**
+- **executor.rs (410 lines, 5 tests)**: **NEW - Success-only learning integration**
+  - `PytestExecutor`: Simplified pytest execution with JSON report parsing
+  - `TestExecutionResult`: Complete result structure (pass/fail/skip/error counts, duration, pass_rate, failures, coverage)
+  - `is_learnable()`: Quality filter - returns true if pass_rate >= 0.9 (90% threshold)
+  - `quality_score()`: Returns pass_rate (0.0-1.0) for confidence calculation
+  - JSON report parsing via pytest-json-report plugin (cleaner than XML)
+  - Fallback to stdout/stderr parsing if JSON unavailable
+  - Coverage support via coverage.json parsing
+  - <100ms overhead (excluding actual test execution)
+  - **Integration:** Ready for Week 2 GraphSAGE learning loop
+  - **Tauri Commands:** `execute_tests`, `execute_tests_with_coverage`
+  - **TypeScript API:** `src-ui/api/testing.ts` (150 lines) with helper functions
+  - **Tests:** 5 unit tests passing
+- **generator.rs (410 lines)**: Test prompt generation, coverage estimation, fixture extraction
+  - **CRITICAL INTEGRATION (Nov 23):** Called automatically by orchestrator Phase 3.5
+  - Generates pytest tests with 80% coverage target
+  - Writes tests to `{filename}_test.py`
+- **runner.rs (549 lines)**: Execute pytest in subprocess, parse JUnit XML output, coverage analysis
+- **Tests**: 9 tests total (4 generator/runner + 5 executor), all passing
+- **Integration Impact:** Success-only learning foundation ready for GraphSAGE training (Week 2-4)
 
 **Implementation Details:**
 - **generator.rs (410 lines)**: Test prompt generation, coverage estimation, fixture extraction, test function counting, integration with LLM
@@ -139,6 +203,97 @@
 - **runner.rs (549 lines)**: Execute pytest in subprocess, parse JUnit XML output, coverage analysis, test failure classification (3 types: assertion/import/runtime)
 - **Tests**: 4 tests passing (pytest execution, XML parsing, coverage, failure classification)
 - **Integration Impact:** Every code generation now includes automatic test generation (MVP blocker removed)
+
+### Bridge Module (Week 2) - ✅ TASK 1 COMPLETE (Nov 25, 2025)
+
+| File | Status | Purpose | Dependencies | Last Updated |
+|------|--------|---------|--------------|--------------|
+| `src/bridge/mod.rs` | ✅ Complete | Bridge module root with exports | pyo3_bridge, bench (test only) | Nov 25, 2025 |
+| `src/bridge/pyo3_bridge.rs` | ✅ Complete | **Rust ↔ Python bridge for GraphSAGE model** | pyo3 0.22, serde | Nov 25, 2025 |
+| `src/bridge/bench.rs` | ✅ Complete | Performance benchmarks for bridge overhead | pyo3_bridge, std::time | Nov 25, 2025 |
+| `src-python/yantra_bridge.py` | ✅ Complete | **Python bridge interface for Rust calls, loads trained model** | PyTorch, graphsage | Nov 26, 2025 |
+| `src-python/__init__.py` | ✅ Complete | Python package initialization | None | Nov 25, 2025 |
+| `src-python/model/__init__.py` | ✅ Complete | Model package initialization | None | Nov 26, 2025 |
+| `src-python/model/graphsage.py` | ✅ Complete | **GraphSAGE model with save/load for training** | PyTorch, torch.nn | Nov 26, 2025 |
+| `src-python/training/__init__.py` | ✅ Complete | Training package initialization | None | Nov 26, 2025 |
+| `src-python/training/dataset.py` | ✅ Complete | **CodeContests PyTorch Dataset with batching** | PyTorch, json | Nov 26, 2025 |
+| `src-python/training/config.py` | ✅ Complete | **Training configuration and hyperparameters** | dataclasses | Nov 26, 2025 |
+| `src-python/training/train.py` | ✅ Complete | **Complete training loop with multi-task loss** | PyTorch, tqdm, dataset, config | Nov 26, 2025 |
+| `.cargo/config.toml` | ✅ Complete | PyO3 Python path configuration | None | Nov 25, 2025 |
+| `requirements_backup.txt` | ✅ Complete | Python venv package backup | None | Nov 25, 2025 |
+
+**Implementation Details:**
+- **pyo3_bridge.rs (256 lines, 5 unit tests)**: Complete Rust ↔ Python bridge implementation
+  - `FeatureVector` struct: 978-dimensional feature vector validation and conversion
+    - Validates exactly 978 features (974 base + 4 language encoding)
+    - `to_python()`: Converts to Python list using PyO3 0.22 `PyList::new_bound()`
+  - `ModelPrediction` struct: Deserializes GraphSAGE model predictions
+    - Fields: code_suggestion, confidence (0.0-1.0), next_function, predicted_imports, potential_bugs
+    - `from_python()`: Parses Python dict using `Bound<PyAny>` API
+  - `PythonBridge` struct: Thread-safe bridge manager
+    - `initialize()`: Sets up Python interpreter, adds src-python to sys.path
+    - `predict()`: Calls GraphSAGE model with feature vector
+    - `test_echo()`: Simple test for bridge connectivity
+    - `python_version()`: Returns Python version info
+    - Thread-safe with `Mutex<bool>` for initialization tracking
+  - **Unit Tests (5)**: test_feature_vector_creation, test_python_bridge_creation, test_python_initialization, test_echo, test_python_version
+- **bench.rs (117 lines, 3 benchmark tests)**: Performance validation
+  - `benchmark_bridge_overhead()`: Measures full Rust → Python → Rust roundtrip (100 iterations)
+    - **Result: 0.03ms average (67x better than 2ms target!)**
+  - `benchmark_echo_call()`: Measures minimal Python interaction (1000 iterations)
+    - **Result: 4.2µs average**
+  - `benchmark_feature_conversion()`: Measures feature vector to Python conversion (10000 iterations)
+
+- **yantra_bridge.py (155 lines)**: Python side of Rust ↔ Python bridge
+  - `_ensure_model()`: Lazy model initialization with trained checkpoint loading
+    - Checks for trained model at ~/.yantra/checkpoints/graphsage/best_model.pt
+    - Loads trained weights via `load_model_for_inference()` if available
+    - Falls back to untrained model with warning if checkpoint missing
+    - Sets global `_MODEL_TRAINED` flag for status reporting
+  - `predict()`: Main inference function called from Rust
+  - `get_model_info()`: Returns model status, size, and training state
+  - `test_echo()`: Bridge connectivity test
+
+- **graphsage.py (432 lines)**: GraphSAGE model architecture and persistence
+  - Architecture: 978→512→512→256 with 4 prediction heads
+  - Components: SAGEConv, GraphSAGEEncoder, CodeSuggestionHead, ConfidenceHead, ImportPredictionHead, BugPredictionHead
+  - `save_checkpoint()`: Full training state (model, optimizer, scheduler, epoch, metrics)
+  - `load_checkpoint()`: Resume training from checkpoint
+  - `save_model_for_inference()`: Optimized inference-only model
+  - `load_model_for_inference()`: Load trained weights for production
+  - Total parameters: 2,452,647 (9.37 MB)
+
+- **dataset.py (169 lines)**: CodeContests dataset loader
+  - `CodeContestsDataset`: PyTorch Dataset for training batches
+    - Loads from train.jsonl/validation.jsonl
+    - Currently uses placeholder random features (TODO: integrate GNN)
+    - Returns: features (978-dim), code_embedding, confidence, imports, bugs
+  - `create_dataloaders()`: Creates train/val DataLoader with batching
+  - Caching for performance
+
+- **config.py (117 lines)**: Training configuration
+  - `TrainingConfig` dataclass with all hyperparameters
+  - Defaults: batch_size=32, epochs=100, lr=0.001, patience=10
+  - Checkpoint and data directories
+
+- **train.py (443 lines)**: Complete training loop
+  - `MultiTaskLoss`: Combines 4 losses (code_embedding, confidence, imports, bugs)
+  - `train_epoch()`: Training with progress bar
+  - `validate()`: Validation metrics
+  - `train()`: Main loop with early stopping, LR scheduling, checkpointing
+  - **Results**: 12 epochs (early stopped), best val loss 1.0757, ~44 seconds on MPS
+    - **Result: 32.1µs average**
+- **yantra_bridge.py (45 lines)**: Python-side interface
+  - `predict(features)`: Validates 978 features, returns placeholder dict until GraphSAGE implemented
+  - `get_model_info()`: Returns model status and version
+  - **Placeholder mode**: Returns low confidence (0.0) until Task 3 (GraphSAGE) complete
+- **Configuration:**
+  - **PyO3 Version:** 0.22.6 (upgraded from 0.20.3 for Python 3.13 support)
+  - **Python:** 3.13.9 (Homebrew, recreated venv)
+  - **PYO3_PYTHON:** Set in .cargo/config.toml to venv path
+- **Tests**: 8/8 passing (5 unit + 3 benchmark)
+- **Performance**: Bridge overhead 0.03ms (67x better than 2ms target)
+- **Next**: Task 2 (Feature Extraction) will populate FeatureVector from GNN nodes
 
 ### Agent Module (Week 5-8) - ✅ COMPLETE (Test Gen Integrated Nov 23, 2025)
 
@@ -561,6 +716,31 @@
 
 ---
 
+## Scripts
+
+| File | Status | Purpose | Dependencies | Last Updated |
+|------|--------|---------|--------------|--------------|
+| `scripts/download_codecontests.py` | ✅ Complete | **Download and filter CodeContests dataset from HuggingFace** | datasets, json | Nov 26, 2025 |
+| `scripts/benchmark_inference.py` | ✅ Complete | **Benchmark GraphSAGE inference latency** | PyTorch, graphsage | Nov 26, 2025 |
+
+**Implementation Details:**
+- **download_codecontests.py (219 lines)**: Downloads CodeContests from HuggingFace
+  - Filters for Python solutions with test cases
+  - Creates train/validation split (80/20)
+  - Output: train.jsonl (6,508 examples), validation.jsonl (1,627 examples), stats.json
+  - Total: 8,135 valid Python examples from 13,328 total
+  - Usage: `python scripts/download_codecontests.py --output ~/.yantra/datasets/codecontests`
+
+- **benchmark_inference.py (296 lines)**: Comprehensive inference performance benchmark
+  - Measures latency over 1000 iterations with warmup
+  - Reports: avg, P50, P95, P99, min, max, throughput
+  - Auto-detects device (MPS/CUDA/CPU)
+  - Validates against <10ms target
+  - **Results on M4 MPS**: 1.077ms avg, 1.563ms P95, 928 predictions/sec
+  - Usage: `python scripts/benchmark_inference.py --iterations 1000`
+
+---
+
 ## Database Files
 
 | File | Status | Purpose | Dependencies | Last Updated |
@@ -626,8 +806,11 @@ All source files should include a header comment:
 | Nov 20, 2025 | Technical_Guide.md | Created | AI Assistant |
 | Nov 20, 2025 | .github/copilot-instructions.md | Created | AI Assistant |
 | Nov 23, 2025 | File_Registry.md | Added 15 new Phase 1 files (security, browser, git modules, integration tests, UI components) | AI Assistant |
+| Nov 24, 2025 | docs/*.md | Added 6 new architecture documents (Multi-Tier Learning, GraphSAGE, GNN design) | AI Assistant |
+| Nov 24, 2025 | Decision_Log.md | Added Multi-Tier Learning Architecture decision | AI Assistant |
+| Nov 24, 2025 | Features.md | Consolidated from docs/ to root (single source of truth) | AI Assistant |
 
 ---
 
-**Last Updated:** November 23, 2025  
+**Last Updated:** November 24, 2025  
 **Next Update:** After each file creation/modification

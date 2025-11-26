@@ -1,11 +1,15 @@
 // File: src-tauri/src/testing/mod.rs
 // Purpose: Testing module for test generation and execution
-// Last Updated: November 22, 2025
+// Last Updated: November 25, 2025
 
 pub mod generator;
 pub mod runner;
+pub mod executor;
 
-// Re-export key types (not yet fully integrated)
+// Re-export key types from executor (for GraphSAGE learning loop)
+pub use executor::{PytestExecutor, TestExecutionResult, TestFailureInfo};
+
+// Re-export key types from runner (legacy test runner)
 #[allow(unused_imports)]
 pub use runner::{TestRunner, TestResult, FailureType};
 
@@ -27,24 +31,15 @@ pub struct TestGenerationResponse {
     pub fixtures: Vec<String>,
 }
 
+// Legacy types (kept for backwards compatibility, not used in new executor)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TestExecutionRequest {
+pub struct LegacyTestExecutionRequest {
     pub test_file_path: String,
     pub timeout_seconds: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TestExecutionResult {
-    pub success: bool,
-    pub passed: usize,
-    pub failed: usize,
-    pub skipped: usize,
-    pub duration_seconds: f64,
-    pub failures: Vec<TestFailure>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TestFailure {
+pub struct LegacyTestFailure {
     pub test_name: String,
     pub message: String,
     pub traceback: String,

@@ -18,27 +18,39 @@ Yantra is an AI-first development platform that generates production-quality cod
 ### Mandatory Files to Maintain (Update Immediately After Implementation)
 
 1. **Project_Plan.md** - Track all tasks and their status
-2. **Features.md** - Document all implemented features from user perspective with use cases
-3. **UX.md** - Explain user flows (admin and end-user) from user perspective
-4. **Technical_Guide.md** - Detailed technical information for developers:
+2. **Specifications.md** - Detailed requirements for features to be implemented (design specs, UX flows, technical details)
+3. **Features.md** - Document all implemented features from user perspective with use cases
+4. **UX.md** - Explain user flows (admin and end-user) from user perspective
+5. **Technical_Guide.md** - Detailed technical information for developers:
    - How each component was implemented and why
    - Algorithm/methodology details (no code/pseudo-code)
    - References to code files and scripts
    - Workflows and use cases
-5. **File_Registry.md** - For all valid files:
+6. **File_Registry.md** - For all valid files:
    - Purpose of each file
    - What's implemented in it
    - Dependencies and relationships with other files
    - Mark deprecated files with strikethrough
-6. **Decision_Log.md** - Capture all design and architecture changes
-7. **Session_Handoff.md** - Maintain in `.github` folder for session continuity:
+7. **Decision_Log.md** - Capture all design and architecture changes
+8. **Session_Handoff.md** - Maintain in `.github` folder for session continuity:
    - Capture full context for session transitions
    - Enable AI assistant to continue seamlessly
    - Essential for context window management
-8. **Known_Issues.md** - Track all bugs, issues, and their fixes
-9. **Unit_Test_Results.md** - Track unit test results with details and fixes
-10. **Integration_Test_Results.md** - Track integration test results with details and fixes
-11. **Regression_Test_Results.md** - Track regression test results with details and fixes
+9. **Known_Issues.md** - Track all bugs, issues, and their fixes
+10. **Unit_Test_Results.md** - Track unit test results with details and fixes
+11. **Integration_Test_Results.md** - Track integration test results with details and fixes
+12. **Regression_Test_Results.md** - Track regression test results with details and fixes
+13. **Admin_Guide.md** - Comprehensive guide for system administrators:
+    - System requirements and installation procedures
+    - Configuration management and environment setup
+    - Monitoring, logging, and health checks
+    - Backup/recovery procedures
+    - Regular maintenance tasks and schedules
+    - Troubleshooting common issues
+    - Performance optimization strategies
+    - Security best practices
+    - Scaling considerations
+    - Upgrade and disaster recovery procedures
 
 ## Code Quality Standards
 

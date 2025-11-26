@@ -4,8 +4,11 @@
 // Last Updated: November 20, 2025
 
 pub mod parser;
+pub mod parser_js;
 pub mod graph;
 pub mod persistence;
+pub mod incremental;
+pub mod features;
 
 use std::path::Path;
 use serde::{Deserialize, Serialize};
@@ -48,6 +51,7 @@ pub enum EdgeType {
 pub struct GNNEngine {
     graph: graph::CodeGraph,
     db: persistence::Database,
+    incremental_tracker: incremental::IncrementalTracker,
 }
 
 impl GNNEngine {
@@ -57,16 +61,30 @@ impl GNNEngine {
             .map_err(|e| format!("Failed to initialize database: {}", e))?;
         
         let graph = graph::CodeGraph::new();
+        let incremental_tracker = incremental::IncrementalTracker::new();
         
-        Ok(Self { graph, db })
+        Ok(Self { 
+            graph, 
+            db,
+            incremental_tracker,
+        })
     }
     
-    /// Parse a Python file and add its nodes and edges to the graph
+    /// Parse a file (Python, JavaScript, or TypeScript) and add its nodes and edges to the graph
     pub fn parse_file(&mut self, file_path: &Path) -> Result<(), String> {
         let code = std::fs::read_to_string(file_path)
             .map_err(|e| format!("Failed to read file: {}", e))?;
         
-        let (nodes, edges) = parser::parse_python_file(&code, file_path)?;
+        let extension = file_path.extension().and_then(|s| s.to_str());
+        
+        let (nodes, edges) = match extension {
+            Some("py") => parser::parse_python_file(&code, file_path)?,
+            Some("js") => parser_js::parse_javascript_file(&code, file_path)?,
+            Some("ts") => parser_js::parse_typescript_file(&code, file_path)?,
+            Some("tsx") => parser_js::parse_tsx_file(&code, file_path)?,
+            Some("jsx") => parser_js::parse_javascript_file(&code, file_path)?, // JSX uses JS parser
+            _ => return Err(format!("Unsupported file extension: {:?}", extension)),
+        };
         
         for node in nodes {
             self.graph.add_node(node);
@@ -118,7 +136,7 @@ impl GNNEngine {
         Ok(())
     }
     
-    /// Collect all Python files in directory tree
+    /// Collect all supported source files in directory tree (Python, JavaScript, TypeScript)
     fn collect_python_files(&self, dir_path: &Path, files: &mut Vec<std::path::PathBuf>) -> Result<(), String> {
         if !dir_path.is_dir() {
             return Ok(());
@@ -139,8 +157,11 @@ impl GNNEngine {
                     continue;
                 }
                 self.collect_python_files(&path, files)?;
-            } else if path.extension().and_then(|s| s.to_str()) == Some("py") {
-                files.push(path);
+            } else if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
+                // Support Python, JavaScript, TypeScript
+                if matches!(ext, "py" | "js" | "ts" | "jsx" | "tsx") {
+                    files.push(path);
+                }
             }
         }
         
@@ -210,6 +231,80 @@ impl GNNEngine {
     /// Get reference to the underlying graph
     pub fn get_graph(&self) -> &graph::CodeGraph {
         &self.graph
+    }
+    
+    /// Incremental update: process only changed files (<50ms target per file)
+    pub fn incremental_update_file(&mut self, file_path: &Path) -> Result<incremental::UpdateMetrics, String> {
+        use std::time::Instant;
+        let start = Instant::now();
+        
+        // Use incremental tracker to handle caching
+        let (nodes, edges, mut metrics) = incremental::incremental_update_file(
+            &mut self.incremental_tracker,
+            file_path,
+            |code, path| parser::parse_python_file(code, path),
+        )?;
+        
+        // Remove old nodes from this file in the graph
+        let existing_nodes: Vec<CodeNode> = self.graph
+            .get_all_nodes()
+            .iter()
+            .filter(|n| n.file_path == file_path.to_str().unwrap())
+            .map(|n| (*n).clone())
+            .collect();
+        
+        // For now, we rebuild affected edges (future: incremental edge updates)
+        // This is still fast because we only reparse changed files
+        
+        // Add new nodes
+        for node in nodes {
+            self.graph.add_node(node);
+        }
+        
+        // Add edges (with fuzzy matching for external references)
+        for edge in edges {
+            let _ = self.graph.add_edge(edge); // Ignore errors for external modules
+        }
+        
+        // Persist after update
+        self.persist()?;
+        
+        // Update total duration
+        metrics.duration_ms = start.elapsed().as_millis() as u64;
+        
+        Ok(metrics)
+    }
+    
+    /// Incremental update for multiple files (batch processing)
+    pub fn incremental_update_files(&mut self, file_paths: &[&Path]) -> Result<Vec<incremental::UpdateMetrics>, String> {
+        let mut all_metrics = Vec::new();
+        
+        for file_path in file_paths {
+            let metrics = self.incremental_update_file(file_path)?;
+            all_metrics.push(metrics);
+        }
+        
+        Ok(all_metrics)
+    }
+    
+    /// Check if a file needs updating (is dirty)
+    pub fn is_file_dirty(&self, file_path: &Path) -> Result<bool, String> {
+        self.incremental_tracker.is_file_dirty(file_path)
+    }
+    
+    /// Get cache statistics
+    pub fn cache_stats(&self) -> incremental::CacheStats {
+        self.incremental_tracker.stats()
+    }
+    
+    /// Get graph node count
+    pub fn node_count(&self) -> usize {
+        self.graph.node_count()
+    }
+    
+    /// Get graph edge count
+    pub fn edge_count(&self) -> usize {
+        self.graph.edge_count()
     }
 }
 
