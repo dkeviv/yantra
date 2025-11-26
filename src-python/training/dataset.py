@@ -10,6 +10,7 @@ from torch.utils.data import Dataset, DataLoader
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 import numpy as np
+from .feature_extractor import get_feature_extractor
 
 
 class CodeContestsDataset(Dataset):
@@ -70,9 +71,11 @@ class CodeContestsDataset(Dataset):
         
         example = self.examples[idx]
         
-        # TODO: Extract real features from code using GNN
-        # For now, use random features as placeholder
-        features = torch.randn(978)
+        # Extract real features from code using GNN feature extraction
+        code = example.get('solution', example.get('code', ''))
+        extractor = get_feature_extractor()
+        features_np = extractor.extract_features_from_code(code, language="python")
+        features = torch.from_numpy(features_np).float()
         
         # TODO: Extract real labels from solutions and tests
         # For now, use placeholder targets
