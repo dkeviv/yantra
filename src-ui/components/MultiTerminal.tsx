@@ -1,13 +1,14 @@
 // File: src-ui/components/MultiTerminal.tsx
-// Purpose: Multi-terminal component with tabs and intelligent execution
+// Purpose: Multi-terminal component with VSCode-style interface
 // Dependencies: solid-js, terminalStore
-// Last Updated: November 23, 2025
+// Last Updated: November 28, 2025
 
 import { Component, For, Show, createSignal } from 'solid-js';
 import { terminalStore } from '../stores/terminalStore';
 
 const MultiTerminal: Component = () => {
   const [commandInput, setCommandInput] = createSignal('');
+  const [showTerminalDropdown, setShowTerminalDropdown] = createSignal(false);
 
   const handleExecuteCommand = async () => {
     const command = commandInput().trim();
@@ -29,125 +30,97 @@ const MultiTerminal: Component = () => {
 
   const handleKeyPress = (e: KeyboardEvent) => {
     if (e.key === 'Enter') {
+      e.preventDefault();
       handleExecuteCommand();
     }
   };
 
   return (
-    <div class="flex flex-col h-full bg-gray-900">
-      {/* Terminal Tabs */}
-      <div class="flex bg-gray-800 border-b border-gray-700 overflow-x-auto">
-        <For each={terminalStore.terminals()}>
-          {(terminal) => (
-            <div
-              class={`flex items-center px-4 py-2 border-r border-gray-700 cursor-pointer transition-colors ${
-                terminalStore.activeTerminalId() === terminal.id
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-              }`}
-              onClick={() => terminalStore.setActiveTerminal(terminal.id)}
+    <div class="flex flex-col h-full bg-gray-900 font-mono">
+      {/* Title Bar with Controls */}
+      <div class="flex items-center justify-between bg-gray-800 border-b border-gray-700 px-3 py-1">
+        <div class="flex items-center gap-2">
+          {/* Terminal selector dropdown */}
+          <div class="relative">
+            <button
+              onClick={() => setShowTerminalDropdown(!showTerminalDropdown())}
+              class="flex items-center gap-1 px-2 py-1 text-xs text-gray-300 hover:bg-gray-700 rounded transition-colors"
             >
-              <span class="text-sm mr-2">{terminal.name}</span>
-              <span
-                class={`w-2 h-2 rounded-full mr-2 ${
-                  terminal.status === 'idle'
-                    ? 'bg-green-500'
-                    : terminal.status === 'busy'
-                    ? 'bg-yellow-500 animate-pulse'
-                    : 'bg-red-500'
-                }`}
-              />
-              <Show when={terminalStore.terminals().length > 1}>
-                <button
-                  class="text-gray-500 hover:text-white ml-1"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    terminalStore.closeTerminal(terminal.id);
-                  }}
-                >
-                  ×
-                </button>
-              </Show>
-            </div>
-          )}
-        </For>
-        
-        {/* New Terminal Button */}
-        <button
-          class="px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-          onClick={() => terminalStore.createTerminal()}
-          title="New Terminal"
-        >
-          + New
-        </button>
-      </div>
-
-      {/* Terminal Stats Bar */}
-      <div class="px-4 py-2 bg-gray-800 border-b border-gray-700 text-xs text-gray-400">
-        <span class="mr-4">
-          📊 Total: {terminalStore.getStats().total}
-        </span>
-        <span class="mr-4 text-green-400">
-          ✓ Idle: {terminalStore.getStats().idle}
-        </span>
-        <span class="mr-4 text-yellow-400">
-          ⚡ Busy: {terminalStore.getStats().busy}
-        </span>
-        <Show when={terminalStore.getStats().error > 0}>
-          <span class="text-red-400">
-            ✗ Error: {terminalStore.getStats().error}
-          </span>
-        </Show>
-      </div>
-
-      {/* Active Terminal Output */}
-      <div class="flex-1 overflow-y-auto p-4 font-mono text-sm">
-        <Show
-          when={terminalStore.getActiveTerminal()}
-          fallback={<div class="text-gray-500">No terminal active</div>}
-        >
-          {(terminal) => (
-            <>
-              <div class="text-gray-400 mb-2">
-                {terminal().name} - Status: {terminal().status}
+              <span>{terminalStore.getActiveTerminal()?.name || 'Terminal'}</span>
+              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            
+            {/* Dropdown menu */}
+            <Show when={showTerminalDropdown()}>
+              <div class="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-700 rounded shadow-lg z-10 min-w-[150px]">
+                <For each={terminalStore.terminals()}>
+                  {(terminal) => (
+                    <button
+                      onClick={() => {
+                        terminalStore.setActiveTerminal(terminal.id);
+                        setShowTerminalDropdown(false);
+                      }}
+                      class={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-gray-700 transition-colors ${
+                        terminalStore.activeTerminalId() === terminal.id ? 'bg-gray-700' : ''
+                      }`}
+                    >
+                      <span class="text-gray-300">{terminal.name}</span>
+                      <span
+                        class={`w-1.5 h-1.5 rounded-full ${
+                          terminal.status === 'idle'
+                            ? 'bg-green-500'
+                            : terminal.status === 'busy'
+                            ? 'bg-yellow-500'
+                            : 'bg-red-500'
+                        }`}
+                      />
+                    </button>
+                  )}
+                </For>
               </div>
-              <Show when={terminal().currentCommand}>
-                <div class="text-yellow-400 mb-2">
-                  Running: {terminal().currentCommand}
-                </div>
-              </Show>
-              <For each={terminal().output}>
-                {(line) => (
-                  <div class="text-gray-300">
-                    {line}
-                  </div>
-                )}
-              </For>
-            </>
-          )}
-        </Show>
-      </div>
+            </Show>
+          </div>
 
-      {/* Command Input */}
-      <div class="border-t border-gray-700 p-4 bg-gray-800">
-        <div class="flex items-center">
-          <span class="text-primary-400 mr-2">$</span>
-          <input
-            type="text"
-            value={commandInput()}
-            onInput={(e) => setCommandInput(e.currentTarget.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Enter command..."
-            class="flex-1 bg-gray-900 text-white px-3 py-2 rounded border border-gray-700 focus:border-primary-500 focus:outline-none"
-            disabled={!terminalStore.canExecuteCommand()}
-          />
+          {/* Terminal count indicator */}
+          <span class="text-xs text-gray-500">
+            ({terminalStore.terminals().length})
+          </span>
+        </div>
+
+        {/* Action buttons */}
+        <div class="flex items-center gap-1">
+          {/* New terminal */}
           <button
-            onClick={handleExecuteCommand}
-            disabled={!commandInput().trim() || !terminalStore.canExecuteCommand()}
-            class="ml-2 px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700 disabled:bg-gray-700 disabled:cursor-not-allowed transition-colors"
+            onClick={() => terminalStore.createTerminal()}
+            class="p-1 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
+            title="New Terminal"
           >
-            Execute
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
           </button>
+
+          {/* Delete terminal */}
+          <Show when={terminalStore.terminals().length > 1}>
+            <button
+              onClick={() => {
+                const terminal = terminalStore.getActiveTerminal();
+                if (terminal) {
+                  terminalStore.closeTerminal(terminal.id);
+                }
+              }}
+              class="p-1 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
+              title="Close Terminal"
+            >
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </Show>
+
+          {/* Clear output */}
           <button
             onClick={() => {
               const terminal = terminalStore.getActiveTerminal();
@@ -155,14 +128,58 @@ const MultiTerminal: Component = () => {
                 terminalStore.clearOutput(terminal.id);
               }
             }}
-            class="ml-2 px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600 transition-colors"
+            class="p-1 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
+            title="Clear Output"
           >
-            Clear
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
         </div>
-        <div class="text-xs text-gray-500 mt-2">
-          Press Enter to execute • {terminalStore.getIdleTerminals().length} terminal(s) available
-        </div>
+      </div>
+
+      {/* Terminal Body */}
+      <div class="flex-1 overflow-y-auto p-2 text-sm bg-black">
+        <Show
+          when={terminalStore.getActiveTerminal()}
+          fallback={<div class="text-gray-500">No terminal active</div>}
+        >
+          {(terminal) => (
+            <div class="space-y-1">
+              {/* Output lines */}
+              <For each={terminal().output}>
+                {(line) => (
+                  <div class="text-gray-300">{line}</div>
+                )}
+              </For>
+
+              {/* Current command indicator */}
+              <Show when={terminal().currentCommand}>
+                <div class="text-yellow-400">
+                  <span class="text-green-400">$ </span>
+                  {terminal().currentCommand}
+                  <span class="animate-pulse">_</span>
+                </div>
+              </Show>
+
+              {/* Input prompt */}
+              <div class="flex items-center">
+                <span class="text-green-400 mr-2">$</span>
+                <input
+                  type="text"
+                  value={commandInput()}
+                  onInput={(e) => setCommandInput(e.currentTarget.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Type command here..."
+                  aria-label="Terminal command input"
+                  class="flex-1 bg-transparent text-gray-300 outline-none border-none"
+                  disabled={!terminalStore.canExecuteCommand()}
+                  autofocus
+                />
+              </div>
+            </div>
+          )}
+        </Show>
       </div>
     </div>
   );

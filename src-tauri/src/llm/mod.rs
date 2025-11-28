@@ -51,6 +51,45 @@ pub struct CodeGenerationResponse {
     pub tokens_used: u32,
 }
 
+/// Chat message for conversation history
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChatMessage {
+    pub role: String,  // "user" or "assistant"
+    pub content: String,
+}
+
+/// Intent detected from user message
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum Intent {
+    #[serde(rename = "code_generation")]
+    CodeGeneration,
+    #[serde(rename = "code_modification")]
+    CodeModification,
+    #[serde(rename = "terminal_command")]
+    TerminalCommand,
+    #[serde(rename = "ui_control")]
+    UIControl,
+    #[serde(rename = "question")]
+    Question,
+    #[serde(rename = "general")]
+    General,
+}
+
+/// Action to be taken based on intent
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DetectedAction {
+    pub action_type: String,  // "generate_code", "run_command", "show_panel", etc.
+    pub parameters: std::collections::HashMap<String, String>,
+}
+
+/// Response from chat API
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChatResponse {
+    pub response: String,
+    pub intent: Intent,
+    pub action: Option<DetectedAction>,
+}
+
 /// Common error type for LLM operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LLMError {

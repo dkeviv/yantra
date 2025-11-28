@@ -255,6 +255,121 @@ impl LLMOrchestrator {
             is_retryable: false,
         }))
     }
+
+    /// Natural language chat with intent detection
+    pub async fn chat(
+        &self,
+        message: &str,
+        _conversation_history: &[super::ChatMessage],
+    ) -> Result<super::ChatResponse, LLMError> {
+        use super::{Intent, DetectedAction, ChatResponse};
+        use std::collections::HashMap;
+
+        // Simple intent detection without calling LLM (for now)
+        let lower_message = message.to_lowercase();
+
+        // Detect intent from message patterns
+        let intent = if lower_message.contains("create") || lower_message.contains("generate") 
+            || lower_message.contains("write") || lower_message.contains("build")
+            || lower_message.contains("make") {
+            Intent::CodeGeneration
+        } else if lower_message.starts_with("run ") || lower_message.starts_with("execute ")
+            || lower_message.contains("npm ") || lower_message.contains("cargo ")
+            || lower_message.contains("python ") {
+            Intent::TerminalCommand
+        } else if lower_message.contains("show ") || lower_message.contains("open ")
+            || lower_message.contains("close ") || lower_message.contains("toggle ") {
+            Intent::UIControl
+        } else if lower_message.contains("fix ") || lower_message.contains("update ")
+            || lower_message.contains("modify ") || lower_message.contains("refactor ") {
+            Intent::CodeModification
+        } else if lower_message.contains("?") || lower_message.starts_with("what ")
+            || lower_message.starts_with("how ") || lower_message.starts_with("why ") {
+            Intent::Question
+        } else {
+            Intent::General
+        };
+
+        // Generate appropriate response based on intent
+        let response = match intent {
+            Intent::CodeGeneration => {
+                format!("I understand you want to {}. Let me generate that code for you...\n\n✨ This will create production-quality code with:\n• Auto-generated unit tests\n• Security scanning\n• Dependency analysis\n\n(Code generation coming soon - LLM integration in progress)", message)
+            }
+            Intent::TerminalCommand => {
+                // Extract and execute command
+                let command = if let Some(cmd) = lower_message.strip_prefix("run ") {
+                    cmd.to_string()
+                } else if let Some(cmd) = lower_message.strip_prefix("execute ") {
+                    cmd.to_string()
+                } else {
+                    message.to_string()
+                };
+                format!("Executing command: `{}`", command)
+            }
+            Intent::UIControl => {
+                "I'll adjust the UI for you...".to_string()
+            }
+            Intent::CodeModification => {
+                "I'll help you modify the code...".to_string()
+            }
+            Intent::Question => {
+                "That's a great question! Let me help you understand...".to_string()
+            }
+            Intent::General => {
+                "I'm Yantra, your AI development assistant. I can help you:\n\n• **Generate code**: \"create a React component\"\n• **Run commands**: \"run npm test\"\n• **Control UI**: \"show dependencies\"\n• **Answer questions**: \"how does this work?\"\n\nWhat would you like to do?".to_string()
+            }
+        };
+
+        // Extract action based on intent
+        let action = match intent {
+            Intent::TerminalCommand => {
+                let command = if let Some(cmd) = lower_message.strip_prefix("run ") {
+                    cmd.to_string()
+                } else if let Some(cmd) = lower_message.strip_prefix("execute ") {
+                    cmd.to_string()
+                } else {
+                    message.to_string()
+                };
+
+                let mut params = HashMap::new();
+                params.insert("command".to_string(), command);
+                Some(DetectedAction {
+                    action_type: "run_command".to_string(),
+                    parameters: params,
+                })
+            }
+            Intent::UIControl => {
+                let mut params = HashMap::new();
+                if lower_message.contains("dependencies") {
+                    params.insert("panel".to_string(), "dependencies".to_string());
+                } else if lower_message.contains("terminal") {
+                    params.insert("panel".to_string(), "terminal".to_string());
+                } else if lower_message.contains("file") {
+                    params.insert("panel".to_string(), "filetree".to_string());
+                }
+
+                Some(DetectedAction {
+                    action_type: "toggle_panel".to_string(),
+                    parameters: params,
+                })
+            }
+            Intent::CodeGeneration => {
+                let mut params = HashMap::new();
+                params.insert("intent".to_string(), message.to_string());
+                Some(DetectedAction {
+                    action_type: "generate_code".to_string(),
+                    parameters: params,
+                })
+            }
+            _ => None,
+        };
+
+        Ok(ChatResponse {
+            response,
+            intent,
+            action,
+        })
+    }
 }
 
 #[cfg(test)]

@@ -34,6 +34,7 @@ pub mod state;
 pub mod confidence;
 pub mod validation;
 pub mod orchestrator;
+pub mod project_orchestrator;
 pub mod terminal;
 pub mod dependencies;
 pub mod execution;
@@ -50,6 +51,8 @@ pub use confidence::{ConfidenceScore, ConfidenceFactor};
 pub use validation::{ValidationResult, ValidationError, validate_dependencies};
 #[allow(unused_imports)]
 pub use orchestrator::{orchestrate_code_generation, OrchestrationResult};
+#[allow(unused_imports)]
+pub use project_orchestrator::{ProjectOrchestrator, ProjectPlan, ProjectResult, ProjectTemplate, FileToGenerate, TestSummary};
 #[allow(unused_imports)]
 pub use terminal::{TerminalExecutor, TerminalOutput, ExecutionResult};
 #[allow(unused_imports)]

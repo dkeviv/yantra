@@ -5,6 +5,7 @@
 Yantra is an AI-first development platform that generates production-quality code with a revolutionary guarantee: code that never breaks. The platform makes AI the primary developer, with humans providing intent and oversight.
 
 **Core Technology Stack:**
+
 - **Desktop Framework:** Tauri 1.5+ (Rust backend + web frontend)
 - **Frontend:** SolidJS 1.8+, Monaco Editor 0.44+, TailwindCSS 3.3+
 - **Backend:** Rust with Tokio 1.35+, SQLite 3.44+, petgraph 0.6+ for GNN
@@ -15,13 +16,35 @@ Yantra is an AI-first development platform that generates production-quality cod
 
 ## Critical Documentation Requirements
 
+### Documentation SSOT (Single Source of Truth)
+
+**Updated:** November 27, 2025
+
+All documentation follows a strict Single Source of Truth (SSOT) policy to prevent confusion and duplication. Always reference these canonical paths:
+
+| Document | SSOT Location | Description | Last Updated |
+|----------|---------------|-------------|--------------|
+| **Specifications** | `.github/Specifications.md` | Product specifications, features, all phases (1-4), pair programming, Clean Code Mode | Nov 26, 2025 |
+| **Technical Guide** | `Technical_Guide.md` (root) | Implementation details, architecture decisions, 15 components with code references, Data Storage Architecture | Nov 27, 2025 |
+| **Implementation Status & Planning** | `IMPLEMENTATION_STATUS.md` (root) | **PRIMARY PLANNING DOCUMENT**: Feature tracking AND project planning. Tracks 111 features (35/70 MVP done). Replaces deprecated Project_Plan.md. Use this for all planning and status tracking. | Nov 27, 2025 |
+| **Features** | `Features.md` (root) | User-facing feature documentation | Nov 20, 2025 |
+| **UX Guide** | `UX.md` (root) | User flows from user perspective (admin + end-user) | Nov 20, 2025 |
+| **File Registry** | `File_Registry.md` (root) | File inventory, purposes, dependencies, deprecation tracking | Nov 27, 2025 |
+| **Decision Log** | `Decision_Log.md` (root) | Architecture and design decision history | - |
+| **Known Issues** | `Known_Issues.md` (root) | Bug tracking and fixes | - |
+
+**DEPRECATED FILES (Keep for historical reference, DO NOT UPDATE):**
+- ~~`Project_Plan.md`~~ - Replaced by `IMPLEMENTATION_STATUS.md` (Nov 27, 2025). Reason: Duplicate timelines, verbose (2,708 lines), hard to maintain. IMPLEMENTATION_STATUS.md provides superior table format (872 lines), easier updates, single source of truth for planning.
+
+**IMPORTANT:** Before creating any documentation file, check the File_Registry.md to verify if it exists and confirm the SSOT location. Never create duplicates in different folders (e.g., root vs docs/ vs .github/).
+
 ### Mandatory Files to Maintain (Update Immediately After Implementation)
 
-1. **Project_Plan.md** - Track all tasks and their status
-2. **Specifications.md** - Detailed requirements for features to be implemented (design specs, UX flows, technical details)
+1. **IMPLEMENTATION_STATUS.md** - **PRIMARY PLANNING DOCUMENT**: Track all features AND project planning (replaces deprecated Project_Plan.md)
+2. **/.github/Specifications.md** - Detailed requirements for features to be implemented (design specs, UX flows, technical details)
 3. **Features.md** - Document all implemented features from user perspective with use cases
 4. **UX.md** - Explain user flows (admin and end-user) from user perspective
-5. **Technical_Guide.md** - Detailed technical information for developers:
+5. **/Technical_Guide.md** - Detailed technical information for developers:
    - How each component was implemented and why
    - Algorithm/methodology details (no code/pseudo-code)
    - References to code files and scripts
@@ -55,6 +78,7 @@ Yantra is an AI-first development platform that generates production-quality cod
 ## Code Quality Standards
 
 ### Rust Code Requirements
+
 - Use Clippy pedantic mode
 - Maintain 80%+ test coverage
 - NO panics in production code
@@ -63,6 +87,7 @@ Yantra is an AI-first development platform that generates production-quality cod
 - Document public APIs with doc comments
 
 ### Frontend Code Requirements
+
 - ESLint strict mode enabled
 - Prettier formatting enforced
 - TypeScript strict mode
@@ -70,6 +95,7 @@ Yantra is an AI-first development platform that generates production-quality cod
 - Proper state management using stores
 
 ### Generated Python Code Requirements
+
 - Follow PEP 8 style guide
 - Include type hints
 - Add comprehensive docstrings
@@ -77,6 +103,7 @@ Yantra is an AI-first development platform that generates production-quality cod
 - Generate unit tests automatically
 
 ### Git Workflow
+
 - **Branches:** `main` (production), `develop` (integration), `feature/*` (features)
 - **Commits:** Use Conventional Commits format
 - **PRs:** Required reviews, CI must pass
@@ -84,11 +111,13 @@ Yantra is an AI-first development platform that generates production-quality cod
 ## File Management
 
 ### Before Creating Any File
+
 1. Check File_Registry.md first to see if file exists
 2. Verify purpose and avoid duplicates
 3. Update registry after creating new files
 
 ### When Updating Files
+
 1. Add/update comments at the top explaining file purpose
 2. Review and update comments after completing changes
 3. Ensure comments accurately reflect current state
@@ -97,12 +126,14 @@ Yantra is an AI-first development platform that generates production-quality cod
 ## Testing Requirements (100% Compliance Mandatory)
 
 ### Automated Testing Coverage
+
 1. **Unit Tests:** 90%+ code coverage required
 2. **Integration Tests:** End-to-end flows must be tested
 3. **Performance Tests:** Benchmark critical operations (GNN, LLM calls)
 4. **Mock UI Tests:** Test UI components in isolation
 
 ### Testing Philosophy
+
 - **100% of tests MUST pass** - No exceptions
 - DO NOT change test conditions to make tests pass
 - FIX the underlying issues instead
@@ -110,6 +141,7 @@ Yantra is an AI-first development platform that generates production-quality cod
 - DO NOT ask user to accept failing tests
 
 ### Performance Targets
+
 - GNN graph build: <5s for 10k LOC (MVP), <30s for 100k LOC (scale)
 - GNN incremental update: <50ms per file change
 - Dependency lookup: <10ms
@@ -121,6 +153,7 @@ Yantra is an AI-first development platform that generates production-quality cod
 ## Implementation Strategy
 
 ### Horizontal Slices Over Vertical Slices
+
 - **Focus:** Ship features faster, not layers
 - Implement complete user-facing features incrementally
 - Each slice should deliver working functionality
@@ -129,7 +162,9 @@ Yantra is an AI-first development platform that generates production-quality cod
 ### Development Phases
 
 #### Phase 1 (Months 1-2): MVP - Code That Never Breaks
+
 **Objectives:**
+
 - Python codebase support
 - GNN for code dependencies
 - Multi-LLM orchestration
@@ -139,24 +174,28 @@ Yantra is an AI-first development platform that generates production-quality cod
 - Git integration via MCP
 
 **Success Metrics:**
+
 - 95%+ generated code passes tests without human intervention
 - Zero breaking changes to existing code
 - <3% critical security vulnerabilities (auto-fixed)
 - Developer NPS >40
 
 #### Phase 2 (Months 3-4): Workflow Foundation
+
 - Workflow execution runtime
 - Cron scheduler and webhook triggers
 - External API integration (Slack, SendGrid, Stripe)
 - Multi-step workflows (3-5 steps)
 
 #### Phase 3 (Months 5-8): Enterprise Automation
+
 - Cross-system dependency tracking
 - Browser automation (Playwright)
 - Self-healing workflows
 - Multi-language support (Python + JavaScript)
 
 #### Phase 4 (Months 9-12): Platform Maturity
+
 - Performance optimization (99.9% uptime)
 - Advanced refactoring
 - Plugin ecosystem and marketplace
@@ -167,33 +206,35 @@ Yantra is an AI-first development platform that generates production-quality cod
 ### Core Components
 
 1. **User Interface (AI-First)**
+
    - Chat/Task Interface (primary - 60% screen)
    - Code Viewer (secondary - 25% screen)
    - Browser Preview (live - 15% screen)
-
 2. **Orchestration Layer**
+
    - Multi-LLM Manager (Claude primary, GPT-4 secondary)
    - Routing and failover logic
    - Cost optimization through smart routing
-
 3. **Intelligence Layer**
+
    - Graph Neural Network (GNN) for dependencies
    - Vector Database (RAG) for templates and patterns
    - External API tracking
    - Data flow analysis
-
 4. **Validation Layer**
+
    - Testing engine (pytest/jest)
    - Security scanner (Semgrep)
    - Browser integration (CDP)
    - Dependency validator (GNN)
-
 5. **Integration Layer**
+
    - Git (MCP Protocol)
    - File system operations
    - External APIs
 
 ### GNN Implementation
+
 - Use petgraph for graph operations
 - tree-sitter for parsing (Python, JS, etc.)
 - SQLite for persistence
@@ -201,6 +242,7 @@ Yantra is an AI-first development platform that generates production-quality cod
 - Track: functions, classes, imports, calls, data flow
 
 ### LLM Integration
+
 - Primary: Claude Sonnet 4
 - Secondary: GPT-4 Turbo (validation/fallback)
 - Implement rate limiting
@@ -211,6 +253,7 @@ Yantra is an AI-first development platform that generates production-quality cod
 ## Security & Privacy
 
 ### Data Handling
+
 - User code never leaves machine unless explicitly sent to LLM APIs
 - Encrypt LLM calls in transit (HTTPS)
 - No code storage on Yantra servers
@@ -218,6 +261,7 @@ Yantra is an AI-first development platform that generates production-quality cod
 - Usage analytics only, no PII (opt-in)
 
 ### Security Scanning
+
 - Run Semgrep with OWASP rules
 - Check dependencies (Safety for Python, npm audit)
 - Scan for secrets using TruffleHog patterns
@@ -238,6 +282,7 @@ Yantra is an AI-first development platform that generates production-quality cod
 7. **State Management:** Immutable updates in SolidJS stores
 
 ### Error Recovery
+
 - Provide clear error messages to users
 - Log errors with full context for debugging
 - Implement automatic retry for transient failures
@@ -246,6 +291,7 @@ Yantra is an AI-first development platform that generates production-quality cod
 ## Code Generation Guidelines
 
 ### When Generating Code
+
 1. Always check GNN for existing dependencies
 2. Generate comprehensive unit tests
 3. Include integration tests for external interactions
@@ -254,6 +300,7 @@ Yantra is an AI-first development platform that generates production-quality cod
 6. Commit with descriptive message
 
 ### Code Quality Checklist
+
 - [ ] Follows language-specific style guide
 - [ ] Includes type hints/annotations
 - [ ] Has comprehensive docstrings/comments
@@ -266,6 +313,7 @@ Yantra is an AI-first development platform that generates production-quality cod
 ## User Experience Guidelines
 
 ### UI/UX Principles
+
 - AI-first interface: Chat is primary interaction
 - Code viewer for transparency and learning
 - Live preview for immediate feedback
@@ -274,6 +322,7 @@ Yantra is an AI-first development platform that generates production-quality cod
 - Keyboard shortcuts for power users
 
 ### Response Times
+
 - UI interactions: <100ms
 - Code generation: <3s (LLM dependent)
 - Full validation cycle: <2 minutes
@@ -282,6 +331,7 @@ Yantra is an AI-first development platform that generates production-quality cod
 ## Development Workflow
 
 ### Starting New Feature
+
 1. Create feature branch: `feature/your-feature`
 2. Update Project_Plan.md with tasks
 3. Implement in horizontal slices
@@ -292,6 +342,7 @@ Yantra is an AI-first development platform that generates production-quality cod
 8. Create PR with detailed description
 
 ### Before Committing
+
 1. Run linters: `cargo clippy` and `npm run lint`
 2. Run tests: `cargo test` and `npm test`
 3. Check coverage: `cargo tarpaulin`
@@ -300,6 +351,7 @@ Yantra is an AI-first development platform that generates production-quality cod
 6. Review generated code for quality
 
 ### Code Review Checklist
+
 - [ ] All tests pass (100%)
 - [ ] Documentation updated
 - [ ] File_Registry.md updated
@@ -312,6 +364,7 @@ Yantra is an AI-first development platform that generates production-quality cod
 ## Continuous Improvement
 
 ### Learning from Issues
+
 - Document all recurring issues in this file
 - Update Decision_Log.md for architectural changes
 - Refine prompts based on LLM output quality
@@ -319,6 +372,7 @@ Yantra is an AI-first development platform that generates production-quality cod
 - Gather user feedback and iterate
 
 ### Metrics to Track
+
 - Code generation success rate (target: 95%+)
 - Test pass rate (target: 100%)
 - Security scan results (target: <3% critical)
@@ -330,6 +384,7 @@ Yantra is an AI-first development platform that generates production-quality cod
 ## Communication Guidelines
 
 ### With Users
+
 - Be transparent about capabilities and limitations
 - Provide clear progress updates
 - Explain decisions and tradeoffs
@@ -337,6 +392,7 @@ Yantra is an AI-first development platform that generates production-quality cod
 - Offer multiple solutions when appropriate
 
 ### In Documentation
+
 - Use clear, concise language
 - Include examples and use cases
 - Keep technical accuracy
@@ -376,16 +432,21 @@ yantra/
 ## Success Criteria
 
 ### MVP (Month 2)
+
 - 20 beta users successfully generating code
-- >90% of generated code passes tests
+- > 90% of generated code passes tests
+  >
 - NPS >40
 
 ### Month 6
+
 - 10,000 active users
-- >95% code success rate
+- > 95% code success rate
+  >
 - 50%+ user retention
 
 ### Month 12
+
 - 50,000 active users
 - Workflow automation live
 - 80%+ retention

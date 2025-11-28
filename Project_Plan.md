@@ -1,48 +1,394 @@
-# Yantra - Project Plan (Warp-Speed MVP)
+# Yantra - Project Plan (Warp-Speed MVP + Yantra Codex Pair Programming)
 
-**Project:** Yantra - AI-First Development Platform with GraphSAGE Codex  
-**Phase:** MVP Phase 1 (Code Generation) + Foundation for Phase 2 (Test Generation)  
-**Timeline:** 20 Days (4 Weeks)  
-**Start Date:** November 25, 2025  
-**Target Completion:** December 15, 2025 (Soft Launch)
+**Project:** Yantra - AI-First Development Platform with Pair Programming Intelligence  
+**Phase:** MVP Phase 1 (Yantra Codex + LLM Pair Programming) + Continuous Learning  
+**Timeline:** 4 Weeks for Yantra Codex MVP  
+**Start Date:** November 26, 2025  
+**Target Completion:** December 24, 2025
 
 ---
 
-## Architecture Summary
+## 🔥 PRIORITY: Yantra Codex Pair Programming (4 Weeks)
 
-**Multi-Tier Learning System:**
-- **Tier 1:** Local GraphSAGE (140 MB, <10ms inference, 70-85% after training)
-- **Tier 2:** DeepSeek V3 Coder via OpenRouter (open-source, $0.0014/1K tokens)
-- **Tier 3:** User-configured premium LLMs (optional, user pays)
-- **Tier 4:** Crowd learning (federated, privacy-preserving)
+**Vision:** Hybrid AI system combining GNN speed + LLM reasoning for optimal cost & quality
+
+**Default Mode:** Yantra Codex + LLM (Claude/GPT-4) Pair Programming with Continuous Learning
+
+**Critical Decisions (Nov 26, 2025):**
+1. ✅ **Pair Programming Architecture** - Yantra generates → LLM reviews → Yantra learns
+2. ✅ **1024 dimensions** (not 256) - Cost negligible, benefit significant (15-20% accuracy)
+3. ✅ **Confidence-Based Routing** - Smart routing: Yantra alone / Yantra+LLM / LLM alone
+4. ✅ **Continuous Learning** - Yantra learns from LLM fixes → reduces cost over time
+5. ✅ **User Choice** - Configure Claude, GPT-4, or other premium LLMs
+
+**Cost & Quality Benefits:**
+- **Month 1:** 64% cost savings (Yantra 55% confident, LLM review 45%)
+- **Month 6:** 90% cost savings (Yantra 85% confident, LLM review 15%)
+- **Year 1:** 96% cost savings (Yantra 95% confident, LLM review 5%)
+- **Quality:** Yantra + LLM ≥ LLM alone (pair programming is better!)
+
+**Accuracy Targets:**
+- Month 1: 55-60% Yantra alone, 95%+ with LLM review
+- Month 6: 75-80% Yantra alone, 98%+ with LLM review
+- Year 2: 85% Yantra alone, 99%+ with LLM review
+- Year 3+: 90-95% Yantra alone, 99.5%+ with LLM review
+
+### Week 1 (Nov 26 - Dec 2): Extract Logic Patterns + Confidence Scoring Foundation
+
+**Status:** 🔴 NOT STARTED
+
+**Goal:** Create training dataset: 6,508 problems → logic patterns (1024-dim) + Build confidence scoring foundation
+
+#### Tasks
+
+**Logic Pattern Extraction (Foundation for Yantra Codex):**
+
+- [ ] **Create scripts/extract_logic_patterns.py**
+  - Extract universal logic patterns (not just AST syntax)
+  - Use existing Tree-sitter parsers (parser.rs, parser_js.rs)
+  - Classify: null_check, validation, iteration, db_query, error_handling, api_call
+  - Encode to 1024-dim embeddings
+  - Output: `~/.yantra/datasets/logic_patterns.jsonl`
+  - **Target:** Process all 6,508 CodeContests solutions
+  - **Dependencies:** Tree-sitter parsers (READY), CodeContests dataset (READY)
+  - **Estimate:** 2 days
+
+- [ ] **Validate extracted patterns**
+  - Check: Each pattern has problem_features (978-dim) and logic_pattern (1024-dim)
+  - Verify: Coverage across complexity levels
+  - Test: Sample 100 patterns manually
+  - **Target:** 95%+ extraction success rate
+  - **Estimate:** 1 day
+
+- [ ] **Create pattern visualization tool**
+  - Visualize logic patterns in 2D (t-SNE/UMAP)
+  - Cluster similar patterns
+  - Identify pattern categories
+  - **Target:** Understand pattern distribution
+  - **Estimate:** 1 day
+
+**Confidence Scoring Foundation (New for Pair Programming):**
+
+- [ ] **Design confidence scoring algorithm**
+  - Factor 1: Pattern frequency in training data (0.0-0.3 weight)
+  - Factor 2: Embedding distance to nearest neighbor (0.0-0.3 weight)
+  - Factor 3: Historical test success rate (0.0-0.4 weight)
+  - Combined score: 0.0-1.0 (higher = more confident)
+  - **Target:** Design complete confidence calculation
+  - **Estimate:** 0.5 days
+
+- [ ] **Create src-tauri/src/codex/confidence.rs (skeleton)**
+  - Define `ConfidenceScore` struct
+  - Define `ConfidenceCalculator` trait
+  - Stub methods: `calculate_pattern_frequency()`, `calculate_embedding_distance()`, `calculate_test_success_rate()`
+  - **Target:** API ready for Week 2 implementation
+  - **Estimate:** 0.5 days
+
+### Week 2 (Dec 3-9): Train GraphSAGE + Confidence Scoring + LLM Integration Prep
+
+**Status:** 🔴 NOT STARTED
+
+**Goal:** GNN predicts 1024-dim logic patterns from 978-dim problem features + Implement confidence scoring + Prepare LLM integration
+
+#### Tasks
+
+**GraphSAGE Training (Core GNN):**
+
+- [ ] **Update src-python/model/graphsage.py to 1024 dims**
+  - Change architecture: 978 → 1536 → 1280 → 1024
+  - Parameters: ~150M (up from ~50M at 256 dims)
+  - Model size: ~600 MB
+  - Add prediction heads: logic_pattern, confidence, complexity
+  - **Estimate:** 1 day
+
+- [ ] **Create scripts/train_on_logic_patterns.py**
+  - Load logic_patterns.jsonl dataset
+  - Train/val split: 80/20
+  - Loss: MSE on 1024-dim embeddings
+  - Target: <0.1 MSE on validation
+  - Early stopping with patience=10
+  - Save best model: models/yantra_codex_v1.pt
+  - Track pattern frequency for confidence scoring
+  - **Estimate:** 2 days
+
+- [ ] **Evaluate on HumanEval benchmark**
+  - Test on 164 HumanEval problems
+  - Generate code → Run tests → Measure pass rate
+  - **Target:** 55-60% accuracy
+  - Compare with LLM-generated code
+  - **Estimate:** 1 day
+
+**Confidence Scoring Implementation (New for Pair Programming):**
+
+- [ ] **Implement src-tauri/src/codex/confidence.rs**
+  - Implement `calculate_pattern_frequency()`: Track pattern occurrences in training data
+  - Implement `calculate_embedding_distance()`: Cosine similarity to nearest neighbors
+  - Implement `calculate_test_success_rate()`: Historical success from experience buffer
+  - Implement `get_confidence_score()`: Combine all factors → 0.0-1.0
+  - Unit tests: Verify score ranges, edge cases
+  - **Estimate:** 1.5 days
+
+- [ ] **Integrate confidence scoring with generator**
+  - Update generator.rs to return (code, confidence_score)
+  - Test: Verify confidence correlates with actual success rate
+  - Calibrate thresholds: 0.9 (high confidence), 0.8 (medium), 0.5 (low)
+  - **Estimate:** 0.5 days
+
+**LLM Integration Preparation (New for Pair Programming):**
+
+- [ ] **Design LLM review interface**
+  - Define `ReviewRequest` struct: (code, context, confidence_score, problem_description)
+  - Define `ReviewResponse` struct: (improved_code, explanation, test_cases, confidence_boost)
+  - Define routing logic: confidence < 0.8 → trigger LLM review
+  - **Estimate:** 0.5 days
+
+- [ ] **Verify LLM orchestrator readiness**
+  - Test existing orchestrator.rs with Claude/GPT-4
+  - Verify circuit breaker works for failover
+  - Test rate limiting and retry logic
+  - Document API endpoints for code review
+  - **Estimate:** 0.5 days
+
+### Week 3 (Dec 10-16): Code Generation Pipeline + Pair Programming Orchestrator
+
+**Status:** 🔴 NOT STARTED
+
+**Goal:** Problem → GNN Logic → Tree-sitter Code (multi-language) + Pair Programming Orchestrator + Smart Routing + LLM Reviewer
+
+#### Tasks
+
+**Code Generation Pipeline (Core):**
+
+- [ ] **Create src-tauri/src/codex/generator.rs (with smart routing)**
+  - Implement: Problem → Features (978-dim)
+  - Call Python: GNN predicts logic pattern (1024-dim)
+  - Calculate confidence score (using confidence.rs)
+  - **SMART ROUTING:**
+    - If confidence ≥ 0.9: Return Yantra code immediately (high confidence path)
+    - If 0.8 ≤ confidence < 0.9: Return Yantra code + validate with tests (medium confidence)
+    - If 0.5 ≤ confidence < 0.8: Trigger LLM review (low confidence)
+    - If confidence < 0.5: Route to LLM completely (novel pattern)
+  - Decode: Logic embedding → Logic steps
+  - Route to Tree-sitter: Generate language-specific code
+  - Return: (code, confidence, routing_decision)
+  - **Estimate:** 2 days
+
+- [ ] **Create src-tauri/src/codex/decoder.rs**
+  - Decode 1024-dim embedding → LogicStep enum
+  - Handle: NullCheck, ValidationCheck, DatabaseQuery, Iteration, ErrorHandling, ApiCall
+  - Convert to AST structure for Tree-sitter
+  - **Estimate:** 1 day
+
+- [ ] **Extend Tree-sitter integration for code generation**
+  - Python: Generate from LogicStep[] → Python code
+  - JavaScript: Generate from LogicStep[] → JS code
+  - Test: Same logic pattern → Different languages
+  - Verify: Syntactically correct code
+  - **Estimate:** 1 day
+
+**Pair Programming Components (New):**
+
+- [ ] **Create src-tauri/src/codex/pair_programming.rs (orchestrator)**
+  - Implement `PairProgrammingOrchestrator` struct
+  - Method: `generate_with_review(problem) → PairResult`
+  - Workflow:
+    1. Call Yantra generator → (yantra_code, confidence)
+    2. If confidence < 0.8: Call LLM reviewer → (improved_code, explanation)
+    3. Merge results: Choose best version or combine
+    4. Validate with tests
+    5. Return final code + metadata
+  - Track: Yantra-only count, LLM-review count, cost savings
+  - **Estimate:** 2 days
+
+- [ ] **Create src-tauri/src/codex/llm_reviewer.rs**
+  - Implement `LLMReviewer` struct
+  - Method: `review_code(yantra_code, problem, confidence) → ReviewResult`
+  - Use existing LLM orchestrator (orchestrator.rs)
+  - Prompt engineering: "Review this code generated by Yantra GNN. Enhance error handling, edge cases, and add tests."
+  - Parse LLM response: Extract improved code, explanation, test cases
+  - Timeout: 10s with fallback to Yantra code
+  - **Estimate:** 1.5 days
+
+- [ ] **Integration testing (pair programming flow)**
+  - End-to-end: "Validate email and save to DB" → Python/JS code
+  - Test 50 problems across confidence ranges
+  - Measure: 
+    - High confidence (≥0.9): Yantra alone accuracy
+    - Medium confidence (0.8-0.9): Yantra alone + test validation accuracy
+    - Low confidence (0.5-0.8): Yantra + LLM review accuracy
+    - Novel patterns (<0.5): LLM alone accuracy
+  - **Target:** 95%+ overall pass rate (up from 55-60% GNN-only)
+  - Track cost: Calculate LLM API calls and savings vs LLM-only
+  - **Estimate:** 1.5 days
+
+### Week 4 (Dec 17-24): Continuous Learning System + Experience Buffer + Incremental Fine-Tuning
+
+**Status:** 🔴 NOT STARTED
+
+**Goal:** Yantra learns from LLM fixes → Confidence increases → Cost decreases over time
+
+#### Tasks
+
+**Experience Buffer & Learning Loop (Core Learning System):**
+
+- [ ] **Create src-python/learning/online_learner.py (enhanced)**
+  - Experience replay buffer (capacity: 1000)
+  - Store: (problem_features, yantra_code, llm_improved_code, confidence_score, test_result, timestamp)
+  - **NEW:** Store LLM fixes separately for focused learning
+  - Adaptive threshold: Start 0.3, increase to 0.7 as accuracy improves
+  - Incremental updates: Train on new patterns every 100 examples
+  - Priority sampling: Weight LLM-improved examples higher
+  - **Estimate:** 2 days
+
+- [ ] **Create src-python/learning/incremental_learner.py**
+  - Implement incremental GNN fine-tuning
+  - Method: `learn_from_experience_batch(experiences[]) → updated_model`
+  - Use small learning rate (0.0001) to avoid catastrophic forgetting
+  - Loss: MSE on logic patterns + contrastive loss (Yantra vs LLM code)
+  - Validation: Test on held-out examples after each update
+  - Track: Confidence improvement for learned patterns
+  - Save checkpoints: models/yantra_codex_v1_checkpoint_{timestamp}.pt
+  - **Estimate:** 2 days
+
+- [ ] **Implement feedback loop integration**
+  - User generates code with pair programming orchestrator
+  - Run tests automatically
+  - **If Yantra alone passed:** Confidence boost +0.05 for similar patterns
+  - **If LLM improved:** Extract logic difference → Add to experience buffer → Trigger learning
+  - **If both failed:** Mark as hard example, route to LLM completely next time
+  - Track metrics: Yantra-only %, LLM-review %, accuracy progression, cost savings
+  - **Estimate:** 1.5 days
+
+**Analytics & Monitoring (Learning Dashboard):**
+
+- [ ] **Create learning analytics dashboard**
+  - Dashboard: GNN accuracy over time (by confidence bucket)
+  - Track: 
+    - Patterns learned count
+    - Confidence distribution (how many patterns in 0.9+, 0.8-0.9, 0.5-0.8, <0.5)
+    - Cost savings progression (estimated $ saved vs LLM-only)
+    - LLM review rate trend (should decrease over time)
+  - Visualize: Confidence improvement for individual patterns
+  - Alert: If accuracy drops below threshold or learning stalls
+  - Export: Successful patterns to Yantra Cloud (privacy-preserving, opt-in)
+  - **Estimate:** 1.5 days
+
+**Continuous Learning Integration:**
+
+- [ ] **Implement continuous learning scheduler**
+  - Background task: Check experience buffer every 10 minutes
+  - If buffer has ≥100 new experiences: Trigger incremental fine-tuning
+  - Update confidence scores after each training cycle
+  - Validate: Test on validation set, rollback if accuracy drops
+  - **Estimate:** 1 day
+
+- [ ] **Prepare for Yantra Cloud Codex (opt-in, privacy-preserving)**
+  - Design API: Upload anonymous logic patterns (embeddings only, never actual code)
+  - Privacy: Hash problem descriptions, send only embeddings + metadata
+  - Aggregation: Collect patterns from all users (federated learning approach)
+  - Retrain schedule: Weekly or 10k new patterns threshold
+  - User benefit: Download improved model weekly (90%+ accuracy after 6 months)
+  - **Estimate:** 2 days
+
+**Validation & Quality Assurance:**
+
+- [ ] **End-to-end pair programming validation**
+  - Run 200 problems through full pipeline
+  - Measure:
+    - Month 1 targets: 55-60% Yantra alone, 95%+ with LLM review
+    - Confidence calibration: High confidence should → high success rate
+    - Cost: Track actual LLM API calls vs pure LLM baseline
+    - Learning: Verify confidence increases after LLM fixes
+  - **Success criteria:**
+    - 95%+ overall accuracy
+    - 50-60% cost savings in Month 1 (Yantra handles 40-50% alone)
+    - Confidence scores correlate with success (r > 0.7)
+    - Learning loop works: Patterns improve after LLM fixes
+  - **Estimate:** 1 day
+
+---
+
+## Architecture Summary (Updated for Pair Programming)
+
+**Hybrid Intelligence: Yantra Codex + LLM Pair Programming**
+
+**Core Components:**
+1. **Yantra Codex (Junior Partner):** Local GraphSAGE (600 MB, 15ms inference, 55-95% accuracy over time)
+2. **LLM (Senior Partner):** User-configured Claude/GPT-4 (reviews when confidence < 0.8)
+3. **Confidence Scoring:** Multi-factor (pattern frequency, embedding distance, test history)
+4. **Smart Routing:** Confidence-based decision (Yantra alone / Yantra+LLM / LLM alone)
+5. **Continuous Learning:** Yantra learns from LLM fixes → Confidence increases → Cost decreases
+
+**Pair Programming Workflow:**
+```
+Problem → Yantra generates (15ms) → Confidence score (0.0-1.0)
+  ├─ If ≥0.9: Return Yantra code (high confidence, $0 cost)
+  ├─ If 0.8-0.9: Return Yantra code + test validation (medium confidence)
+  ├─ If 0.5-0.8: LLM reviews → Merge → Yantra learns (low confidence)
+  └─ If <0.5: LLM generates (novel pattern, full LLM cost)
+```
+
+**Cost Trajectory (vs LLM-only baseline $25/1000 generations):**
+- **Month 1:** $9/1000 gen (64% savings) - Yantra handles 55% alone
+- **Month 6:** $3/1000 gen (88% savings) - Yantra handles 85% alone
+- **Year 1:** $1/1000 gen (96% savings) - Yantra handles 95% alone
+
+**Quality Guarantee:** Yantra + LLM ≥ LLM alone (pair programming is better!)
 
 **MVP Focus (Month 1-2):**
-- GraphSAGE generates CODE (45-50% accuracy target)
-- LLM generates TESTS (100% reliable)
-- Learn from test-validated code ONLY
-- Bootstrap training with CodeContests dataset (13,328 examples)
+- ✅ Yantra Codex generates code (55-60% accuracy baseline)
+- ✅ Confidence scoring system (0.0-1.0)
+- ✅ Smart routing (confidence-based)
+- ✅ LLM review & enhancement (when confidence < 0.8)
+- ✅ Continuous learning (Yantra learns from LLM fixes)
+- ✅ Experience buffer + incremental fine-tuning
+- **Target:** 95%+ overall accuracy, 64% cost savings Month 1
 
-**Phase 2 (Month 3-4):**
-- GraphSAGE generates BOTH code AND tests (90-95% accuracy)
-- Self-improving system with dual learning loop
+**Phase 2 (Month 3-6):**
+- Yantra handles 85% alone (90% cost savings)
+- Cross-language pattern transfer (Python → JS, JS → Python)
+- Yantra Cloud Codex (opt-in): Federated learning from all users
+- Advanced confidence calibration (per-user, per-pattern-type)
+
+**Phase 3 (Year 1+):**
+- Yantra handles 95% alone (96% cost savings)
+- Self-improving system approaching LLM-quality solo
+- Multi-domain specialization (web, data science, DevOps)
 
 ---
 
-## Success Metrics (MVP)
+## Success Metrics (MVP - Updated for Pair Programming)
 
-- [ ] GraphSAGE model trained (45-50% baseline accuracy on code generation)
-- [ ] Bootstrap complete with CodeContests dataset (13,328 examples processed)
-- [ ] >90% of generated code passes tests (quality filter for learning)
+**Core Metrics (Week 4 Validation):**
+- [ ] ✅ Yantra Codex trained (55-60% baseline accuracy alone)
+- [ ] ✅ Confidence scoring system working (scores correlate with success, r > 0.7)
+- [ ] ✅ Smart routing implemented (confidence-based, <50ms overhead)
+- [ ] ✅ LLM review integration complete (Claude/GPT-4, <10s latency)
+- [ ] ✅ Continuous learning system functional (learns from LLM fixes)
+- [ ] ✅ Overall accuracy 95%+ (Yantra + LLM pair programming)
+- [ ] ✅ Cost savings 64% Month 1 (vs LLM-only baseline)
+- [ ] ✅ Experience buffer + incremental fine-tuning working
+- [ ] ✅ Bootstrap complete with CodeContests dataset (6,508 examples processed)
+
+**Quality Metrics:**
+- [ ] >95% of generated code passes tests (with LLM review when needed)
 - [ ] Zero breaking changes to existing code (GNN validation)
 - [ ] <3% critical security vulnerabilities (auto-fixed with Semgrep)
-- [ ] Test pass rate >90% (LLM-generated tests reliable)
-- [ ] <2 minutes total cycle (intent → commit)
-- [ ] Foundation ready for Phase 2 (test prediction heads designed, dormant)
-- [ ] 5 beta users successfully generating code with GraphSAGE
+- [ ] <2 minutes total cycle (intent → Yantra → LLM review → commit)
+
+**Learning Metrics:**
+- [ ] Confidence increases after LLM fixes (validate on 50 patterns)
+- [ ] Yantra alone accuracy improves Week 1 → Week 4 (55% → 60%+)
+- [ ] LLM review rate decreases as patterns become familiar
+
+**Business Metrics:**
+- [ ] 5 beta users successfully generating code with pair programming
+- [ ] User satisfaction: NPS >40 (transparency + cost savings)
+- [ ] Cost tracking dashboard working (show $ saved vs LLM-only)
 
 ---
 
-## Current Status (Nov 24, 2025)
+## Current Status (Nov 26, 2025)
 
 **Foundation Complete (90%):**
 - ✅ UI/UX: 100% (3-column layout, Monaco Editor, file tree, multi-terminal)
@@ -1927,6 +2273,419 @@ The Architecture View System provides interactive, AI-powered architecture visua
 
 ---
 
+## Epic: Clean Code Mode (Automated Code Hygiene System)
+
+**Status:** 📋 PLANNED (Post-MVP Feature)  
+**Priority:** High (Quality Enabler)  
+**Timeline:** 5 Weeks (Post Yantra Codex & Architecture View)  
+**Dependencies:** GNN Engine (✅), LLM Integration (✅), Testing Engine (✅)
+
+### Overview
+
+Clean Code Mode is an automated code maintenance system that continuously monitors, analyzes, and refactors codebases to maintain optimal code health. It leverages the existing GNN dependency tracking to detect dead code, perform safe refactorings, validate changes, and harden components.
+
+**Business Value:**
+- Reduces technical debt automatically
+- Prevents code rot in long-running projects
+- Saves developer time on manual code review
+- Ensures consistent code quality
+- Automates security hardening
+
+**Specification:** `Specifications.md` lines 1309+ (Clean Code Mode section)
+
+---
+
+### Week 1: Dead Code Detection & Entry Point Analysis
+
+**Status:** 🔴 NOT STARTED
+
+**Goal:** Identify genuinely dead code with high confidence
+
+#### Tasks
+
+- [ ] **Create `src-tauri/src/clean-code/` module structure**
+  - Set up module hierarchy
+  - Define core types and traits
+  - **Estimate:** 0.5 days
+
+- [ ] **Implement Dead Code Analyzer**
+  - File: `src-tauri/src/clean-code/dead-code/analyzer.rs`
+  - Leverage `gnn.get_dependents()` to find unused code
+  - Count incoming calls using `gnn.get_incoming_edges()`
+  - Identify nodes with zero dependents
+  - **Dependencies:** GNN Engine (READY)
+  - **Estimate:** 2 days
+
+- [ ] **Implement Entry Point Detector**
+  - File: `src-tauri/src/clean-code/dead-code/entry_points.rs`
+  - Detect `main()` functions
+  - Detect API routes (`@app.route`, `@api.get`)
+  - Detect CLI commands (`@click.command`, `argparse`)
+  - Detect test functions (`test_*`, `@pytest`)
+  - Detect exported APIs (`__all__`)
+  - **Estimate:** 2 days
+
+- [ ] **Implement Confidence Calculator**
+  - File: `src-tauri/src/clean-code/dead-code/confidence.rs`
+  - Factor: Zero incoming calls (1.0)
+  - Factor: Recent code < 7 days (× 0.5)
+  - Factor: Public API names (× 0.3)
+  - Factor: Exported symbols (× 0.2)
+  - Factor: TODO/FIXME comments (× 0.4)
+  - Factor: Test-only usage (0.7)
+  - **Target:** 80% threshold for auto-removal
+  - **Estimate:** 1.5 days
+
+- [ ] **Write comprehensive tests**
+  - Test dead code detection accuracy
+  - Test entry point detection (all patterns)
+  - Test confidence calculation (edge cases)
+  - **Target:** 90%+ test coverage
+  - **Estimate:** 1 day
+
+**Success Criteria:**
+- ✅ Detect unused functions with <5% false positives
+- ✅ Correctly identify all entry points
+- ✅ Calculate confidence scores (0.0-1.0)
+- ✅ 90%+ test coverage
+
+---
+
+### Week 2: Safe Dead Code Removal
+
+**Status:** 🔴 NOT STARTED
+
+**Goal:** Remove dead code safely with full validation
+
+#### Tasks
+
+- [ ] **Implement Safe Remover**
+  - File: `src-tauri/src/clean-code/dead-code/remover.rs`
+  - Verify code still dead (no race condition)
+  - Create file backup before removal
+  - Remove code lines
+  - Update GNN graph
+  - Run affected tests
+  - Rollback on test failure
+  - Git commit on success
+  - **Estimate:** 2 days
+
+- [ ] **Implement Test Validator**
+  - File: `src-tauri/src/clean-code/validation/test_validator.rs`
+  - Find affected tests using GNN
+  - Run only affected tests (performance)
+  - Validate 100% pass rate
+  - Track coverage changes
+  - **Estimate:** 1.5 days
+
+- [ ] **Implement Rollback Mechanism**
+  - Restore from backup on failure
+  - Revert GNN graph changes
+  - Log rollback reason
+  - **Estimate:** 1 day
+
+- [ ] **Create UI for Dead Code View**
+  - File: `src-ui/components/CleanCode/DeadCodeView.tsx`
+  - List unused functions with confidence
+  - Show "Remove" / "Keep" buttons
+  - Batch operations
+  - Activity log
+  - **Estimate:** 2 days
+
+- [ ] **Add Tauri Commands**
+  - `run_dead_code_analysis(project_path) -> Vec<DeadCodeReport>`
+  - `remove_dead_code(report_id) -> Result<RemovalResult>`
+  - `get_dead_code_status() -> CleanCodeStatus`
+  - **Estimate:** 0.5 days
+
+- [ ] **Write tests**
+  - Test safe removal flow
+  - Test rollback on test failure
+  - Test GNN update after removal
+  - **Target:** 90%+ coverage
+  - **Estimate:** 1 day
+
+**Success Criteria:**
+- ✅ Remove dead code without breaking tests (100%)
+- ✅ Automatic rollback on failure
+- ✅ GNN stays consistent
+- ✅ UI shows dead code clearly
+
+---
+
+### Week 3: Real-Time Refactoring Engine
+
+**Status:** 🔴 NOT STARTED
+
+**Goal:** Detect code smells and suggest refactorings
+
+#### Tasks
+
+- [ ] **Implement Duplicate Code Detector**
+  - File: `src-tauri/src/clean-code/refactoring/duplicate_detector.rs`
+  - Use GNN feature extraction (978-dim embeddings)
+  - Calculate cosine similarity between code blocks
+  - Threshold: 0.85 (85% similarity)
+  - Suggest extraction to shared function
+  - **Innovation:** Semantic similarity, not just syntactic!
+  - **Estimate:** 2 days
+
+- [ ] **Implement Complexity Analyzer**
+  - File: `src-tauri/src/clean-code/refactoring/complexity_analyzer.rs`
+  - Calculate cyclomatic complexity
+  - Calculate cognitive complexity
+  - Track nesting depth
+  - Count parameters
+  - Suggest splitting complex functions
+  - **Thresholds:** Complexity > 10, Nesting > 4, Parameters > 5
+  - **Estimate:** 1.5 days
+
+- [ ] **Implement Refactoring Engine**
+  - File: `src-tauri/src/clean-code/refactoring/engine.rs`
+  - Operation: Remove unused imports
+  - Operation: Extract duplicate code
+  - Operation: Simplify complex functions
+  - Operation: Rename for clarity
+  - Generate refactored code via LLM
+  - Validate with GNN
+  - Run affected tests
+  - **Estimate:** 2 days
+
+- [ ] **Implement Refactoring Applicator**
+  - File: `src-tauri/src/clean-code/refactoring/applicator.rs`
+  - Apply code changes
+  - Update GNN incrementally
+  - Run validation suite
+  - Commit on success
+  - **Estimate:** 1.5 days
+
+- [ ] **Create UI for Refactoring Suggestions**
+  - File: `src-ui/components/CleanCode/RefactoringSuggestions.tsx`
+  - Show duplicate code (side-by-side diff)
+  - Show complexity metrics
+  - "Apply" / "Dismiss" buttons
+  - Preview changes before applying
+  - **Estimate:** 2 days
+
+**Success Criteria:**
+- ✅ Detect duplicates with 85%+ similarity
+- ✅ Calculate complexity accurately
+- ✅ Apply refactorings without breaking tests
+- ✅ UI shows clear before/after diffs
+
+---
+
+### Week 4: Component Hardening System
+
+**Status:** 🔴 NOT STARTED
+
+**Goal:** Automated security, performance, and quality hardening
+
+#### Tasks
+
+- [ ] **Integrate Semgrep for Security Scanning**
+  - File: `src-tauri/src/clean-code/hardening/security.rs`
+  - Run Semgrep with OWASP rules
+  - Detect SQL injection, XSS, CSRF, etc.
+  - Classify by severity (critical, high, medium, low)
+  - **Estimate:** 1.5 days
+
+- [ ] **Implement Security Auto-Fix**
+  - File: `src-tauri/src/clean-code/hardening/auto_fix.rs`
+  - Auto-fix: SQL injection → parameterized queries
+  - Auto-fix: XSS → proper escaping
+  - Auto-fix: Hardcoded secrets → env variables
+  - Use LLM to generate fixes
+  - Validate fixes with tests
+  - **Target:** 70%+ auto-fix rate for critical issues
+  - **Estimate:** 2 days
+
+- [ ] **Implement Performance Profiler**
+  - File: `src-tauri/src/clean-code/hardening/performance.rs`
+  - Detect N+1 queries
+  - Detect missing caching
+  - Detect inefficient algorithms
+  - Suggest optimizations via LLM
+  - **Estimate:** 2 days
+
+- [ ] **Implement Code Quality Analyzer**
+  - File: `src-tauri/src/clean-code/hardening/quality.rs`
+  - Calculate maintainability index
+  - Detect code smells (long functions, magic numbers)
+  - Check documentation coverage
+  - Run linting (clippy, eslint)
+  - **Estimate:** 1.5 days
+
+- [ ] **Implement Dependency Auditor**
+  - File: `src-tauri/src/clean-code/hardening/dependencies.rs`
+  - Check for known vulnerabilities
+  - Detect outdated dependencies
+  - Calculate security score
+  - **Estimate:** 1 day
+
+- [ ] **Create Hardening Report UI**
+  - File: `src-ui/components/CleanCode/HardeningReport.tsx`
+  - Security issues (color-coded by severity)
+  - Performance bottlenecks
+  - Code quality metrics
+  - Trend graphs over time
+  - **Estimate:** 2 days
+
+**Success Criteria:**
+- ✅ Detect 100% of OWASP Top 10 vulnerabilities
+- ✅ Auto-fix 70%+ of critical security issues
+- ✅ Identify performance bottlenecks
+- ✅ Generate actionable quality reports
+
+---
+
+### Week 5: Continuous Mode & Configuration
+
+**Status:** 🔴 NOT STARTED
+
+**Goal:** Background automation with configurable intervals
+
+#### Tasks
+
+- [ ] **Implement Configuration System**
+  - File: `src-tauri/src/clean-code/config.rs`
+  - Load from `.yantra/clean-code.toml`
+  - Support modes: continuous, daily, pre-commit, manual
+  - Configurable thresholds and intervals
+  - **Estimate:** 1 day
+
+- [ ] **Implement Continuous Mode Scheduler**
+  - File: `src-tauri/src/clean-code/scheduler/continuous.rs`
+  - Background thread checking every N minutes
+  - Non-blocking, low CPU usage
+  - Pause/resume capability
+  - **Estimate:** 1.5 days
+
+- [ ] **Implement Interval-Based Scheduler**
+  - File: `src-tauri/src/clean-code/scheduler/interval.rs`
+  - Daily cleanup at specified time
+  - Weekly/monthly reports
+  - **Estimate:** 1 day
+
+- [ ] **Implement Event-Based Triggers**
+  - File: `src-tauri/src/clean-code/scheduler/trigger.rs`
+  - Trigger: Component implementation complete
+  - Trigger: Pre-commit hook
+  - Trigger: File save
+  - **Estimate:** 1 day
+
+- [ ] **Implement Notification System**
+  - Show notifications for critical issues
+  - Activity log
+  - Weekly summary reports
+  - **Estimate:** 1.5 days
+
+- [ ] **Create Clean Code Dashboard**
+  - File: `src-ui/components/CleanCode/Dashboard.tsx`
+  - Status panel (active/paused, last scan)
+  - Issues found by category
+  - Auto-fixes applied
+  - Activity log
+  - Configuration panel
+  - **Estimate:** 2 days
+
+- [ ] **Add All Tauri Commands**
+  - `enable_clean_code_mode(config)`
+  - `disable_clean_code_mode()`
+  - `get_clean_code_status()`
+  - `apply_refactoring(operation)`
+  - `harden_component(component)`
+  - **Estimate:** 0.5 days
+
+- [ ] **Integration Testing**
+  - Test full workflow: detect → suggest → apply → validate
+  - Test rollback scenarios
+  - Test continuous mode performance
+  - Test with real projects (10K+ LOC)
+  - **Estimate:** 1.5 days
+
+**Success Criteria:**
+- ✅ Continuous mode runs without impacting performance
+- ✅ Configuration system is flexible
+- ✅ Notifications are helpful, not annoying
+- ✅ Dashboard provides clear overview
+
+---
+
+### Performance Targets
+
+| Operation | Target | Status |
+|-----------|--------|--------|
+| Dead code analysis (10K LOC) | < 2s | 🔴 Not measured |
+| Duplicate detection (10K LOC) | < 5s | 🔴 Not measured |
+| Refactoring application | < 3s | 🔴 Not measured |
+| Component hardening | < 10s | 🔴 Not measured |
+| Security scan | < 5s | 🔴 Not measured |
+| Continuous mode check | < 1s | 🔴 Not measured |
+
+---
+
+### Success Metrics (KPIs)
+
+1. **Dead Code Reduction**: < 2% dead code in healthy projects
+2. **Refactoring Acceptance**: > 60% acceptance for high-confidence suggestions
+3. **False Positive Rate**: < 5% for dead code detection
+4. **Test Pass Rate**: 100% (won't apply if tests fail)
+5. **Security Detection**: 100% of OWASP Top 10
+6. **Auto-Fix Success**: > 70% for critical security issues
+7. **Code Quality Improvement**: +10 maintainability index after 3 months
+8. **Time Saved**: 20% reduction in code review time
+
+---
+
+### Dependencies & Integration
+
+**Leverages Existing:**
+- ✅ GNN Engine (get_dependents, get_incoming_edges, get_all_dependencies)
+- ✅ LLM Integration (generate refactored code, suggest fixes)
+- ✅ Testing Engine (run affected tests, coverage tracking)
+- ✅ Git Integration (auto-commit, branch creation)
+- ✅ Feature Extractor (978-dim embeddings for similarity)
+
+**New Dependencies:**
+- Semgrep (security scanning)
+- Performance profiling tools
+- Linters (clippy, eslint)
+- Vulnerability database
+
+---
+
+### Rollout Strategy
+
+**Phase 1 (Week 1-2):** Dead Code Detection & Removal
+- Focus: High-confidence detection, safe removal
+- Users: Beta testers
+
+**Phase 2 (Week 3):** Refactoring Suggestions
+- Focus: Duplicates, complexity
+- Users: Beta testers + early adopters
+
+**Phase 3 (Week 4):** Component Hardening
+- Focus: Security, performance, quality
+- Users: All users (opt-in)
+
+**Phase 4 (Week 5):** Continuous Mode
+- Focus: Automation, background processing
+- Users: All users (configurable)
+
+---
+
+### Open Questions
+
+1. **Auto-Apply Threshold**: Allow per-operation configuration?
+2. **Language Support**: Python only initially, or multi-language from day 1?
+3. **Cloud Integration**: Store Clean Code reports in Yantra Cloud?
+4. **Team Collaboration**: Share refactoring suggestions across team?
+5. **Learning from Feedback**: Improve confidence scoring based on user approvals?
+6. **Performance Impact**: Max acceptable CPU/memory for continuous mode?
+
+---
+
 ## Current Status Summary
 
 **Overall Progress:** 0% (Just Started)  
@@ -1942,7 +2701,8 @@ The Architecture View System provides interactive, AI-powered architecture visua
 | Date | Changes | Author |
 |------|---------|--------|
 | Nov 20, 2025 | Initial project plan created | AI Assistant |
+| Nov 26, 2025 | Added Clean Code Mode epic (5 weeks, post-MVP) | AI Assistant |
 
 ---
 
-**Last Updated:** November 20, 2025
+**Last Updated:** November 26, 2025

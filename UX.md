@@ -1,14 +1,64 @@
 # Yantra - User Experience Guide
 
 **Version:** MVP 1.0  
-**Last Updated:** November 23, 2025  
+**Last Updated:** November 28, 2025  
 **Audience:** End Users and Administrators
 
 ---
 
-## Overview
+## Design Philosophy
 
-This guide explains how to use Yantra from a user perspective, covering all workflows and user interactions.
+**Updated:** November 28, 2025
+
+Yantra follows a **Minimal UX** design philosophy focused on maximizing content space and minimizing control overhead:
+
+### Core Principles
+
+1. **Space Optimization** - Every pixel counts
+   - Controls take minimal space (top bar, inline settings)
+   - Content maximized (chat, editor, terminal take 90%+ screen)
+   - No unnecessary panels or toolbars
+
+2. **Single-Line Layouts** - Inline controls where possible
+   - LLM settings: provider dropdown + API key + status (one line)
+   - Terminal toggle: single button with visual state
+   - No dedicated settings windows unless absolutely necessary
+
+3. **Visual Indicators** - Small, clear, unobtrusive
+   - Status dots (green/red/yellow, 2px)
+   - Pulsing animations for active states
+   - Hover tooltips for detailed info
+
+4. **Auto-Save** - Reduce explicit save actions
+   - LLM settings auto-save on blur
+   - Code auto-saves on edit (debounced)
+   - Terminal history persists across sessions
+
+5. **Keyboard-First** - Power users efficiency
+   - Cmd+` toggle terminal
+   - Cmd+B toggle file tree
+   - All major actions have shortcuts
+
+6. **Progressive Disclosure** - Show details on demand
+   - API settings collapsed by default
+   - Terminal hidden until needed
+   - Dependency graph available but not intrusive
+
+### Design Rationale
+
+**Why Minimal UX?**
+- Yantra is a development tool, not a GUI app
+- Developers need code visibility, not buttons
+- Chat is the primary interface (AI-first)
+- Screen real estate is precious on laptops
+- Faster workflows with fewer clicks
+
+**What This Means:**
+- Top bar is 40px (not 60-80px like traditional apps)
+- Settings are inline (not separate windows)
+- Panels collapse/expand (not always visible)
+- One flex row > multiple rows with sections
+- Tooltips explain > visible labels everywhere
 
 ---
 
@@ -25,10 +75,9 @@ This guide explains how to use Yantra from a user perspective, covering all work
 
 2. **First Launch**
    - Open Yantra application
-   - You'll see the 3-column interface
-   - File Tree (left) - navigate your project
-   - Chat panel (center) - where you interact
-   - Code viewer (right) - see and edit code
+   - You'll see "YANTRA" in bright white at the top
+   - 3-panel interface: File Tree (left), Chat (center), Code Editor (right)
+   - Terminal hidden by default (toggle with Cmd+`)
 
 3. **Load Your Project**
    - Click "Open Project Folder" in File Tree
@@ -39,976 +88,595 @@ This guide explains how to use Yantra from a user perspective, covering all work
 
 ---
 
-## Main User Interface (November 23, 2025)
+## Main User Interface (November 28, 2025)
 
-### 3-Column Layout with Multi-Terminal
+### Top Bar (40px Fixed Height)
+
+**Design:** Minimal space, maximum functionality
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│  🔷 YANTRA            Open Project  [Project: /path]      [–][×] │
-│  File  View  Help                                               │
-├──────────┬────────────────────────┬──────────────────────────────┤
-│          │                        │ [📝 Code Editor|🔗 Dependencies]
-│ FILE     │                        ├──────────────────────────────┤
-│ TREE     │     CHAT PANEL         │ [file1.py] [file2.py] [×]   │
-│          │    (Full Height)       │                              │
-│ 📁 src   │                        │  def calculate_total(items): │
-│  🐍 app  │  💬 Tell me what you   │    """Calculate total"""     │
-│  🐍 util │     want to build...   │    return sum(...)           │
-│ 📁 tests │                        │                              │
-│  🐍 test │  [Type your message]   │  # Generated code with       │
-│          │                        │  # proper validation         │
-│ 20%      │        45%             │           35%                │
-├──────────┤                        ├──────────────────────────────┤
-│  Agent   │                        │  ◄──► Resize Handle          │
-│  Status  │                        ├──────────────────────────────┤
-│  ✅ Idle │                        │ MULTI-TERMINAL               │
-└──────────┴────────────────────────┤ [Term1🟢][Term2🟡][+New]     │
-                                    │ $ npm run dev                │
-                                    │ Server running on :3000      │
-                                    └──────────────────────────────┘
+│  YANTRA (bright white)              [Terminal: Hide ▼]    [Settings] │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**Components:**
+- **YANTRA Logo** - Left side, bright white (#FFFFFF), 18px font, bold
+- **Terminal Toggle** - Right side, shows "Show" or "Hide" based on state
+- **Settings Button** - Far right (future)
+
+**Implementation:**
+- Fixed 40px height
+- Background: `#1e1e1e` (dark gray)
+- Flex layout: justify-between, items-center
+- No padding waste, compact design
+
+### 3-Panel Layout
+
+```
+┌──────────┬────────────────────────┬──────────────────────────────┐
+│          │                        │                              │
+│ FILE     │     CHAT PANEL         │     CODE EDITOR             │
+│ TREE     │    (Full Height)       │    (Resizable)              │
+│          │                        │                              │
+│ 📁 src   │  💬 What do you want   │  [file1.py] [file2.py]      │
+│  🐍 app  │     to build?          │                              │
+│  🐍 util │                        │  def calculate_total():      │
+│ 📁 tests │  Provider: [Claude▼]   │    return sum(items)         │
+│  🐍 test │  API Key: [••••••] 🟢  │                              │
+│          │                        │  # Auto-validated            │
+│ 256px    │        Flexible        │        Flexible              │
+│  Fixed   │      (30-70%)          │      (30-70%)                │
+├──────────┴────────────────────────┴──────────────────────────────┤
+│                        ◄──────► Resize Handle                     │
+├───────────────────────────────────────────────────────────────────┤
+│  TERMINAL (Toggleable, 0-30% height)                             │
+│  [Terminal 1] $ npm run dev                                       │
+│  Server running on http://localhost:3000                          │
+└───────────────────────────────────────────────────────────────────┘
 ```
 
 ### Panel Descriptions
 
-**Left Column (20% width):**
-- **File Tree Panel**
+**File Tree (256px Fixed Width):**
+- **Purpose:** Navigate project structure
+- **Design:** Fixed width, left-aligned, dark background
+- **Features:**
   - Recursive folder navigation
   - Click folders to expand/collapse
   - Click files to open in editor
-  - Shows file type icons
-  - Smart sorting (directories first)
-  
-- **Agent Status Panel** (at bottom)
-  - Shows agent state (Idle/Working/Error)
-  - Current operation display
-  - Quick status indicators
+  - File type icons (🐍 .py, 📄 .js, etc.)
+  - Smart sorting (directories first, alphabetical)
+- **Toggle:** Cmd+B to show/hide (future)
 
-**Center Column (45% width):**
-- **Chat Panel** (Full Height)
-  - Primary interaction area
-  - Type natural language requests
-  - See agent responses
-  - View progress updates
-  - Full conversation history
-  - Auto-scroll to latest message
+**Chat Panel (Center, Flexible Width):**
+- **Purpose:** Primary AI interaction area
+- **Design:** Minimalist, focus on conversation
+- **Features:**
+  - Natural language input at bottom
+  - Conversation history with auto-scroll
+  - Progress updates during generation
+  - LLM settings inline (collapsed by default)
+  - API config button (⚙️ icon) in input area
+- **Constraints:** 30-70% of available width (minus FileTree)
 
-**Right Column (35% width):**
-- **Code Editor** (Top section - resizable)
-  - Monaco editor with syntax highlighting
-  - Multiple file tabs (VSCode-style)
-  - File path display in header
+**Code Editor (Right, Flexible Width):**
+- **Purpose:** View and edit generated/existing code
+- **Design:** Monaco editor (VS Code engine)
+- **Features:**
+  - Syntax highlighting for multiple languages
+  - Multi-file tabs (VSCode-style)
+  - File path in header
+  - Line numbers, minimap, bracket matching
   - Close buttons on tabs
-  - Switch between open files
-  
-- **Multi-Terminal** (Bottom section - resizable)
-  - Multiple terminal instances
-  - Terminal tabs with status indicators
-  - Intelligent command routing
-  - Stats bar (total/idle/busy/error)
-  - Command input area
+- **Constraints:** 30-70% of available width (minus FileTree)
 
-### View Menu System (November 23, 2025)
+**Terminal (Bottom, Toggleable):**
+- **Purpose:** Run commands, see output, debug
+- **Design:** Hidden by default, slides up when shown
+- **Features:**
+  - Standard terminal emulator
+  - Command history (↑/↓ keys)
+  - Multiple terminal sessions (future)
+  - Drag vertical divider to resize (0-30% height)
+- **Toggle Methods:**
+  1. Top bar button: "Terminal: Show/Hide"
+  2. Keyboard: Cmd+`
+  3. Menu: View → Toggle Terminal
+  4. Drag divider: Shows terminal when dragged up
 
-**Menu Bar:** File | View | Help
+---
+
+## Resizable Dividers (November 28, 2025)
+
+### Design: Smooth, No Visual Offset
+
+**Vertical Divider (Chat ↔ Editor):**
+- **Purpose:** Adjust space between chat and code editor
+- **Visual:** 6px gray bar between panels
+- **Behavior:**
+  - Hover: Cursor changes to `↔` (col-resize)
+  - Click-drag: Both panels resize in real-time
+  - Range: Chat 30-70%, Editor 30-70% (balanced view)
+  - **Fix Applied (Nov 28):** Cursor now perfectly aligned with divider, no offset
+
+**Horizontal Divider (Editor ↔ Terminal):**
+- **Purpose:** Adjust space between editor and terminal
+- **Visual:** 4px gray bar between panels
+- **Behavior:**
+  - Hover: Cursor changes to `↕` (row-resize)
+  - Click-drag: Terminal height adjusts
+  - Range: Terminal 0-30% of window height
+  - Dragging up from 0 shows terminal
+
+### Technical Implementation (Global Cursor Control)
+
+**Problem Solved (November 28):**
+- **Issue:** Cursor appeared offset to the right of divider during drag
+- **Root Cause:** FileTree width (256px) not accounted for in mouse calculations
+- **Solution:** 
+  1. Adjusted mouse position: `mouseXRelative = e.clientX - 256`
+  2. Global CSS cursor override with `!important`
+  3. Prevented text selection during drag
+
+**CSS Classes:**
+```css
+/* Force cursor during resize - overrides all other cursors */
+body.dragging-horizontal * {
+  cursor: col-resize !important;
+}
+body.dragging-vertical * {
+  cursor: row-resize !important;
+}
+```
+
+**Result:** Smooth, flicker-free dragging with cursor perfectly aligned on divider
+
+---
+
+## LLM Settings (November 28, 2025)
+
+### Design: Minimal Inline Component
+
+**Philosophy:** Single-line layout, auto-save, visual status
+
+**Layout:**
+```
+[Provider ▼]  [API Key Input ••••••••]  🟢
+```
+
+**Components:**
+
+1. **Provider Dropdown** (128px width)
+   - Options: Claude, OpenAI, Qwen
+   - Auto-switches API key placeholder
+   - Clears input when changed
+
+2. **API Key Input** (Flexible width)
+   - Type: Password (hidden characters)
+   - Placeholder: "Enter API Key" (unconfigured) or "••••••••" (configured)
+   - Auto-save: On blur (when you click away)
+   - Security: Clears input after successful save
+
+3. **Status Indicator** (2px dot)
+   - 🟢 Green: API key configured and valid
+   - 🔴 Red: No API key configured
+   - 🟡 Yellow (pulsing): Saving in progress
+
+**Location:**
+- In Chat Panel, below input area
+- Collapsed by default
+- Click ⚙️ (API config button) to expand/collapse
+
+**Behavior:**
+1. Click API config button (⚙️) in chat input area
+2. Settings expand below with single-line layout
+3. Select provider from dropdown
+4. Type API key in input field
+5. Click away or press Tab → auto-saves
+6. Status dot updates to green ✅
+7. Input clears for security
+8. Settings remain expanded until you click ⚙️ again
+
+**Why This Design?**
+- **Space Efficient:** One line vs. previous ~200px panel
+- **Fast:** No "Save" button, auto-saves on blur
+- **Clear:** Status dot shows configuration state instantly
+- **Secure:** Input clears after save (can't see key again)
+- **Accessible:** Tooltips explain each component
+
+---
+
+## Menu System (November 28, 2025)
+
+### Design: Custom Items, No macOS Bloat
+
+**Menu Bar:**
+```
+Yantra  File  Edit  View  Help
+```
+
+**Yantra Menu:**
+- About Yantra
+- Check for Updates...
+- Settings... (Cmd+,)
+- Quit Yantra (Cmd+Q)
 
 **File Menu:**
+- New File (Cmd+N)
+- New Folder
+- Open... (Cmd+O)
+- Save (Cmd+S)
+- Close (Cmd+W)
+
+**Edit Menu** (Clean - No Native macOS Items):
+- Undo (Cmd+Z)
+- Redo (Cmd+Shift+Z)
+- ---
+- Cut (Cmd+X)
 - Copy (Cmd+C)
 - Paste (Cmd+V)
-- Quit (Cmd+Q)
+- Select All (Cmd+A)
+- ---
+- Find (Cmd+F)
+- Replace (Cmd+Option+F)
+
+**Fix Applied (November 28):**
+- **Problem:** macOS native items appearing (Writing Tools, AutoFill, Start Dictation, Emojis & Symbols)
+- **Solution:** Replaced all `MenuItem::` with `CustomMenuItem::` for full control
+- **Result:** Clean edit menu with only intended items
 
 **View Menu:**
-- Toggle File Tree (Cmd+B) - Show/hide file explorer
-- Toggle Code Editor (Cmd+E) - Show/hide code panel
-- Toggle Terminal (Cmd+`) - Show/hide multi-terminal
-- Show Dependencies (Cmd+D) - Switch to dependency graph view
-- Reset Layout - Restore default panel sizes
+- Toggle Terminal (Cmd+`)
+- Toggle File Tree (Cmd+B)
+- ---
+- Reset Layout
 
 **Help Menu:**
-- Documentation - Opens user guide
-- About Yantra - Version and credits
+- Documentation
+- Report Issue
+- About
 
 ### Keyboard Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| Cmd+B | Toggle File Tree |
-| Cmd+E | Toggle Code Editor |
-| Cmd+` | Toggle Terminal |
-| Cmd+D | Show Dependencies |
-| Cmd+C | Copy |
-| Cmd+V | Paste |
-| Cmd+Q | Quit |
+| Shortcut | Action | Category |
+|----------|--------|----------|
+| **Cmd+`** | Toggle Terminal | View |
+| **Cmd+B** | Toggle File Tree | View |
+| Cmd+N | New File | File |
+| Cmd+O | Open | File |
+| Cmd+S | Save | File |
+| Cmd+W | Close | File |
+| Cmd+Z | Undo | Edit |
+| Cmd+Shift+Z | Redo | Edit |
+| Cmd+X | Cut | Edit |
+| Cmd+C | Copy | Edit |
+| Cmd+V | Paste | Edit |
+| Cmd+A | Select All | Edit |
+| Cmd+F | Find | Edit |
+| Cmd+Option+F | Replace | Edit |
+| Cmd+, | Settings | Yantra |
+| Cmd+Q | Quit | Yantra |
+
+**Note:** Bold shortcuts are newly implemented in Session 2 (November 28)
 
 ---
 
-## Panel Features
+## User Workflows
 
-### File Tree Panel (Left Column)
-
-**Purpose:** Navigate and open project files
-
-**Features:**
-- **Recursive folder navigation**
-  - Click folder to expand/collapse
-  - Nested folders indent for clarity
-  - Lazy loading for performance
-  
-- **File operations**
-  - Click file to open in editor
-  - Multiple files can be open simultaneously
-  - File type icons (🐍 Python, 📄 JS, etc.)
-  
-- **Smart organization**
-  - Directories listed first
-  - Alphabetical sorting
-  - Visual hierarchy
-
-**Usage:**
-1. Click "Open Project Folder" button
-2. Select your project directory
-3. Wait for file tree to populate (1-5 seconds)
-4. Click folders to explore structure
-5. Click files to open in Code Editor
-
-### Chat Panel (Center Column)
-
-**Purpose:** Primary interaction area with AI agent
-
-**Features:**
-- Natural language input
-- Conversation history
-- Progress updates
-- Test results display
-- Auto-scroll to latest messages
-
-**Usage:**
-1. Type your request in input field
-2. Press Enter to send
-3. Agent responds with questions or actions
-4. Review progress updates
-5. See results (tests, validations, commits)
-
-### Code Editor (Right Column - Top)
-
-**Purpose:** View and edit generated code
-
-**Features:**
-- **Monaco Editor** (same as VS Code)
-- **Syntax highlighting** for multiple languages
-- **Multi-file tabs** (VSCode-style)
-  - Open multiple files simultaneously
-  - Click tabs to switch between files
-  - Close button (×) on each tab
-  - Active tab highlighted
-  
-- **File management**
-  - Open from File Tree
-  - Close unwanted files
-  - Switch quickly between files
-  
-- **View switching**
-  - Tab selector: 📝 Code Editor | 🔗 Dependencies
-  - Click tabs to switch views
-  - Dependencies view shows file/parameter relationships
-
-**Usage:**
-1. Click file in File Tree → Opens in new tab
-2. Click tab to switch to that file
-3. Click × on tab to close file
-4. Use View selector to switch to Dependencies view
-
-### Multi-Terminal (Right Column - Bottom)
-
-**Purpose:** Execute commands with intelligent routing
-
-**Features:**
-- **Multiple terminal instances**
-  - Each terminal runs independently
-  - Status indicators: 🟢 Idle, 🟡 Busy, 🔴 Error
-  - Terminal tabs with names
-  
-- **Intelligent command routing**
-  - Finds idle terminal automatically
-  - Creates new terminal if all busy (max 10)
-  - Never interrupts running commands
-  - Shows error if no terminals available
-  
-- **Stats bar**
-  - Total: All terminals
-  - Idle: Ready for commands
-  - Busy: Running commands
-  - Error: Failed commands
-  
-- **Terminal controls**
-  - + New: Create terminal (up to 10)
-  - Close: Remove terminal
-  - Clear: Clear output
-  - Execute: Run command
-
-**Usage:**
-1. Type command in input field
-2. Click "Execute" (routes to idle terminal)
-3. Command runs in available terminal
-4. Output streams in real-time
-5. Status changes: Idle → Busy → Idle/Error
-6. Create more terminals with "+ New" if needed
-
-**Example Workflow:**
-```
-1. Run "npm run dev" in Terminal 1 → Goes to 🟡 Busy
-2. Run "npm test" → Routes to Terminal 2 (auto-created)
-3. Run "git status" → Routes to Terminal 3 (auto-created)
-4. All commands run simultaneously
-5. No interruptions or conflicts
-```
-
-### Dependencies View (Right Column - Alternative)
-
-**Purpose:** Visualize code dependencies (🚧 Coming Soon)
-
-**Features:** (Planned)
-- Interactive dependency graph
-- File-to-file relationships
-- Function call chains
-- Parameter flow tracking
-- Zoom/pan navigation
-- Node click for details
-
-**Usage:** (Planned)
-1. Click "🔗 Dependencies" tab in Code panel
-2. Graph renders automatically
-3. Zoom with mouse wheel
-4. Pan by dragging
-5. Click nodes to see details
-6. Filter by dependency type
-
----
-
-## End User Workflows
-
-### Workflow 1: Generate New Feature
-
-**Scenario:** You want to add a new feature to your Python application
+### Workflow 1: Start New Project
 
 **Steps:**
+1. Launch Yantra
+2. In Chat Panel, type: "Create a FastAPI project with authentication"
+3. Agent asks clarifying questions (optional)
+4. Agent generates project structure:
+   - Creates all files (backend, frontend, tests, docs)
+   - Writes code with proper imports and dependencies
+   - Generates unit tests automatically
+   - Runs tests and shows results in chat
+   - Validates security (Semgrep scan)
+   - Commits to git with descriptive message
+5. Files appear in File Tree on left
+6. Click any file to view code in Editor
+7. Terminal shows test execution output (if terminal visible)
+8. Review code, ask for changes in chat
 
-1. **Start Conversation**
-   ```
-   You: "I need to add user authentication to my app"
-   ```
+**Time:** ~2-5 minutes for complete project (depending on complexity)
 
-2. **Yantra Asks Clarifying Questions**
-   ```
-   Yantra: "I can help with that! What authentication method would you prefer?
-   - Email/password with JWT tokens
-   - OAuth (Google, GitHub, etc.)
-   - Both
-   
-   Also, should I include password reset functionality?"
-   ```
-
-3. **You Provide Details**
-   ```
-   You: "Email/password with JWT, and yes include password reset"
-   ```
-
-4. **Yantra Works**
-   ```
-   Yantra: "🔄 Analyzing your existing codebase..."
-   Yantra: "✓ Found your user model at models/user.py"
-   Yantra: "✓ Detected you're using Flask"
-   Yantra: "🔄 Generating authentication code..."
-   Yantra: "🔄 Generating unit tests..."
-   Yantra: "🔄 Running tests... (15/15 passed) ✓"
-   Yantra: "🔄 Scanning for security issues... (0 critical) ✓"
-   Yantra: "✓ Code committed: feat: Add JWT authentication with password reset"
-   ```
-
-5. **Review in Code Viewer**
-   - See the generated code
-   - Review the implementation
-   - Check the tests
-
-6. **Done!**
-   - Working authentication code is ready
-   - All tests pass
-   - No security vulnerabilities
-   - Committed to Git
-
-**Time:** 2-3 minutes (vs 2-3 hours manually)
-
----
-
-### Workflow 2: Fix a Bug
-
-**Scenario:** There's a bug in your existing code
+### Workflow 2: Add Feature to Existing Project
 
 **Steps:**
+1. Open your project folder (File → Open)
+2. Wait for Yantra to analyze codebase (5-30 seconds)
+3. In Chat Panel, describe feature: "Add user profile endpoint with validation"
+4. Agent analyzes dependencies using GNN (Graph Neural Network)
+5. Agent generates code:
+   - Identifies files to modify/create
+   - Adds new endpoint with proper imports
+   - Updates tests
+   - Validates no breaking changes
+6. Code appears in Editor with tabs for each modified file
+7. Tests run automatically, results in chat
+8. If tests pass → auto-commits to git
+9. If tests fail → agent shows error and offers to fix
 
-1. **Describe the Bug**
-   ```
-   You: "The date formatting is wrong in the monthly report. It shows 'MM/DD/YYYY' but we need 'DD/MM/YYYY'"
-   ```
+**Time:** ~1-3 minutes per feature
 
-2. **Yantra Investigates**
-   ```
-   Yantra: "🔄 Searching for date formatting in report generation..."
-   Yantra: "✓ Found the issue in reports/monthly.py line 47"
-   Yantra: "The format string is using %m/%d/%Y instead of %d/%m/%Y"
-   Yantra: "Shall I fix this?"
-   ```
-
-3. **You Confirm**
-   ```
-   You: "Yes, fix it"
-   ```
-
-4. **Yantra Fixes and Validates**
-   ```
-   Yantra: "🔄 Updating date format..."
-   Yantra: "🔄 Running affected tests... (8/8 passed) ✓"
-   Yantra: "🔄 Checking for other date format issues..."
-   Yantra: "✓ Found and fixed 2 similar issues in other reports"
-   Yantra: "✓ Code committed: fix: Correct date format to DD/MM/YYYY in all reports"
-   ```
-
-5. **Done!**
-   - Bug fixed
-   - Similar issues also fixed
-   - Tests confirm it works
-   - Changes committed
-
-**Time:** 30 seconds (vs 30-60 minutes manually)
-
----
-
-### Workflow 3: Add Tests to Existing Code
-
-**Scenario:** You have code without tests
+### Workflow 3: Configure LLM Provider
 
 **Steps:**
+1. In Chat Panel, click ⚙️ (API config button)
+2. LLM Settings expand below (single line)
+3. Select provider from dropdown: [Claude ▼]
+4. Type API key: `sk-ant-...`
+5. Click away or press Tab
+6. Status dot turns yellow (saving...)
+7. After 1-2 seconds, dot turns green ✅
+8. Input clears for security
+9. Ready to use! Start chatting
 
-1. **Request Tests**
-   ```
-   You: "Generate tests for the payment processing module"
-   ```
+**Time:** ~10 seconds
 
-2. **Yantra Analyzes**
-   ```
-   Yantra: "🔄 Analyzing payment processing module..."
-   Yantra: "Found 5 functions without tests:
-   - process_payment()
-   - refund_payment()
-   - validate_card()
-   - calculate_fees()
-   - send_receipt()"
-   Yantra: "🔄 Generating comprehensive test suite..."
-   ```
-
-3. **Yantra Generates Tests**
-   ```
-   Yantra: "✓ Generated 23 unit tests covering:
-   - Successful payment scenarios
-   - Failed payment handling
-   - Edge cases (zero amount, invalid card, etc.)
-   - Refund scenarios
-   - Fee calculations
-   - Email sending
-   
-   Coverage: 94%"
-   Yantra: "🔄 Running new tests... (23/23 passed) ✓"
-   Yantra: "✓ Code committed: test: Add comprehensive tests for payment processing"
-   ```
-
-4. **Done!**
-   - Complete test coverage
-   - All tests pass
-   - Committed to Git
-
-**Time:** 1 minute (vs 2-3 hours manually)
-
----
-
-### Workflow 4: Refactor Code Safely
-
-**Scenario:** You want to refactor code without breaking anything
+### Workflow 4: View Terminal Output
 
 **Steps:**
+1. Press **Cmd+`** (or click "Terminal: Show" button in top bar)
+2. Terminal slides up from bottom
+3. See command output (tests, builds, server logs)
+4. Run manual commands if needed: `npm run dev`
+5. Drag horizontal divider to resize terminal height
+6. Press **Cmd+`** again to hide terminal
 
-1. **Request Refactoring**
-   ```
-   You: "Refactor the user service class to use dependency injection"
-   ```
+**Time:** Instant toggle
 
-2. **Yantra Analyzes Impact**
-   ```
-   Yantra: "🔄 Analyzing dependencies of UserService..."
-   Yantra: "Found 12 classes that use UserService:
-   - AuthController (3 methods)
-   - ProfileController (5 methods)
-   - AdminController (2 methods)
-   - ... and 9 more
-   
-   This refactoring will require updating all these classes.
-   Shall I proceed?"
-   ```
-
-3. **You Confirm**
-   ```
-   You: "Yes, proceed"
-   ```
-
-4. **Yantra Refactors**
-   ```
-   Yantra: "🔄 Refactoring UserService with dependency injection..."
-   Yantra: "🔄 Updating all 12 dependent classes..."
-   Yantra: "🔄 Running full test suite... (147/147 passed) ✓"
-   Yantra: "🔄 Checking for breaking changes... (0 found) ✓"
-   Yantra: "✓ Code committed: refactor: Implement dependency injection in UserService"
-   ```
-
-5. **Done!**
-   - Code refactored
-   - All dependencies updated
-   - Zero breaking changes
-   - All tests pass
-
-**Time:** 2-3 minutes (vs 4-6 hours manually)
-
----
-
-### Workflow 5: Understand Existing Code
-
-**Scenario:** You need to understand how something works
+### Workflow 5: Adjust Panel Sizes
 
 **Steps:**
+1. **Chat ↔ Editor:** Hover over vertical gray bar between panels
+2. Cursor changes to ↔
+3. Click and drag left/right to resize
+4. Panels adjust in real-time
+5. **Editor ↔ Terminal:** Hover over horizontal gray bar
+6. Cursor changes to ↕
+7. Click and drag up/down to resize
+8. Terminal height adjusts (0-30% range)
 
-1. **Ask Yantra**
-   ```
-   You: "How does the order fulfillment process work?"
-   ```
-
-2. **Yantra Explains**
-   ```
-   Yantra: "Here's the order fulfillment flow:
-
-   1. Order placed → OrderController.create_order()
-   2. Payment processed → PaymentService.process()
-   3. Inventory checked → InventoryService.reserve_items()
-   4. Shipment created → ShippingService.create_shipment()
-   5. Email sent → NotificationService.send_order_confirmation()
-   
-   Would you like me to show you any specific part of this flow?"
-   ```
-
-3. **Dive Deeper**
-   ```
-   You: "Show me the payment processing part"
-   ```
-
-4. **Yantra Shows Code**
-   ```
-   Yantra: [Opens payment code in code viewer and highlights relevant sections]
-   
-   "The payment processing has these steps:
-   1. Validates card details
-   2. Calls Stripe API
-   3. Handles success/failure
-   4. Updates database
-   5. Returns result
-   
-   It handles these error cases:
-   - Invalid card
-   - Insufficient funds
-   - Network timeout
-   - Stripe API errors"
-   ```
-
-5. **Done!**
-   - Clear understanding of the code
-   - Visual code walkthrough
-   - No need to trace through files manually
-
-**Time:** 1-2 minutes (vs 30-60 minutes manually)
+**Constraints:**
+- Chat panel: 30-70% of available width
+- Editor panel: 30-70% of available width
+- Terminal: 0-30% of window height
 
 ---
 
-### Workflow 6: 🆕 Full Autonomous Execution (Week 9-10)
+## Status Indicators
 
-**Scenario:** You want Yantra to not just generate code, but run it, test it, and deploy it automatically
+### Top Bar
+- **Terminal Button:** "Terminal: Show" or "Terminal: Hide" indicates current state
 
-**Steps:**
+### Chat Panel
+- **Agent Status:** Working/Idle/Error messages appear in conversation
+- **LLM Settings Status Dot:**
+  - 🟢 Green: API key configured
+  - �� Red: No API key
+  - 🟡 Yellow pulsing: Saving
 
-1. **Request Feature with Execution**
-   ```
-   You: "Create a REST API for user registration and deploy it to AWS"
-   ```
+### File Tree
+- File type icons: 🐍 .py, 📄 .js, 📘 .ts, 📗 .jsx, 📙 .tsx, 📋 .json, 📝 .md
 
-2. **Yantra Generates Code**
-   ```
-   Yantra: "🔄 Analyzing your project structure..."
-   Yantra: "✓ Detected Flask application"
-   Yantra: "🔄 Generating REST API endpoints..."
-   Yantra: "✓ Created routes/auth.py with registration endpoint"
-   Yantra: "✓ Created tests/test_registration.py"
-   ```
+### Code Editor
+- **Tab States:** Active tab highlighted, inactive tabs dimmed
+- **Unsaved Changes:** Dot (•) next to filename in tab
 
-3. **Yantra Sets Up Environment**
-   ```
-   [Terminal Output Panel shows:]
-   
-   $ python -m venv .venv
-   Created virtual environment at .venv
-   
-   $ source .venv/bin/activate
-   Activated virtual environment
-   
-   $ pip install -r requirements.txt
-   Collecting flask>=2.0.0
-   Collecting pytest>=7.0.0
-   Installing collected packages: flask, pytest, flask-jwt-extended
-   Successfully installed flask-2.3.3 pytest-7.4.0 flask-jwt-extended-4.5.2
-   ✅ Dependencies installed
-   ```
-
-4. **Yantra Runs the Code**
-   ```
-   Yantra: "🔄 Running the application..."
-   
-   [Terminal Output Panel shows:]
-   
-   $ python src/app.py
-    * Serving Flask app 'app'
-    * Debug mode: off
-    * Running on http://127.0.0.1:5000 (Press CTRL+C to quit)
-   
-   GET /health - 200 OK
-   ✅ Application started successfully
-   ```
-
-5. **Yantra Runs Tests**
-   ```
-   Yantra: "🔄 Running test suite..."
-   
-   [Terminal Output Panel shows:]
-   
-   $ pytest tests/ -v
-   test_registration.py::test_valid_registration PASSED
-   test_registration.py::test_duplicate_email PASSED
-   test_registration.py::test_invalid_email PASSED
-   test_registration.py::test_weak_password PASSED
-   
-   ============== 4 passed in 2.43s ==============
-   ✅ All tests passed
-   ```
-
-6. **Yantra Builds Package**
-   ```
-   Yantra: "🔄 Building Docker image..."
-   
-   [Terminal Output Panel shows:]
-   
-   $ docker build -t user-registration-api:latest .
-   [+] Building 45.2s (12/12) FINISHED
-    => [1/6] FROM docker.io/library/python:3.11-slim
-    => [2/6] WORKDIR /app
-    => [3/6] COPY requirements.txt .
-    => [4/6] RUN pip install -r requirements.txt
-    => [5/6] COPY src/ ./src/
-    => [6/6] EXPOSE 5000
-    => exporting to image
-   ✅ Docker image built successfully
-   ```
-
-7. **Yantra Deploys to AWS**
-   ```
-   Yantra: "🔄 Deploying to AWS ECS..."
-   
-   [Terminal Output Panel shows:]
-   
-   $ aws ecr get-login-password | docker login --username AWS --password-stdin
-   Login Succeeded
-   
-   $ docker tag user-registration-api:latest 123456.dkr.ecr.us-east-1.amazonaws.com/user-api:latest
-   $ docker push 123456.dkr.ecr.us-east-1.amazonaws.com/user-api:latest
-   Pushed: latest
-   
-   $ aws ecs update-service --cluster prod --service user-api --force-new-deployment
-   Service updated successfully
-   
-   $ aws ecs wait services-stable --cluster prod --services user-api
-   ✅ Deployment complete
-   
-   🚀 API live at: https://api.yourdomain.com/auth/register
-   ```
-
-8. **Yantra Monitors**
-   ```
-   Yantra: "📊 Monitoring deployment..."
-   Yantra: "✓ Health check passed (200 OK)"
-   Yantra: "✓ No errors in CloudWatch logs"
-   Yantra: "✓ Average response time: 45ms"
-   Yantra: "✓ Code committed: feat: Add user registration API with AWS deployment"
-   ```
-
-9. **Done!**
-   - Code generated
-   - Environment configured
-   - Dependencies installed
-   - Application tested locally
-   - Docker image built
-   - Deployed to AWS
-   - Health checks verified
-   - Monitoring active
-   - All committed to Git
-
-**Time:** 5-10 minutes (vs 4-6 hours manually)
-
-**What You See:**
-- Chat panel: High-level progress updates
-- Code viewer: Generated code
-- Browser preview: API documentation (auto-generated)
-- **Terminal output:** Real-time streaming of every command execution
+### Terminal
+- **Command Status:** Exit codes shown (0 = success, >0 = error)
+- **Long-running:** Process indicators (spinner, ellipsis)
 
 ---
 
-### Workflow 7: 🆕 Debug Running Application (Week 9-10)
+## Performance & Responsiveness
 
-**Scenario:** The application is running but you see an error
+### Load Times
+- **Application Launch:** <2 seconds to window visible
+- **Project Analysis:** 5-30 seconds (depends on codebase size)
+- **File Open:** <100ms to display in editor
+- **Chat Response:** 1-5 seconds (LLM dependent)
+- **Code Generation:** 3-30 seconds (depends on complexity)
 
-**Steps:**
+### Smooth Interactions
+- **Panel Resize:** 60 FPS dragging, real-time updates
+- **Terminal Toggle:** Instant show/hide animation
+- **File Tree:** Lazy loading, no lag with 1000+ files
+- **Chat Scroll:** Auto-scroll smooth, manual scroll preserved
+- **Editor:** Monaco engine performance (same as VS Code)
 
-1. **Error Appears in Terminal**
-   ```
-   [Terminal Output Panel shows:]
-   
-   $ python src/app.py
-   Traceback (most recent call last):
-     File "src/app.py", line 12, in <module>
-       from config import DATABASE_URL
-   ImportError: cannot import name 'DATABASE_URL' from 'config'
-   ❌ Execution failed (exit code: 1)
-   ```
-
-2. **Yantra Detects and Analyzes**
-   ```
-   Yantra: "❌ Runtime error detected"
-   Yantra: "Error: ImportError - DATABASE_URL not found in config"
-   Yantra: "🔄 Analyzing config.py..."
-   Yantra: "Root cause: DATABASE_URL is not defined in config.py"
-   ```
-
-3. **Yantra Fixes Automatically**
-   ```
-   Yantra: "🔄 Adding DATABASE_URL to config.py..."
-   Yantra: "✓ Added with default value for local development"
-   Yantra: "🔄 Retrying execution..."
-   
-   [Terminal Output Panel shows:]
-   
-   $ python src/app.py
-    * Running on http://127.0.0.1:5000 (Press CTRL+C to quit)
-   ✅ Execution successful
-   ```
-
-4. **Done!**
-   - Error automatically detected
-   - Root cause identified
-   - Fix applied
-   - Re-executed successfully
-   - No human intervention needed
-
-**Time:** 30 seconds (fully automatic)
+### Resource Usage
+- **Memory:** ~200-500 MB typical usage
+- **CPU:** Minimal when idle (<5%), spikes during code generation
+- **Disk:** SQLite database for history, GNN graph, file cache
 
 ---
 
-### Workflow 8: 🆕 Run Tests from UI (Week 9-10)
+## Accessibility
 
-**Scenario:** You want to manually trigger tests
+### Keyboard Navigation
+- **Tab:** Move between input fields
+- **Shift+Tab:** Move backward
+- **Arrow Keys:** Navigate file tree
+- **Cmd+Shortcuts:** All major actions accessible
 
-**Steps:**
+### Screen Reader Support
+- **Labels:** All buttons have aria-labels
+- **Status:** ARIA live regions for chat updates
+- **Tooltips:** Descriptive text for icons
 
-1. **Click "Run Tests" Button** (or press ⌘T)
-
-2. **Tests Execute**
-   ```
-   [Terminal Output Panel shows:]
-   
-   $ pytest tests/ -v --cov=src --cov-report=term-missing
-   
-   tests/test_auth.py::test_login PASSED                    [ 16%]
-   tests/test_auth.py::test_logout PASSED                   [ 33%]
-   tests/test_users.py::test_create_user PASSED             [ 50%]
-   tests/test_users.py::test_get_user PASSED                [ 66%]
-   tests/test_users.py::test_update_user PASSED             [ 83%]
-   tests/test_users.py::test_delete_user PASSED             [100%]
-   
-   ----------- coverage: platform darwin, python 3.11.5 -----------
-   Name                    Stmts   Miss  Cover   Missing
-   -----------------------------------------------------
-   src/app.py                 45      0   100%
-   src/routes/auth.py         67      2    97%   142-143
-   src/routes/users.py        89      0   100%
-   src/models/user.py         34      0   100%
-   -----------------------------------------------------
-   TOTAL                     235      2    99%
-   
-   ============== 6 passed in 3.45s ==============
-   ✅ All tests passed - 99% coverage
-   ```
-
-3. **Review Results**
-   - Green checkmarks for passing tests
-   - Coverage report inline
-   - Click on missed lines to jump to code
-   - Yantra suggests: "Would you like me to add tests for the 2 uncovered lines?"
-
-**Time:** 3-5 seconds (instant feedback)
+### Visual
+- **Contrast:** WCAG AA compliant (4.5:1 minimum)
+- **Font Size:** Readable 13-14px base, scalable
+- **Colors:** Red/green indicators supplemented with icons
 
 ---
 
-### Workflow 9: 🆕 Install Dependencies On-Demand (Week 9-10)
+## Error Handling & User Feedback
 
-**Scenario:** Code needs a new library
+### Error States
 
-**Steps:**
+**LLM API Errors:**
+- **Display:** Red message in chat with error details
+- **Actions:** "Retry" button, link to settings
+- **Example:** "API key invalid. Click ⚙️ to update."
 
-1. **Yantra Detects Missing Dependency**
-   ```
-   [Terminal Output Panel shows:]
-   
-   $ python src/payment_processor.py
-   Traceback (most recent call last):
-     File "src/payment_processor.py", line 5, in <module>
-       import stripe
-   ModuleNotFoundError: No module named 'stripe'
-   ❌ Execution failed
-   ```
+**File System Errors:**
+- **Display:** Toast notification (top-right)
+- **Actions:** "Retry" or "Cancel"
+- **Example:** "Cannot write to file (permission denied)"
 
-2. **Yantra Auto-Installs**
-   ```
-   Yantra: "🔄 Detected missing module: stripe"
-   Yantra: "🔄 Installing stripe..."
-   
-   [Terminal Output Panel shows:]
-   
-   $ pip install stripe
-   Collecting stripe
-     Using cached stripe-7.4.0-py2.py3-none-any.whl (243 kB)
-   Installing collected packages: stripe
-   Successfully installed stripe-7.4.0
-   ✅ Installation complete
-   
-   $ python src/payment_processor.py
-   Stripe payment processor initialized
-   ✅ Execution successful
-   ```
+**Test Failures:**
+- **Display:** Red box in chat with test output
+- **Actions:** "Fix Automatically" or "Show Code"
+- **Example:**
+  ```
+  ❌ 3 tests failed
+  test_user_auth: AssertionError on line 42
+  [Fix Automatically] [Show Code]
+  ```
 
-3. **Yantra Updates Dependencies**
-   ```
-   Yantra: "✓ Added stripe==7.4.0 to requirements.txt"
-   Yantra: "✓ Code committed: chore: Add stripe dependency"
-   ```
+### Progress Indicators
 
-**Time:** 10-15 seconds (fully automatic)
+**Long Operations:**
+- **Spinner:** Animated icon in chat
+- **Text:** "Analyzing codebase..." / "Generating code..." / "Running tests..."
+- **Time Estimate:** "~30 seconds remaining" (when available)
 
-**Benefits of Terminal Integration:**
-
-1. **No Context Switching:** Everything happens in one window
-2. **Full Transparency:** See exactly what commands Yantra runs
-3. **Real-Time Feedback:** Watch progress as it happens
-4. **Error Visibility:** Immediately see what went wrong
-5. **Learning Tool:** Understand what commands Yantra uses
-6. **Trust Building:** Verify Yantra's actions in real-time
-
----
-
-## End User Workflows (Original)
-
-### Workflow 1: Configure LLM API Keys
-
-**Status:** 🔴 Not Implemented (Planned for Week 5-6)
-
-**Steps:**
-
-1. Open Settings (⌘, or Ctrl+,)
-2. Navigate to "LLM Configuration"
-3. Enter API keys:
-   - Claude API key (primary)
-   - OpenAI API key (secondary/fallback)
-4. Test connection
-5. Save
-
----
-
-### Workflow 2: Configure Security Rules
-
-**Status:** 🔴 Not Implemented (Planned for Week 7)
-
-**Steps:**
-
-1. Open Settings → Security
-2. Configure Semgrep rules
-3. Set vulnerability severity thresholds
-4. Enable/disable auto-fix
-5. Configure secret scanning patterns
-6. Save
-
----
-
-### Workflow 3: View Project Statistics
-
-**Status:** 🔴 Not Implemented (Planned for Week 8)
-
-**Steps:**
-
-1. Click "Project Stats" button
-2. View metrics:
-   - Total lines of code
-   - Test coverage
-   - Security score
-   - Code quality metrics
-   - GNN graph statistics
-3. Export report
-
----
-
-## Keyboard Shortcuts
-
-### Status: � Partially Implemented (Terminal shortcuts in Week 9-10)
-
-**Planned Shortcuts:**
-
-| Action | macOS | Windows/Linux |
-|--------|-------|---------------|
-| New chat | ⌘N | Ctrl+N |
-| Open project | ⌘O | Ctrl+O |
-| Settings | ⌘, | Ctrl+, |
-| Focus chat | ⌘1 | Ctrl+1 |
-| Focus code | ⌘2 | Ctrl+2 |
-| Focus preview | ⌘3 | Ctrl+3 |
-| **🆕 Focus terminal** | **⌘4** | **Ctrl+4** |
-| Run tests | ⌘T | Ctrl+T |
-| **🆕 Run code** | **⌘R** | **Ctrl+R** |
-| **🆕 Clear terminal** | **⌘K** | **Ctrl+K** |
-| **🆕 Copy terminal output** | **⌘C** | **Ctrl+C** |
-| **🆕 Stop execution** | **⌘.** | **Ctrl+.** |
-| Commit code | ⌘Enter | Ctrl+Enter |
+**Background Operations:**
+- **Non-Blocking:** Agent continues responding during git commits, test runs
+- **Notifications:** Toast when background task completes
 
 ---
 
 ## Tips & Best Practices
 
-### For Best Results:
+### For Best Results
 
-1. **Be Specific**
-   - ✅ "Add JWT authentication with email/password and password reset"
-   - ❌ "Add auth"
+1. **Be Specific:** "Add user authentication with JWT tokens" > "Add login"
+2. **Provide Context:** Mention existing files if adding to codebase
+3. **Iterative:** Start small, add features incrementally
+4. **Review Code:** Always check generated code in Editor
+5. **Use Terminal:** Monitor test output, build logs
+6. **Keep API Keys Updated:** Green dot = ready to go
 
-2. **Provide Context**
-   - ✅ "Fix the date format bug in the monthly report to use DD/MM/YYYY"
-   - ❌ "Fix bug"
+### Space Optimization
 
-3. **Review Generated Code**
-   - Always check the code viewer
-   - Understand what Yantra created
-   - Learn from the generated code
+1. **Hide Terminal:** Use Cmd+` to toggle when not needed
+2. **Resize Panels:** Give chat more space when reading responses
+3. **Close Tabs:** Close editor tabs you're not using
+4. **Collapse Settings:** LLM settings collapse after configuration
 
-4. **Trust the Process**
-   - Yantra runs comprehensive tests
-   - Security scans are automatic
-   - Breaking changes are prevented
-   - If all checks pass, the code is solid
+### Keyboard Efficiency
 
-5. **Iterate**
-   - Start with a simple request
-   - Refine based on Yantra's output
-   - Build complex features incrementally
-
-6. **🆕 Watch the Terminal Output**
-   - Monitor real-time execution
-   - Learn what commands Yantra uses
-   - Verify installations and deployments
-   - Catch errors early
-
-7. **🆕 Let Yantra Handle Execution**
-   - Don't switch to external terminal
-   - Don't manually run commands
-   - Let Yantra manage the full lifecycle
-   - Intervene only if Yantra asks
-
----
-
-## Common Questions
-
-### Q: Can I edit the generated code?
-**A:** Yes, but Yantra manages the code. If you need changes, ask Yantra to modify it.
-
-### Q: What if tests fail?
-**A:** Yantra will automatically fix failing tests or report what it couldn't fix.
-
-### Q: What if I don't like the generated code?
-**A:** Ask Yantra to change it: "Use a different approach" or "Simplify this"
-
-### Q: Can I undo changes?
-**A:** Yes, all changes are committed to Git, so you can revert using Git commands.
-
-### Q: How does Yantra know my codebase?
-**A:** The GNN (Graph Neural Network) analyzes all your code and tracks dependencies.
-
-### Q: Is my code sent to the cloud?
-**A:** Only when calling LLM APIs (Claude/GPT-4). Your code stays on your machine otherwise.
-
-### 🆕 Q: Can I run my own terminal commands?
-**A:** Yantra handles all execution automatically. For custom commands, ask Yantra to run them for you. This ensures security and proper context management.
-
-### 🆕 Q: What commands can Yantra run?
-**A:** Yantra can run:
-- Python: `python`, `pip`, `pytest`
-- Node: `node`, `npm`, `yarn`, `jest`
-- Rust: `cargo build/test/run`
-- Docker: `docker build/run/ps/stop`
-- Cloud: `aws`, `gcloud`, `kubectl`, `terraform`
-- Git: `git` (managed via MCP protocol)
-
-**Security:** Dangerous commands like `rm -rf`, `sudo`, `eval` are blocked.
-
-### 🆕 Q: Can I stop a running command?
-**A:** Yes, press ⌘. (macOS) or Ctrl+. (Windows/Linux), or click the "Stop" button in the terminal panel.
-
-### 🆕 Q: How do I see past execution output?
-**A:** All terminal output is preserved in the session. Scroll up in the terminal panel to see history. You can also copy all output using ⌘C or the copy button.
-
-### 🆕 Q: What if deployment fails?
-**A:** Yantra automatically rolls back failed deployments and attempts to fix the issue. You'll see the rollback process in the terminal output.
-
-### 🆕 Q: Does Yantra remember environment variables?
-**A:** Yes, Yantra maintains environment context (venv, env vars, working directory) across all commands in a session.
+1. **Learn Shortcuts:** Cmd+` (terminal), Cmd+B (file tree)
+2. **Tab Navigation:** Tab through input fields
+3. **Arrow Keys:** Navigate file tree without mouse
 
 ---
 
 ## Troubleshooting
 
-### Issue: Yantra is slow
-**Solution:** Check your internet connection (LLM API calls require internet)
+### "Terminal not responding"
+- Check if terminal is visible (Cmd+` to toggle)
+- Resize terminal divider (might be collapsed to 0 height)
+- Reset layout: View → Reset Layout
 
-### Issue: Generated code doesn't work
-**Solution:** This shouldn't happen (tests should catch it). Report as a bug.
+### "API key not working"
+- Click ⚙️ in chat input area
+- Verify provider dropdown matches your key type
+- Re-enter API key, wait for green dot
+- Check API key validity on provider website
 
-### Issue: Can't load project
-**Solution:** Ensure the folder contains Python files and is a valid project.
+### "File tree not loading"
+- Verify project folder has read permissions
+- Check file count (<10,000 files recommended)
+- Try reloading: File → Open (select same folder)
 
-### Issue: API key errors
-**Solution:** Check your LLM API keys in Settings → LLM Configuration
+### "Divider cursor offset / flickering"
+- **Fixed in November 28 update!**
+- If still occurring, report issue via Help → Report Issue
+
+### "Edit menu shows unwanted items"
+- **Fixed in November 28 update!**
+- macOS native items (Writing Tools, etc.) removed
+- If still occurring, restart application
 
 ---
 
-## What's Next?
+## Future Enhancements (Roadmap)
 
-Check the [Features.md](Features.md) document to see what features are coming next!
+### Planned UX Improvements
+
+**Phase 2 (Next 2 Months):**
+- Settings window (Cmd+,) - minimal modal dialog
+- File tree toggle (Cmd+B) - show/hide left panel
+- Multiple terminal tabs - manage multiple sessions
+- Dependency graph view - visualize code relationships
+- Theme customization - light mode, custom colors
+
+**Phase 3 (Months 5-8):**
+- Browser preview panel - live web app preview (Chrome DevTools Protocol)
+- Workflow automation UI - visual workflow builder
+- Plugin system - community extensions
+- Collaborative mode - multi-user editing
+
+**Phase 4 (Months 9-12):**
+- Voice commands - "Yantra, add a login page"
+- Mobile companion app - monitor builds, get notifications
+- Advanced code visualization - heatmaps, complexity graphs
 
 ---
 
-**Last Updated:** November 20, 2025  
-**Next Update:** After Week 2 (UI Implementation Complete)
+## Changelog
+
+### November 28, 2025
+- ✅ **Added:** Minimal UX design philosophy section (space optimization, single-line layouts)
+- ✅ **Added:** Top bar with YANTRA branding (bright white, 40px)
+- ✅ **Added:** Terminal toggle button in top bar (show/hide state)
+- ✅ **Added:** Keyboard shortcut Cmd+` for terminal toggle
+- ✅ **Fixed:** Edit menu now clean - removed unwanted macOS items (Writing Tools, AutoFill, Dictation)
+- ✅ **Fixed:** Vertical divider cursor alignment - no more offset or flicker
+- ✅ **Improved:** Mouse position calculations account for FileTree width (256px)
+- ✅ **Improved:** Global cursor control during drag with CSS `!important` classes
+- ✅ **Redesigned:** LLM Settings to minimal inline component (single line: dropdown + input + status dot)
+- ✅ **Added:** Auto-save for LLM settings (on blur)
+- ✅ **Added:** Visual status indicators (green/red/yellow dots)
+- ✅ **Added:** View menu with Toggle Terminal and Toggle File Tree options
+- ✅ **Updated:** All documentation to reflect minimal design philosophy
+
+### November 23, 2025
+- 🎯 Initial UX documentation with 3-panel layout
+- 📋 Multi-terminal interface description
+- ⌨️ Keyboard shortcuts defined
+- 🔄 User workflows documented
+
+---
+
+## Summary
+
+Yantra's UX is designed around the principle of **minimal controls, maximum content**. The interface prioritizes:
+
+1. **Chat-First Interaction** - AI is the primary interface, not buttons
+2. **Space Optimization** - Every pixel used efficiently
+3. **Keyboard Efficiency** - All actions accessible via shortcuts
+4. **Visual Clarity** - Status clear at a glance (dots, colors, text)
+5. **Auto-Save & Smart Defaults** - Reduce explicit user actions
+6. **Progressive Disclosure** - Show details only when needed
+
+This philosophy enables developers to focus on building, not navigating UI. The result: **faster workflows, less cognitive load, more productivity**.
+
+---
+
+**For technical implementation details, see:**
+- Technical_Guide.md - Component architecture, algorithms
+- Features.md - Feature specifications and use cases
+- File_Registry.md - File purposes and dependencies
+
+**For development guidelines, see:**
+- .github/copilot-instructions.md - Coding standards and requirements

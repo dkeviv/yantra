@@ -1,9 +1,9 @@
 // File: src-ui/components/FileTree.tsx
 // Purpose: File tree component with recursive folder navigation
 // Dependencies: solid-js, tauri utils
-// Last Updated: November 23, 2025
+// Last Updated: November 28, 2025
 
-import { Component, createSignal, For, Show, type JSX } from 'solid-js';
+import { Component, createSignal, For, Show, onMount, onCleanup, type JSX } from 'solid-js';
 import { FileEntry, readDir, selectFolder, readFile } from '../utils/tauri';
 import { appStore } from '../stores/appStore';
 
@@ -17,6 +17,21 @@ const FileTree: Component = () => {
   const [treeNodes, setTreeNodes] = createSignal<TreeNode[]>([]);
   const [loading, setLoading] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
+
+  // Listen for close-project event to clear file tree
+  onMount(() => {
+    const handleCloseProject = () => {
+      setRootPath(null);
+      setTreeNodes([]);
+      setError(null);
+    };
+    
+    window.addEventListener('close-project', handleCloseProject);
+    
+    onCleanup(() => {
+      window.removeEventListener('close-project', handleCloseProject);
+    });
+  });
 
   const loadDirectory = async (path: string): Promise<TreeNode[]> => {
     try {
@@ -50,9 +65,39 @@ const FileTree: Component = () => {
         const nodes = await loadDirectory(folder);
         setTreeNodes(nodes);
         appStore.loadProject(folder);
+        // Notify chat that project is loaded
+        appStore.addMessage('system', `✅ Project opened: ${folder}\n\nI'm ready to help you build. What would you like to create?`);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to open folder');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateNewProject = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Let user select where to create the project
+      const parentFolder = await selectFolder();
+      if (!parentFolder) {
+        setLoading(false);
+        return;
+      }
+
+      // Ask for project name via chat
+      appStore.addMessage('system', '📁 Creating new project...\n\nPlease tell me:\n1. What should we name this project?\n2. What type of project? (e.g., Python web app, React frontend, API server, etc.)\n3. What will it do?');
+      
+      // For now, just open the folder - the agent will guide through chat
+      setRootPath(parentFolder);
+      const nodes = await loadDirectory(parentFolder);
+      setTreeNodes(nodes);
+      appStore.loadProject(parentFolder);
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create project');
     } finally {
       setLoading(false);
     }
@@ -107,22 +152,66 @@ const FileTree: Component = () => {
 
   const getFileIcon = (node: TreeNode) => {
     if (node.is_directory) {
-      return node.isExpanded ? '📂' : '📁';
+      return { text: '', isFolder: true, expanded: node.isExpanded, color: '' };
     }
     
     const ext = node.name.split('.').pop()?.toLowerCase();
-    switch (ext) {
-      case 'py': return '🐍';
-      case 'js': case 'jsx': case 'ts': case 'tsx': return '📜';
-      case 'json': return '📋';
-      case 'md': return '📝';
-      case 'txt': return '📄';
-      case 'html': return '🌐';
-      case 'css': case 'scss': return '🎨';
-      case 'rs': return '🦀';
-      case 'go': return '🐹';
-      default: return '📄';
-    }
+    const iconMap: Record<string, { text: string; color: string }> = {
+      // JavaScript/TypeScript
+      'js': { text: 'JS', color: '#f7df1e' },
+      'jsx': { text: 'JSX', color: '#61dafb' },
+      'ts': { text: 'TS', color: '#3178c6' },
+      'tsx': { text: 'TSX', color: '#3178c6' },
+      'mjs': { text: 'MJS', color: '#f7df1e' },
+      
+      // Python
+      'py': { text: 'PY', color: '#3776ab' },
+      'pyw': { text: 'PY', color: '#3776ab' },
+      
+      // Rust
+      'rs': { text: 'RS', color: '#ce422b' },
+      'toml': { text: 'TOML', color: '#9c4221' },
+      
+      // Web
+      'html': { text: 'HTML', color: '#e34c26' },
+      'htm': { text: 'HTM', color: '#e34c26' },
+      'css': { text: 'CSS', color: '#1572b6' },
+      'scss': { text: 'SCSS', color: '#cc6699' },
+      'sass': { text: 'SASS', color: '#cc6699' },
+      'less': { text: 'LESS', color: '#1d365d' },
+      
+      // Data/Config
+      'json': { text: 'JSON', color: '#fbca04' },
+      'yaml': { text: 'YAML', color: '#cb171e' },
+      'yml': { text: 'YML', color: '#cb171e' },
+      'xml': { text: 'XML', color: '#e34c26' },
+      'md': { text: 'MD', color: '#083fa1' },
+      'txt': { text: 'TXT', color: '#6b7280' },
+      'csv': { text: 'CSV', color: '#0f9d58' },
+      
+      // Other languages
+      'go': { text: 'GO', color: '#00add8' },
+      'java': { text: 'JAVA', color: '#007396' },
+      'c': { text: 'C', color: '#555555' },
+      'cpp': { text: 'CPP', color: '#00599c' },
+      'h': { text: 'H', color: '#555555' },
+      'sh': { text: 'SH', color: '#4eaa25' },
+      'bash': { text: 'BASH', color: '#4eaa25' },
+      'sql': { text: 'SQL', color: '#e38c00' },
+      'php': { text: 'PHP', color: '#777bb4' },
+      'rb': { text: 'RB', color: '#cc342d' },
+      'swift': { text: 'SWIFT', color: '#f05138' },
+      'kt': { text: 'KT', color: '#7f52ff' },
+      
+      // Build/Config files
+      'lock': { text: 'LOCK', color: '#6b7280' },
+      'env': { text: 'ENV', color: '#ecd53f' },
+      'gitignore': { text: 'GIT', color: '#f05033' },
+      'dockerfile': { text: 'DOCK', color: '#2496ed' },
+    };
+    
+    const icon = iconMap[ext || ''] || { text: ext?.toUpperCase() || 'FILE', color: '#6b7280' };
+    return { ...icon, isFolder: false, expanded: false };
   };
 
   const renderTree = (nodes: TreeNode[], path: number[] = [], depth: number = 0): JSX.Element => {
@@ -130,6 +219,7 @@ const FileTree: Component = () => {
       <For each={nodes}>
         {(node, index) => {
           const currentPath = [...path, index()];
+          const icon = getFileIcon(node);
           return (
             <>
               <li>
@@ -138,7 +228,28 @@ const FileTree: Component = () => {
                   class="w-full px-2 py-1 text-left text-sm text-gray-300 hover:bg-gray-800 transition-colors flex items-center gap-2"
                   style={{ 'padding-left': `${depth * 16 + 8}px` }}
                 >
-                  <span class="text-base">{getFileIcon(node)}</span>
+                  {/* Icon/Badge */}
+                  <Show
+                    when={icon.isFolder}
+                    fallback={
+                      <span 
+                        class="text-[9px] font-bold px-1 py-0.5 rounded opacity-90"
+                        style={{ 
+                          color: icon.color,
+                          border: `1px solid ${icon.color}`,
+                          'min-width': '28px',
+                          'text-align': 'center'
+                        }}
+                      >
+                        {icon.text}
+                      </span>
+                    }
+                  >
+                    <span class="text-base">
+                      {icon.expanded ? '📂' : '📁'}
+                    </span>
+                  </Show>
+                  
                   <span class="flex-1 truncate">{node.name}</span>
                   <Show when={!node.is_directory && node.size}>
                     <span class="text-xs text-gray-500">
@@ -159,15 +270,39 @@ const FileTree: Component = () => {
 
   return (
     <div class="flex flex-col h-full bg-gray-800">
-      {/* Header */}
+      {/* Header - Show different buttons based on project state */}
       <div class="px-4 py-3 border-b border-gray-700">
-        <button
-          onClick={handleOpenFolder}
-          class="w-full px-4 py-2 text-sm bg-primary-600 text-white rounded hover:bg-primary-700 transition-colors"
-          disabled={loading()}
+        <Show 
+          when={rootPath()}
+          fallback={
+            <div class="space-y-2">
+              <button
+                onClick={handleOpenFolder}
+                class="w-full px-4 py-2 text-sm bg-primary-600 text-white rounded hover:bg-primary-700 transition-colors flex items-center justify-center gap-2"
+                disabled={loading()}
+              >
+                <span>📁</span>
+                <span>{loading() ? 'Loading...' : 'Open Existing Project'}</span>
+              </button>
+              <button
+                onClick={handleCreateNewProject}
+                class="w-full px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                disabled={loading()}
+              >
+                <span>✨</span>
+                <span>{loading() ? 'Loading...' : 'Create New Project'}</span>
+              </button>
+            </div>
+          }
         >
-          {loading() ? 'Loading...' : 'Open Project Folder'}
-        </button>
+          {/* Project is open - show minimal info */}
+          <div class="text-xs text-gray-400">
+            <div class="font-medium text-gray-300 mb-1">Project Open</div>
+            <div class="truncate" title={rootPath() || ''}>
+              {rootPath()}
+            </div>
+          </div>
+        </Show>
       </div>
 
       {/* Error Display */}
@@ -177,22 +312,13 @@ const FileTree: Component = () => {
         </div>
       </Show>
 
-      {/* Project Path */}
-      <Show when={rootPath()}>
-        <div class="px-4 py-2 border-b border-gray-700">
-          <p class="text-xs text-gray-400 truncate" title={rootPath() || ''}>
-            {rootPath()}
-          </p>
-        </div>
-      </Show>
-
       {/* File Tree */}
       <div class="flex-1 overflow-y-auto">
         <Show
           when={treeNodes().length > 0}
           fallback={
             <div class="flex items-center justify-center h-full text-gray-500 text-sm px-4 text-center">
-              {loading() ? 'Loading files...' : 'Open a project folder to see files'}
+              {loading() ? 'Loading files...' : 'Open or create a project to get started'}
             </div>
           }
         >

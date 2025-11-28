@@ -8,8 +8,11 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use base64::Engine;
 use serde::{Deserialize, Serialize};
-use tauri::{CustomMenuItem, Menu, MenuItem, Submenu};
+use tauri::{CustomMenuItem, Menu, MenuItem, Submenu, State};
+use tokio::sync::Mutex as TokioMutex;
 
 mod gnn;
 mod llm;
@@ -18,6 +21,9 @@ mod testing;
 mod git;
 mod documentation;
 mod bridge;
+mod terminal;
+
+use terminal::TerminalManager;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct FileEntry {
@@ -730,6 +736,73 @@ async fn execute_terminal_command(
     Ok(exit_code)
 }
 
+// ========================================
+// PTY-Based Terminal Commands (New Implementation)
+// ========================================
+
+/// Create a new PTY-based terminal session
+#[tauri::command]
+async fn create_pty_terminal(
+    terminal_id: String,
+    name: String,
+    shell: Option<String>,
+    terminal_manager: State<'_, Arc<TokioMutex<TerminalManager>>>,
+    window: tauri::Window,
+) -> Result<(), String> {
+    let manager = terminal_manager.lock().await;
+    manager.create_terminal(terminal_id, name, shell, window)?;
+    Ok(())
+}
+
+/// Write input to a PTY terminal
+#[tauri::command]
+async fn write_pty_input(
+    terminal_id: String,
+    data: String,
+    terminal_manager: State<'_, Arc<TokioMutex<TerminalManager>>>,
+) -> Result<(), String> {
+    let manager = terminal_manager.lock().await;
+    // Decode base64 input
+    let decoded = base64::engine::general_purpose::STANDARD
+        .decode(&data)
+        .map_err(|e| format!("Failed to decode input: {}", e))?;
+    manager.write_input(&terminal_id, &decoded)?;
+    Ok(())
+}
+
+/// Resize a PTY terminal
+#[tauri::command]
+async fn resize_pty_terminal(
+    terminal_id: String,
+    rows: u16,
+    cols: u16,
+    terminal_manager: State<'_, Arc<TokioMutex<TerminalManager>>>,
+) -> Result<(), String> {
+    let manager = terminal_manager.lock().await;
+    manager.resize(&terminal_id, rows, cols)?;
+    Ok(())
+}
+
+/// Close a PTY terminal
+#[tauri::command]
+async fn close_pty_terminal(
+    terminal_id: String,
+    terminal_manager: State<'_, Arc<TokioMutex<TerminalManager>>>,
+) -> Result<(), String> {
+    let manager = terminal_manager.lock().await;
+    manager.close_terminal(&terminal_id)?;
+    Ok(())
+}
+
+/// List all PTY terminals
+#[tauri::command]
+async fn list_pty_terminals(
+    terminal_manager: State<'_, Arc<TokioMutex<TerminalManager>>>,
+) -> Result<Vec<String>, String> {
+    let manager = terminal_manager.lock().await;
+    Ok(manager.list_terminals())
+}
+
 // Menu event handler
 fn handle_menu_event(event: tauri::WindowMenuEvent) {
     match event.menu_item_id() {
@@ -756,11 +829,49 @@ fn handle_menu_event(event: tauri::WindowMenuEvent) {
             let _ = event.window().close();
         }
         // Edit menu
+        "undo" => {
+            let _ = event.window().emit("menu-undo", ());
+        }
+        "redo" => {
+            let _ = event.window().emit("menu-redo", ());
+        }
+        "cut" => {
+            let _ = event.window().emit("menu-cut", ());
+        }
+        "copy" => {
+            let _ = event.window().emit("menu-copy", ());
+        }
+        "paste" => {
+            let _ = event.window().emit("menu-paste", ());
+        }
+        "select_all" => {
+            let _ = event.window().emit("menu-select-all", ());
+        }
         "find" => {
             let _ = event.window().emit("menu-find", ());
         }
         "replace" => {
             let _ = event.window().emit("menu-replace", ());
+        }
+        // Yantra menu
+        "about" => {
+            let _ = event.window().emit("menu-about", ());
+        }
+        "check_updates" => {
+            let _ = event.window().emit("menu-check-updates", ());
+        }
+        "settings" => {
+            let _ = event.window().emit("menu-settings", ());
+        }
+        // View menu
+        "toggle_terminal" => {
+            let _ = event.window().emit("menu-toggle-terminal", ());
+        }
+        "toggle_file_tree" => {
+            let _ = event.window().emit("menu-toggle-file-tree", ());
+        }
+        "reset_layout" => {
+            let _ = event.window().emit("menu-reset-layout", ());
         }
         _ => {}
     }
@@ -774,32 +885,61 @@ fn main() {
             .add_item(CustomMenuItem::new("new_file", "New File").accelerator("Cmd+N"))
             .add_item(CustomMenuItem::new("new_folder", "New Folder").accelerator("Cmd+Shift+N"))
             .add_item(CustomMenuItem::new("open_folder", "Open Folder...").accelerator("Cmd+O"))
-            .add_native_item(MenuItem::Separator)
+            .add_item(CustomMenuItem::new("separator1", "───────────────").disabled())
             .add_item(CustomMenuItem::new("save", "Save").accelerator("Cmd+S"))
             .add_item(CustomMenuItem::new("save_all", "Save All").accelerator("Cmd+Alt+S"))
-            .add_native_item(MenuItem::Separator)
+            .add_item(CustomMenuItem::new("separator2", "───────────────").disabled())
             .add_item(CustomMenuItem::new("close_folder", "Close Folder"))
-            .add_item(CustomMenuItem::new("close_window", "Close Window").accelerator("Cmd+W"))
-            .add_native_item(MenuItem::Separator)
-            .add_native_item(MenuItem::Quit),
+            .add_item(CustomMenuItem::new("close_window", "Close Window").accelerator("Cmd+W")),
     );
 
     let edit_menu = Submenu::new(
-        "Edit",
+        "Actions",
         Menu::new()
-            .add_native_item(MenuItem::Copy)
-            .add_native_item(MenuItem::Paste)
-            .add_native_item(MenuItem::Separator)
+            .add_item(CustomMenuItem::new("undo", "Undo").accelerator("Cmd+Z"))
+            .add_item(CustomMenuItem::new("redo", "Redo").accelerator("Cmd+Shift+Z"))
+            .add_item(CustomMenuItem::new("separator1", "───────────────").disabled())
+            .add_item(CustomMenuItem::new("cut", "Cut").accelerator("Cmd+X"))
+            .add_item(CustomMenuItem::new("copy", "Copy").accelerator("Cmd+C"))
+            .add_item(CustomMenuItem::new("paste", "Paste").accelerator("Cmd+V"))
+            .add_item(CustomMenuItem::new("select_all", "Select All").accelerator("Cmd+A"))
+            .add_item(CustomMenuItem::new("separator2", "───────────────").disabled())
             .add_item(CustomMenuItem::new("find", "Find").accelerator("Cmd+F"))
             .add_item(CustomMenuItem::new("replace", "Replace").accelerator("Cmd+H")),
     );
 
+    let yantra_menu = Submenu::new(
+        "Yantra",
+        Menu::new()
+            .add_item(CustomMenuItem::new("about", "About Yantra"))
+            .add_item(CustomMenuItem::new("check_updates", "Check for Updates..."))
+            .add_item(CustomMenuItem::new("separator1", "───────────────").disabled())
+            .add_item(CustomMenuItem::new("settings", "Settings...").accelerator("Cmd+,"))
+            .add_item(CustomMenuItem::new("separator2", "───────────────").disabled())
+            .add_native_item(MenuItem::Quit),
+    );
+
+    let view_menu = Submenu::new(
+        "View",
+        Menu::new()
+            .add_item(CustomMenuItem::new("toggle_terminal", "Toggle Terminal").accelerator("Cmd+`"))
+            .add_item(CustomMenuItem::new("toggle_file_tree", "Toggle File Tree").accelerator("Cmd+B"))
+            .add_item(CustomMenuItem::new("separator1", "───────────────").disabled())
+            .add_item(CustomMenuItem::new("reset_layout", "Reset Layout")),
+    );
+
     let menu = Menu::new()
+        .add_submenu(yantra_menu)
         .add_submenu(file_menu)
-        .add_submenu(edit_menu);
+        .add_submenu(edit_menu)
+        .add_submenu(view_menu);
+
+    // Initialize terminal manager
+    let terminal_manager = Arc::new(TokioMutex::new(TerminalManager::new()));
 
     tauri::Builder::default()
         .menu(menu)
+        .manage(terminal_manager)
         .on_menu_event(|event| {
             handle_menu_event(event);
         })
@@ -835,6 +975,11 @@ fn main() {
             git_push,
             get_graph_dependencies,
             execute_terminal_command,
+            create_pty_terminal,
+            write_pty_input,
+            resize_pty_terminal,
+            close_pty_terminal,
+            list_pty_terminals,
             get_features,
             get_decisions,
             get_changes,

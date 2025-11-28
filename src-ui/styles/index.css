@@ -49,6 +49,22 @@ body {
   transition: background 0.2s;
 }
 
+/* Force cursor during resize - overrides all other cursors */
+body.dragging-horizontal * {
+  cursor: col-resize !important;
+}
+
+body.dragging-vertical * {
+  cursor: row-resize !important;
+}
+
+/* Prevent text selection during drag */
+body.dragging-horizontal,
+body.dragging-vertical {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
 .resize-handle:hover {
   background: #3e3e3e;
 }

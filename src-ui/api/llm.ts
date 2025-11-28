@@ -12,12 +12,73 @@ export interface LLMConfig {
   timeout_seconds: number;
 }
 
+export interface ChatMessage {
+  role: string;  // "user" or "assistant"
+  content: string;
+}
+
+export type Intent = 
+  | 'code_generation'
+  | 'code_modification'
+  | 'terminal_command'
+  | 'ui_control'
+  | 'question'
+  | 'general';
+
+export interface DetectedAction {
+  action_type: string;
+  parameters: Record<string, string>;
+}
+
+export interface ChatResponse {
+  response: string;
+  intent: Intent;
+  action?: DetectedAction;
+}
+
+export interface FileToGenerate {
+  path: string;
+  purpose: string;
+  dependencies: string[];
+  is_test: boolean;
+  priority: number;
+}
+
+export interface TestSummary {
+  total: number;
+  passed: number;
+  failed: number;
+  coverage_percent?: number;
+}
+
+export interface ProjectResult {
+  success: boolean;
+  project_dir: string;
+  generated_files: string[];
+  test_results?: TestSummary;
+  errors: string[];
+  attempts: number;
+  session_id: string;
+}
+
 export const llmApi = {
   /**
    * Get current LLM configuration (without API keys)
    */
   async getConfig(): Promise<LLMConfig> {
     return await invoke<LLMConfig>('get_llm_config');
+  },
+
+  /**
+   * Natural language chat with agent
+   * @param message - User's message
+   * @param conversationHistory - Previous messages for context
+   */
+  async chat(message: string, conversationHistory: ChatMessage[] = []): Promise<ChatResponse> {
+    return await invoke<ChatResponse>('chat_with_agent', { 
+      message, 
+      conversationHistory 
+    });
   },
 
   /**
@@ -59,5 +120,23 @@ export const llmApi = {
    */
   async setRetryConfig(maxRetries: number, timeoutSeconds: number): Promise<void> {
     await invoke('set_llm_retry_config', { maxRetries, timeoutSeconds });
+  },
+
+  /**
+   * Create entire project from high-level intent (E2E agentic workflow)
+   * @param intent - High-level project description (e.g., "Create a REST API with authentication")
+   * @param projectDir - Directory where project should be created
+   * @param template - Optional project template (e.g., "express-api", "react-app", "fastapi")
+   */
+  async createProjectAutonomous(
+    intent: string,
+    projectDir: string,
+    template?: string
+  ): Promise<ProjectResult> {
+    return await invoke<ProjectResult>('create_project_autonomous', {
+      intent,
+      projectDir,
+      template,
+    });
   },
 };

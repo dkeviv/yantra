@@ -31,8 +31,11 @@ const CodeViewer: Component = () => {
       language: 'python',
       theme: 'yantra-dark',
       automaticLayout: true,
-      fontSize: 14,
+      fontSize: 12,
       lineNumbers: 'on',
+      lineNumbersMinChars: 3,
+      glyphMargin: false,
+      folding: true,
       minimap: {
         enabled: true,
       },
@@ -43,6 +46,10 @@ const CodeViewer: Component = () => {
       tabSize: 4,
       insertSpaces: true,
       readOnly: false,
+      padding: {
+        top: 4,
+        bottom: 4,
+      },
     });
 
     // Listen to content changes
@@ -65,21 +72,6 @@ const CodeViewer: Component = () => {
   onCleanup(() => {
     editor?.dispose();
   });
-
-  const handleCopy = () => {
-    if (editor) {
-      const code = editor.getValue();
-      navigator.clipboard.writeText(code);
-    }
-  };
-
-  const handleSave = () => {
-    if (editor) {
-      const code = editor.getValue();
-      // TODO: Implement save to file via Tauri command
-      console.log('Save file:', code);
-    }
-  };
 
   return (
     <div class="flex flex-col h-full bg-gray-900">
@@ -113,43 +105,8 @@ const CodeViewer: Component = () => {
       </Show>
 
       {/* Header */}
-      <div class="px-6 py-4 border-b border-gray-700">
-        <Show
-          when={appStore.openFiles().length > 0 && appStore.activeFileIndex() >= 0}
-          fallback={<h2 class="text-xl font-bold text-white">Code</h2>}
-        >
-          <h2 class="text-xl font-bold text-white">
-            {appStore.openFiles()[appStore.activeFileIndex()]?.name || 'Code'}
-          </h2>
-          <p class="text-sm text-gray-400 mt-1">
-            {appStore.openFiles()[appStore.activeFileIndex()]?.path || ''}
-          </p>
-        </Show>
-      </div>
-
-      {/* Monaco Editor */}
+        {/* Editor */}      {/* Monaco Editor */}
       <div ref={editorContainer} class="flex-1" />
-
-      {/* Footer */}
-      <div class="px-6 py-3 border-t border-gray-700 flex justify-between items-center">
-        <span class="text-sm text-gray-400">
-          {appStore.projectPath() || 'No project loaded'}
-        </span>
-        <div class="flex space-x-2">
-          <button 
-            onClick={handleCopy}
-            class="px-4 py-2 text-sm bg-gray-800 text-gray-200 rounded hover:bg-gray-700 transition-colors"
-          >
-            Copy
-          </button>
-          <button 
-            onClick={handleSave}
-            class="px-4 py-2 text-sm bg-gray-800 text-gray-200 rounded hover:bg-gray-700 transition-colors"
-          >
-            Save
-          </button>
-        </div>
-      </div>
     </div>
   );
 };

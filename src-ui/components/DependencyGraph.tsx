@@ -257,95 +257,80 @@ export default function DependencyGraph() {
   return (
     <div class="h-full w-full flex flex-col bg-gray-900">
       {/* Header with controls */}
-      <div class="p-3 border-b border-gray-700 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <h2 class="text-sm font-semibold text-white">Dependency Graph</h2>
-          
-          {/* Filter buttons */}
-          <div class="flex gap-1">
-            <button
-              onClick={() => applyFilter('all')}
-              class={`px-2 py-1 text-xs rounded ${
-                filterType() === 'all'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-              }`}
-            >
-              All
-            </button>
+      <div class="p-3 border-b border-gray-700">
+        <div class="flex gap-2 mb-2">
+          {/* Filter buttons with color legend underneath */}
+          <div class="flex flex-col items-center">
             <button
               onClick={() => applyFilter('file')}
-              class={`px-2 py-1 text-xs rounded ${
+              class={`px-3 py-1 text-xs rounded ${
                 filterType() === 'file'
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
               }`}
             >
-              📄 Files
+              Files
             </button>
+            <span class="w-3 h-1 mt-1 rounded-sm bg-blue-500"></span>
+          </div>
+
+          <div class="flex flex-col items-center">
             <button
               onClick={() => applyFilter('function')}
-              class={`px-2 py-1 text-xs rounded ${
+              class={`px-3 py-1 text-xs rounded ${
                 filterType() === 'function'
                   ? 'bg-green-600 text-white'
                   : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
               }`}
             >
-              ⚡ Functions
+              Functions
             </button>
+            <span class="w-3 h-1 mt-1 rounded-full bg-green-500"></span>
+          </div>
+
+          <div class="flex flex-col items-center">
             <button
               onClick={() => applyFilter('class')}
-              class={`px-2 py-1 text-xs rounded ${
+              class={`px-3 py-1 text-xs rounded ${
                 filterType() === 'class'
                   ? 'bg-orange-600 text-white'
                   : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
               }`}
             >
-              🏛️ Classes
+              Classes
+            </button>
+            <span class="w-3 h-1 mt-1 rotate-45 bg-orange-500"></span>
+          </div>
+
+          <div class="flex flex-col items-center">
+            <button
+              onClick={resetView}
+              class="px-3 py-1 text-xs bg-gray-700 text-gray-300 rounded hover:bg-gray-600"
+              disabled={loading()}
+            >
+              Reset
+            </button>
+          </div>
+
+          <div class="flex flex-col items-center">
+            <button
+              onClick={exportPNG}
+              class="px-3 py-1 text-xs bg-gray-700 text-gray-300 rounded hover:bg-gray-600"
+              disabled={loading()}
+            >
+              Export
             </button>
           </div>
         </div>
-
-        {/* Action buttons */}
-        <div class="flex gap-2">
-          <button
-            onClick={resetView}
-            class="px-3 py-1 text-xs bg-gray-700 text-gray-300 rounded hover:bg-gray-600"
-            disabled={loading()}
-          >
-            🔄 Reset View
-          </button>
-          <button
-            onClick={exportPNG}
-            class="px-3 py-1 text-xs bg-gray-700 text-gray-300 rounded hover:bg-gray-600"
-            disabled={loading()}
-          >
-            💾 Export PNG
-          </button>
-        </div>
-      </div>
-
-      {/* Legend */}
-      <div class="px-3 py-2 bg-gray-800 border-b border-gray-700 flex items-center gap-4 text-xs text-gray-400">
-        <span class="flex items-center gap-1">
-          <span class="w-3 h-3 rounded-sm bg-blue-500"></span> Files
-        </span>
-        <span class="flex items-center gap-1">
-          <span class="w-3 h-3 rounded-full bg-green-500"></span> Functions
-        </span>
-        <span class="flex items-center gap-1">
-          <span class="w-3 h-3 rotate-45 bg-orange-500"></span> Classes
-        </span>
-        <span class="flex items-center gap-1">
-          <span class="w-3 h-3 rounded bg-purple-500"></span> Imports
-        </span>
-        <span class="ml-auto">
-          Zoom: Mouse wheel | Pan: Click and drag | Select: Click node
-        </span>
       </div>
 
       {/* Graph container */}
-      <div class="flex-1 relative">
+      <div class="flex-1 relative group">
+        {/* Tooltip - shows on hover */}
+        <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 bg-gray-800 text-gray-300 text-xs px-3 py-2 rounded shadow-lg">
+          Zoom: Mouse wheel | Pan: Click and drag | Select: Click node
+        </div>
+
         <Show when={loading()}>
           <div class="absolute inset-0 flex items-center justify-center bg-gray-900">
             <div class="text-center">
