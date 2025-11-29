@@ -1,90 +1,68 @@
 /**
- * ArchitectureCanvas - Main React Flow canvas for architecture visualization
+ * ArchitectureCanvas - Main canvas for architecture visualization using Cytoscape
  * 
  * Features:
  * - Interactive drag-and-drop component positioning
  * - Zoom and pan controls
- * - Minimap for navigation
  * - Custom node and edge rendering
  * - Real-time updates from store
  */
 
-import { createEffect, createMemo, For, Show } from 'solid-js';
-import ReactFlow, {
-  Background,
-  Controls,
-  MiniMap,
-  Node,
-  Edge,
-  Connection,
-  ConnectionMode,
-  MarkerType,
-  BackgroundVariant,
-} from 'reactflow';
-import 'reactflow/dist/style.css';
+import { createEffect, onMount, onCleanup, Show } from 'solid-js';
+import cytoscape, { Core, ElementDefinition } from 'cytoscape';
 
-import { architectureState, addConnection, updateComponent, getFilteredComponents } from '../../stores/architectureStore';
-import type { Component as ArchComponent, ConnectionType } from '../../api/architecture';
+import { 
+  architectureState, 
+  updateComponent, 
+  getFilteredComponents,
+  selectComponent,
+  selectConnection 
+} from '../../stores/architectureStore';
+import type { Component as ArchComponent } from '../../api/architecture';
 import * as archAPI from '../../api/architecture';
-import ComponentNode from './ComponentNode';
-import ConnectionEdge from './ConnectionEdge';
-
-// Custom node types
-const nodeTypes = {
-  component: ComponentNode,
-};
-
-// Custom edge types
-const edgeTypes = {
-  connection: ConnectionEdge,
-};
 
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
 /**
- * Convert architecture component to React Flow node
+ * Convert architecture component to Cytoscape node
  */
-function componentToNode(component: ArchComponent): Node {
+function componentToNode(component: ArchComponent): ElementDefinition {
+  const statusColor = archAPI.getStatusColor(component.status);
+  const statusIndicator = archAPI.getStatusIndicator(component.status);
+  const isSelected = component.id === architectureState.selectedComponentId;
+  
   return {
-    id: component.id,
-    type: 'component',
-    position: component.position,
+    group: 'nodes',
     data: {
-      component,
-      isSelected: architectureState.selectedComponentId === component.id,
+      id: component.id,
+      label: `${statusIndicator} ${component.name}\n${component.component_type}`,
+      'background-color': statusColor,
+      'border-color': isSelected ? '#3b82f6' : statusColor,
     },
-    draggable: true,
+    position: component.position,
+    classes: isSelected ? 'selected' : '',
   };
 }
 
 /**
- * Convert architecture connection to React Flow edge
+ * Convert architecture connection to Cytoscape edge
  */
-function connectionToEdge(connection: any): Edge {
+function connectionToEdge(connection: any): ElementDefinition {
   const color = archAPI.getConnectionColor(connection.connection_type);
-  const strokeStyle = archAPI.getConnectionStrokeStyle(connection.connection_type);
-
+  const isSelected = architectureState.selectedConnectionId === connection.id;
+  
   return {
-    id: connection.id,
-    source: connection.source_id,
-    target: connection.target_id,
-    type: 'connection',
-    animated: connection.connection_type === 'Event', // Animate event connections
-    style: {
-      stroke: color,
-      ...strokeStyle,
-    },
-    markerEnd: {
-      type: MarkerType.ArrowClosed,
-      color,
-    },
+    group: 'edges',
     data: {
-      connection,
-      isSelected: architectureState.selectedConnectionId === connection.id,
+      id: connection.id,
+      source: connection.source_id,
+      target: connection.target_id,
+      label: connection.label || connection.connection_type,
+      'line-color': color,
     },
-    label: connection.label,
+    classes: isSelected ? 'selected' : '',
   };
 }
 
@@ -93,82 +71,177 @@ function connectionToEdge(connection: any): Edge {
 // ============================================================================
 
 export default function ArchitectureCanvas() {
-  // Convert architecture data to React Flow format
-  const nodes = createMemo(() => {
+  let containerRef: HTMLDivElement | undefined;
+  let cy: Core | undefined;
+
+  /**
+   * Initialize Cytoscape instance
+   */
+  onMount(() => {
+    if (!containerRef) return;
+
+    // Initialize cytoscape
+    cy = cytoscape({
+      container: containerRef,
+      
+      style: [
+        // Node styles
+        {
+          selector: 'node',
+          style: {
+            'label': 'data(label)',
+            'text-valign': 'center',
+            'text-halign': 'center',
+            'background-color': 'data(background-color)',
+            'border-width': 2,
+            'border-color': 'data(border-color)',
+            'width': 180,
+            'height': 80,
+            'font-size': '12px',
+            'color': '#ffffff',
+            'text-wrap': 'wrap',
+            'text-max-width': '160px',
+            'shape': 'roundrectangle',
+          },
+        },
+        {
+          selector: 'node.selected',
+          style: {
+            'border-width': 4,
+            'border-color': '#3b82f6',
+          },
+        },
+        // Edge styles
+        {
+          selector: 'edge',
+          style: {
+            'width': 2,
+            'line-color': 'data(line-color)',
+            'target-arrow-color': 'data(line-color)',
+            'target-arrow-shape': 'triangle',
+            'curve-style': 'bezier',
+            'label': 'data(label)',
+            'font-size': '10px',
+            'color': '#9ca3af',
+            'text-background-color': '#1f2937',
+            'text-background-opacity': 1,
+            'text-background-padding': '3px',
+          },
+        },
+        {
+          selector: 'edge.selected',
+          style: {
+            'width': 3,
+            'opacity': 1,
+            'line-color': '#3b82f6',
+            'target-arrow-color': '#3b82f6',
+          },
+        },
+      ],
+
+      layout: {
+        name: 'preset',
+      },
+
+      minZoom: 0.3,
+      maxZoom: 2,
+      wheelSensitivity: 0.2,
+    });
+
+    // Node click handler - select component
+    cy.on('tap', 'node', (event) => {
+      const nodeId = event.target.id();
+      selectComponent(nodeId);
+      updateCytoscape();
+    });
+
+    // Edge click handler - select connection
+    cy.on('tap', 'edge', (event) => {
+      const edgeId = event.target.id();
+      selectConnection(edgeId);
+      updateCytoscape();
+    });
+
+    // Canvas click handler - deselect all
+    cy.on('tap', (event) => {
+      if (event.target === cy) {
+        selectComponent(null);
+        selectConnection(null);
+        updateCytoscape();
+      }
+    });
+
+    // Node drag end handler - update component position
+    cy.on('dragfree', 'node', async (event) => {
+      const node = event.target;
+      const position = node.position();
+      
+      try {
+        await updateComponent(node.id(), {
+          position: { x: position.x, y: position.y },
+        });
+      } catch (error) {
+        console.error('Failed to update component position:', error);
+      }
+    });
+
+    // Double-click edge to create connection (future enhancement)
+    // For now, connections are created via toolbar
+
+    updateCytoscape();
+  });
+
+  /**
+   * Update Cytoscape with current architecture data
+   */
+  const updateCytoscape = () => {
+    if (!cy) return;
+
     const components = getFilteredComponents();
-    return components.map(componentToNode);
-  });
+    const connections = architectureState.current?.connections || [];
 
-  const edges = createMemo(() => {
-    if (!architectureState.current) return [];
-    return architectureState.current.connections.map(connectionToEdge);
-  });
+    // Build elements array
+    const elements: ElementDefinition[] = [
+      ...components.map(componentToNode),
+      ...connections.map(connectionToEdge),
+    ];
 
-  // ============================================================================
-  // EVENT HANDLERS
-  // ============================================================================
+    // Update graph
+    cy.elements().remove();
+    cy.add(elements);
 
-  /**
-   * Handle node drag end - update component position
-   */
-  const onNodeDragStop = async (_event: any, node: Node) => {
-    try {
-      await updateComponent(node.id, {
-        position: node.position,
-      });
-    } catch (error) {
-      console.error('Failed to update component position:', error);
+    // Fit view if this is the first render
+    if (components.length > 0) {
+      cy.fit(undefined, 50);
     }
   };
 
   /**
-   * Handle new connection creation
+   * Effect: Update graph when architecture changes
    */
-  const onConnect = async (connection: Connection) => {
-    if (!connection.source || !connection.target) return;
+  createEffect(() => {
+    // Watch for changes in current architecture or filter
+    architectureState.current;
+    architectureState.selectedComponentId;
+    architectureState.selectedConnectionId;
+    updateCytoscape();
+  });
 
-    try {
-      // Default to DataFlow connection type
-      // TODO: Show modal to select connection type
-      await addConnection(
-        connection.source,
-        connection.target,
-        'DataFlow' as ConnectionType,
-        undefined
-      );
-    } catch (error) {
-      console.error('Failed to create connection:', error);
+  /**
+   * Cleanup on unmount
+   */
+  onCleanup(() => {
+    if (cy) {
+      cy.destroy();
     }
-  };
-
-  /**
-   * Handle node click - select component
-   */
-  const onNodeClick = (_event: any, node: Node) => {
-    // Selection is handled in ComponentNode
-  };
-
-  /**
-   * Handle edge click - select connection
-   */
-  const onEdgeClick = (_event: any, edge: Edge) => {
-    // Selection is handled in ConnectionEdge
-  };
-
-  /**
-   * Handle canvas click - deselect all
-   */
-  const onPaneClick = () => {
-    // Deselect component/connection when clicking canvas
-    // This is handled by the store
-  };
+  });
 
   // ============================================================================
   // RENDER
   // ============================================================================
 
   return (
-    <div class="w-full h-full bg-gray-900">
+    <div class="w-full h-full bg-gray-900 relative">
       <Show
         when={architectureState.current && !architectureState.isLoading}
         fallback={
@@ -176,62 +249,39 @@ export default function ArchitectureCanvas() {
             <Show
               when={architectureState.isLoading}
               fallback={
-                <div class="text-gray-400">
+                <div class="text-gray-400 text-center">
+                  <div class="text-6xl mb-4">🏗️</div>
                   <p class="text-xl mb-2">No Architecture Loaded</p>
                   <p class="text-sm">Create or load an architecture to get started</p>
+                  <button
+                    onClick={async () => {
+                      const name = prompt('Architecture name:');
+                      if (name) {
+                        const { createArchitecture } = await import('../../stores/architectureStore');
+                        try {
+                          await createArchitecture(name);
+                        } catch (error) {
+                          alert('Failed to create architecture');
+                        }
+                      }
+                    }}
+                    class="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+                  >
+                    Create New Architecture
+                  </button>
                 </div>
               }
             >
-              <div class="text-gray-400">
-                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4" />
+              <div class="text-gray-400 text-center">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4 mx-auto" />
                 <p>Loading architecture...</p>
               </div>
             </Show>
           </div>
         }
       >
-        <ReactFlow
-          nodes={nodes()}
-          edges={edges()}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          onNodeDragStop={onNodeDragStop}
-          onConnect={onConnect}
-          onNodeClick={onNodeClick}
-          onEdgeClick={onEdgeClick}
-          onPaneClick={onPaneClick}
-          connectionMode={ConnectionMode.Loose}
-          fitView
-          fitViewOptions={{ padding: 0.2 }}
-          className="bg-gray-900"
-          minZoom={0.1}
-          maxZoom={2}
-        >
-          {/* Background grid */}
-          <Background
-            variant={BackgroundVariant.Dots}
-            gap={20}
-            size={1}
-            color="#374151"
-          />
-
-          {/* Controls (zoom, fit view, etc.) */}
-          <Controls
-            className="bg-gray-800 border border-gray-700"
-            style={{ button: { backgroundColor: '#1f2937', borderColor: '#374151' } }}
-          />
-
-          {/* Minimap for navigation */}
-          <MiniMap
-            className="bg-gray-800 border border-gray-700"
-            maskColor="rgba(0, 0, 0, 0.3)"
-            nodeColor={(node) => {
-              const component = node.data?.component;
-              if (!component) return '#6b7280';
-              return archAPI.getStatusColor(component.status);
-            }}
-          />
-        </ReactFlow>
+        {/* Cytoscape container */}
+        <div ref={containerRef} class="w-full h-full" />
 
         {/* Error display */}
         <Show when={architectureState.error}>
@@ -241,7 +291,7 @@ export default function ArchitectureCanvas() {
         </Show>
 
         {/* Architecture info overlay */}
-        <div class="absolute top-4 left-4 bg-gray-800 border border-gray-700 rounded-lg shadow-lg px-4 py-3">
+        <div class="absolute top-4 left-4 bg-gray-800/90 backdrop-blur border border-gray-700 rounded-lg shadow-lg px-4 py-3">
           <h2 class="text-white font-semibold text-lg mb-1">
             {architectureState.current?.name}
           </h2>
@@ -252,12 +302,37 @@ export default function ArchitectureCanvas() {
           </Show>
           <div class="flex gap-4 text-sm">
             <span class="text-gray-400">
-              Components: <span class="text-white">{nodes().length}</span>
+              Components: <span class="text-white">{getFilteredComponents().length}</span>
             </span>
             <span class="text-gray-400">
-              Connections: <span class="text-white">{edges().length}</span>
+              Connections: <span class="text-white">{architectureState.current?.connections.length || 0}</span>
             </span>
           </div>
+        </div>
+
+        {/* Controls overlay */}
+        <div class="absolute bottom-4 left-4 bg-gray-800/90 backdrop-blur border border-gray-700 rounded-lg shadow-lg p-2 flex flex-col gap-2">
+          <button
+            onClick={() => cy?.fit(undefined, 50)}
+            class="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm transition-colors"
+            title="Fit to view"
+          >
+            🎯 Fit
+          </button>
+          <button
+            onClick={() => cy?.zoom(cy.zoom() * 1.2)}
+            class="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm transition-colors"
+            title="Zoom in"
+          >
+            ➕
+          </button>
+          <button
+            onClick={() => cy?.zoom(cy.zoom() / 1.2)}
+            class="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm transition-colors"
+            title="Zoom out"
+          >
+            ➖
+          </button>
         </div>
       </Show>
     </div>

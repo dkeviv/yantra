@@ -30,6 +30,10 @@ export default function ConnectionEdge({
   data,
   markerEnd,
 }: EdgeProps<ConnectionEdgeData>) {
+  if (!data) {
+    return null;
+  }
+
   const { connection, isSelected } = data;
 
   // Calculate bezier path
