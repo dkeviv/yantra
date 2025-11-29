@@ -16,6 +16,8 @@
 | **✅ GNN Dependency Tracking** | 7 | 0 | 7 | 🟢 100% | **MVP** |
 | **✅ LLM Integration** | 8 | 1 | 9 | 🟢 89% | **MVP** |
 | **✅ Agent Orchestration** | 12 | 1 | 13 | 🟢 92% | **MVP** |
+| **🔴 Interaction Modes (Guided/Auto)** | 0 | 10 | 10 | 🔴 0% | **MVP** |
+| **🔴 Cascading Failure Protection** | 0 | 10 | 10 | 🔴 0% | **MVP** |
 | **✅ Testing & Validation** | 3 | 1 | 4 | 🟢 75% | **MVP** |
 | **✅ Security & Browser** | 2 | 1 | 3 | 🟢 67% | **MVP** |
 | **✅ Git Integration** | 2 | 0 | 2 | 🟢 100% | **MVP** |
@@ -26,12 +28,12 @@
 | **🔄 Workflow Automation** | 0 | 6 | 6 | 🔴 0% | Post-MVP |
 | **🌐 Multi-Language Support** | 2 | 8 | 10 | 🟡 20% | Post-MVP |
 | **🤝 Collaboration Features** | 0 | 5 | 5 | 🔴 0% | Post-MVP |
-| **TOTAL** | **49** | **62** | **111** | **44%** | - |
+| **TOTAL** | **49** | **82** | **131** | **37%** | - |
 
-**MVP Features:** 49/70 (70% complete) - UP FROM 59% 🎉  
+**MVP Features:** 49/90 (54% complete) - NEW REQUIREMENTS ADDED  
 **Post-MVP Features:** 0/41 (0% started)
 
-**Latest Achievement:** Architecture View frontend completed with Cytoscape.js (Nov 28, 2025)
+**Latest Achievement:** Added Guided/Auto Mode & Cascading Failure Protection specs (Nov 28, 2025)
 
 ---
 
@@ -269,23 +271,262 @@ Yantra: 🚀 Starting autonomous project creation...
 
 ---
 
-### ✅ 6. Testing & Validation - 75% Complete ✅ MVP MOSTLY DONE
+### 🔴 6. Interaction Modes (Guided vs Auto) - 0% Complete ⚡ MVP PRIORITY
+
+**Status:** 🔴 NOT STARTED  
+**Specification:** `.github/Specifications.md` lines 1920-2669 (750 lines - comprehensive specs!)  
+**Business Impact:** User experience control - guided learning vs fast autonomous execution  
+**Priority:** ⚡ MVP REQUIRED (User requested: "Should be in MVP")  
+**Phase:** MVP
+
+**Two Interaction Modes:**
+
+**Auto Mode (Default for experienced users):**
+- Fully autonomous execution with minimal user interruption
+- User consulted only for:
+  - Architecture changes (always require consent)
+  - Critical blockers (API keys, manual setup needed)
+  - Failures after 3 auto-retry attempts
+- All actions silently logged to `.yantra/logs/agent_activity.log`
+- Fast execution suitable for CI/CD pipelines
+
+**Guided Mode (Default for new users):**
+- Explains impact before each major phase
+- Natural language impact explanation (via GNN)
+- User consent required for all major operations
+- Decision logging with user reasoning
+- Regular project-level progress reports
+
+| # | Feature | Status | Spec Lines | Files | Tests | Notes |
+|---|---------|--------|------------|-------|-------|-------|
+| 6.1 | **InteractionMode enum** | 🔴 TODO | 2360-2380 | `src-tauri/src/agent/interaction_mode.rs` | - | Auto, Guided modes |
+| 6.2 | **UserPromptTrigger enum** | 🔴 TODO | 2380-2400 | Same file | - | Architecture, Blocker, Testing, etc. |
+| 6.3 | **InteractionManager** | 🔴 TODO | 2400-2550 | Same file | - | Core mode management with GNN integration |
+| 6.4 | **Natural Language Impact Explanation** | 🔴 TODO | 2080-2150 | `explain_impact()` method | - | GNN-based: Features affected, not code terms |
+| 6.5 | **Decision Logging** | 🔴 TODO | 2200-2300 | `src-tauri/src/agent/decision_log.rs` | - | `.yantra/logs/decisions.log` with queries |
+| 6.6 | **Progress Status (Project-Level)** | 🔴 TODO | 2300-2400 | `generate_progress_report()` | - | Regular status updates with milestones |
+| 6.7 | **Mode Switching** | 🔴 TODO | 2410-2480 | UI + backend integration | - | Toggle anytime, auto-switch after 3 failures |
+| 6.8 | **Frontend Mode Indicator** | 🔴 TODO | 2600-2620 | `src-ui/stores/interactionModeStore.ts` | - | 🚀 Auto \| 🧭 Guided indicator |
+| 6.9 | **Guided Mode Phase Explanations** | 🔴 TODO | 1980-2080 | Agent prompts for each phase | - | Architecture, Generation, Testing, Security, Commit |
+| 6.10 | **Config Persistence** | 🔴 TODO | 2410-2450 | `.yantra/config.json` | - | Save mode preference |
+
+**Key Implementation Details:**
+
+**Backend (Rust):**
+```rust
+// src-tauri/src/agent/interaction_mode.rs
+pub enum InteractionMode { Auto, Guided }
+pub enum UserPromptTrigger { 
+    ArchitectureChange,    // Always prompt (both modes)
+    CriticalBlocker,       // Always prompt (both modes)
+    FailureAfter3Retries,  // Always prompt (both modes)
+    CodeGeneration,        // Prompt in Guided only
+    Testing,               // Prompt in Guided only
+    SecurityScan,          // Prompt in Guided only
+    GitCommit,             // Prompt in Guided only
+}
+
+pub struct InteractionManager {
+    mode: InteractionMode,
+    decision_log: DecisionLog,
+    gnn_engine: Arc<Mutex<GNNEngine>>,
+}
+
+impl InteractionManager {
+    pub fn should_prompt(&self, trigger: UserPromptTrigger) -> bool;
+    pub async fn explain_impact(&self, files: &[PathBuf]) -> ImpactExplanation;
+    pub fn log_decision(&mut self, decision: Decision);
+    pub fn generate_progress_report(&self, session_id: &str) -> ProgressReport;
+}
+```
+
+**Frontend (SolidJS):**
+```typescript
+// src-ui/stores/interactionModeStore.ts
+export interface InteractionModeStore {
+  mode: 'auto' | 'guided';
+  setMode: (mode: 'auto' | 'guided') => void;
+  decisions: Decision[];
+  logDecision: (decision: Decision) => void;
+  currentPhase: string;
+  phaseProgress: number;  // 0-100
+  overallProgress: number;  // 0-100
+  pendingPrompt: UserPrompt | null;
+  respondToPrompt: (response: string) => void;
+}
+```
+
+**User Experience:**
+- Auto Mode: Minimal interruptions, background progress indicator, detailed logs available on demand
+- Guided Mode: Clear phase headers, impact explanations in natural language, visual progress bars, approval buttons
+
+**Performance Targets:**
+- Mode check: <1ms
+- Impact explanation generation: <100ms (GNN-based)
+- Decision logging: <10ms
+
+**Test Scenarios:**
+1. Auto Mode - Happy Path (no user prompts except architecture)
+2. Auto Mode - Blocker (pause for API key)
+3. Guided Mode - Full Explanation (user sees all steps)
+4. Mode Switching (toggle mid-session, no context loss)
+
+---
+
+### 🔴 7. Cascading Failure Protection - 0% Complete ⚡ MVP PRIORITY
+
+**Status:** 🔴 NOT STARTED  
+**Specification:** `.github/Specifications.md` lines 2669-3408 (739 lines - comprehensive specs!)  
+**Business Impact:** Safety net - prevents agent from digging deeper into failures, always revertible  
+**Priority:** ⚡ MVP CRITICAL (User requested: "Should be in MVP")  
+**Phase:** MVP
+
+**Core Principle:** Every modification is reversible with one click. Automatically detect failure loops and revert to last known working state.
+
+**Protection Flow:**
+1. Create checkpoint BEFORE any modification
+2. Make change
+3. Run tests
+4. If fail → Revert to checkpoint + Retry with fix (up to 3 attempts)
+5. After 3 failures → Escalate to user with options
+
+| # | Feature | Status | Spec Lines | Files | Tests | Notes |
+|---|---------|--------|------------|-------|-------|-------|
+| 7.1 | **Checkpoint System (Critical)** | 🔴 TODO | 2730-2880 | `src-tauri/src/checkpoints/manager.rs` | - | Create, restore, list, prune checkpoints |
+| 7.2 | **Checkpoint Storage** | 🔴 TODO | 3290-3330 | `.yantra/checkpoints/` + SQLite index | - | Keep last 20, auto-prune, compress old |
+| 7.3 | **Impact Assessment (GNN-Based)** | 🔴 TODO | 2940-3010 | `src-tauri/src/agent/impact_analyzer.rs` | - | Risk score (0.0-1.0), test impact estimation |
+| 7.4 | **Automated Testing After Changes** | 🔴 TODO | 3010-3050 | `src-tauri/src/testing/auto_runner.rs` | - | GNN-based test selection, regression detection |
+| 7.5 | **Auto-Revert After Failed Attempts** | 🔴 TODO | 3050-3120 | `src-tauri/src/agent/failure_recovery.rs` | - | Revert to last working checkpoint (confidence ≥ 0.95) |
+| 7.6 | **Failure Tracker** | 🔴 TODO | 3100-3120 | Part of failure_recovery.rs | - | Count attempts, record failure history |
+| 7.7 | **User Escalation (After 3 Failures)** | 🔴 TODO | 3120-3180 | Escalation UI + backend | - | Show full history, 4 options for user |
+| 7.8 | **LLM Hot-Swapping** | 🔴 TODO | 3180-3220 | `src-tauri/src/llm/hot_swap.rs` | - | Claude ↔ GPT-4 ↔ Qwen after failures |
+| 7.9 | **RAG/Web Search (User Consent)** | 🔴 TODO | 3220-3290 | `src-tauri/src/agent/knowledge_search.rs` | - | RAG only, Web only, Both, Neither options |
+| 7.10 | **One-Click Restore UI** | 🔴 TODO | 2880-2940 | `src-ui/components/CheckpointPanel.tsx` | - | Visual checkpoint list with restore buttons |
+
+**Key Implementation Details:**
+
+**Backend (Rust):**
+```rust
+// src-tauri/src/checkpoints/manager.rs
+pub struct Checkpoint {
+    pub id: String,  // UUID
+    pub timestamp: DateTime<Utc>,
+    pub checkpoint_type: CheckpointType,  // Session, Feature, File, Test
+    pub description: String,
+    pub files_snapshot: HashMap<PathBuf, String>,
+    pub gnn_state: Vec<u8>,
+    pub architecture_version: i64,
+    pub test_results: Option<TestSummary>,
+    pub confidence_score: f32,  // 0.0-1.0
+}
+
+pub struct CheckpointManager {
+    storage_path: PathBuf,  // .yantra/checkpoints/
+    active_checkpoints: Vec<Checkpoint>,
+    max_checkpoints: usize,  // Default: 20
+}
+
+impl CheckpointManager {
+    pub async fn create_checkpoint(
+        &mut self, 
+        checkpoint_type: CheckpointType,
+        description: String,
+        files: &[PathBuf],
+    ) -> Result<String, String>;
+    
+    pub async fn restore_checkpoint(&self, checkpoint_id: &str) -> Result<(), String>;
+    pub fn list_checkpoints(&self) -> Vec<CheckpointSummary>;
+}
+
+// src-tauri/src/agent/impact_analyzer.rs
+pub struct ImpactAnalyzer {
+    gnn_engine: Arc<Mutex<GNNEngine>>,
+    checkpoint_manager: CheckpointManager,
+}
+
+impl ImpactAnalyzer {
+    pub async fn analyze_impact(&self, files_to_modify: &[PathBuf]) -> Result<ImpactReport, String>;
+    fn calculate_risk_score(&self, dependent_files: &[PathBuf], affected_features: &[Feature]) -> f32;
+}
+
+// src-tauri/src/agent/failure_recovery.rs
+pub struct FailureRecovery {
+    checkpoint_manager: Arc<Mutex<CheckpointManager>>,
+    llm_orchestrator: Arc<Mutex<LLMOrchestrator>>,
+    failure_tracker: FailureTracker,
+}
+
+impl FailureRecovery {
+    pub async fn handle_failure(&mut self, failure: Failure) -> Result<RecoveryAction, String>;
+    fn get_last_working_checkpoint(&self) -> Result<Checkpoint, String>;
+}
+
+pub enum RecoveryAction {
+    AutoRetry(FixStrategy),        // Try fixing automatically
+    EscalateToUser,                 // Ask user for help (after 3 failures)
+    SwitchLLM(String),             // Try different LLM
+    SearchForSolution,              // Use RAG/web search
+}
+```
+
+**Checkpoint Hierarchy:**
+- Session Checkpoint (every chat session start)
+- Feature Checkpoint (before each feature implementation)
+- File Checkpoint (before modifying each file)
+- Test Checkpoint (before running tests)
+
+**Auto-Revert Flow:**
+```
+Attempt 1: Make change → Tests fail → Revert to checkpoint → Retry with fix
+Attempt 2: Make change → Tests fail → Revert to checkpoint → Retry with fix
+Attempt 3: Make change → Tests fail → Revert to checkpoint → ESCALATE TO USER
+
+User Options (After 3 Failures):
+1. Provide missing input (API keys, credentials)
+2. Try different LLM (Claude → GPT-4 → Qwen)
+3. Search RAG/web for solution (with consent)
+4. Skip feature for now
+```
+
+**Storage:**
+- Path: `.yantra/checkpoints/`
+- Index: SQLite database
+- Retention: Last 20 checkpoints (configurable)
+- Compression: Gzip old checkpoints to save space
+- User-marked "important" checkpoints never pruned
+
+**Performance Targets:**
+- Create checkpoint: <500ms (snapshot 10-20 files)
+- Restore checkpoint: <1s (restore all files + GNN)
+- Impact analysis: <100ms (GNN dependency traversal)
+- List checkpoints: <50ms (query from memory)
+
+**Test Scenarios:**
+1. Happy Path (no failures, checkpoint becomes "last working")
+2. Single Failure + Auto-Recovery (revert → retry → success)
+3. 3 Failures + User Escalation (show history, user provides input)
+4. LLM Hot-Swap (3 failures with Claude → suggest GPT-4)
+5. One-Click Restore from UI (user clicks restore button)
+
+---
+
+### ✅ 8. Testing & Validation - 75% Complete ✅ MVP MOSTLY DONE
 
 **Status:** ✅ MOSTLY DONE (1 feature pending)  
 **Phase:** MVP
 
 | # | Feature | Status | Files | Tests | Notes |
 |---|---------|--------|-------|-------|-------|
-| 6.1 | Test generation (LLM) | ✅ DONE | `src-tauri/src/testing/generator.rs` (198 lines) | 0 | Generates pytest/jest tests |
-| 6.2 | Test execution (pytest) | ✅ DONE | `src-tauri/src/testing/executor.rs` (382 lines) | 2 | Success-only learning filter |
-| 6.3 | Test runner integration | ✅ DONE | `src-tauri/src/testing/runner.rs` (147 lines) | 0 | Unified test interface |
-| 6.4 | Coverage tracking UI | 🔴 TODO | Executor has coverage support | - | **Post-MVP:** UI integration |
+| 8.1 | Test generation (LLM) | ✅ DONE | `src-tauri/src/testing/generator.rs` (198 lines) | 0 | Generates pytest/jest tests |
+| 8.2 | Test execution (pytest) | ✅ DONE | `src-tauri/src/testing/executor.rs` (382 lines) | 2 | Success-only learning filter |
+| 8.3 | Test runner integration | ✅ DONE | `src-tauri/src/testing/runner.rs` (147 lines) | 0 | Unified test interface |
+| 8.4 | Coverage tracking UI | 🔴 TODO | Executor has coverage support | - | **Post-MVP:** UI integration |
 
 **Test Coverage:** 2/4 testing module tests passing
 
 ---
 
-### 🟡 7. Security & Browser - 67% Complete 🟡 MVP PARTIAL
+### 🟡 9. Security & Browser - 67% Complete 🟡 MVP PARTIAL
 
 **Status:** 🟡 PARTIALLY DONE (1 MVP feature pending)  
 **Phase:** MVP
@@ -300,36 +541,36 @@ Yantra: 🚀 Starting autonomous project creation...
 
 ---
 
-### ✅ 8. Git Integration - 100% Complete ✅ MVP DONE
+### ✅ 10. Git Integration - 100% Complete ✅ MVP DONE
 
 **Status:** ✅ FULLY IMPLEMENTED  
 **Phase:** MVP - COMPLETE
 
 | # | Feature | Status | Files | Tests | Notes |
 |---|---------|--------|-------|-------|-------|
-| 8.1 | Git MCP protocol | ✅ DONE | `src-tauri/src/git/mcp.rs` (157 lines) | 1 | status, add, commit, push, pull |
-| 8.2 | AI commit messages | ✅ DONE | `src-tauri/src/git/commit.rs` (114 lines) | 1 | Conventional Commits format |
+| 10.1 | Git MCP protocol | ✅ DONE | `src-tauri/src/git/mcp.rs` (157 lines) | 1 | status, add, commit, push, pull |
+| 10.2 | AI commit messages | ✅ DONE | `src-tauri/src/git/commit.rs` (114 lines) | 1 | Conventional Commits format |
 
 **Test Coverage:** 2/2 git tests passing ✅
 
 ---
 
-### 🟡 9. UI/Frontend (Basic) - 33% Complete 🟡 MVP PARTIAL
+### 🟡 11. UI/Frontend (Basic) - 33% Complete 🟡 MVP PARTIAL
 
 **Status:** 🟡 BASIC DONE (2 MVP features pending)  
 **Phase:** MVP
 
 | # | Feature | Status | Files | Tests | Notes |
 |---|---------|--------|-------|-------|-------|
-| 9.1 | 3-column layout (Chat/Code/Browser) | ✅ DONE | `src-ui/App.tsx`, components | 0 | SolidJS, Monaco Editor |
-| 9.2 | Architecture View System (see section 2) | 🔴 TODO | - | - | **MVP REQUIRED** - React Flow diagrams |
-| 9.3 | Real-time UI updates | 🔴 TODO | Event system exists | - | **Post-MVP:** Streaming agent status |
+| 11.1 | 3-column layout (Chat/Code/Browser) | ✅ DONE | `src-ui/App.tsx`, components | 0 | SolidJS, Monaco Editor |
+| 11.2 | Architecture View System (see section 2) | 🔴 TODO | - | - | **MVP REQUIRED** - React Flow diagrams |
+| 11.3 | Real-time UI updates | 🔴 TODO | Event system exists | - | **Post-MVP:** Streaming agent status |
 
 **Note:** Basic UI functional but architecture view is MVP requirement
 
 ---
 
-### ✅ 10. Documentation System - 100% Complete ✅ MVP DONE
+### ✅ 12. Documentation System - 100% Complete ✅ MVP DONE
 
 **Status:** ✅ FULLY IMPLEMENTED  
 **Phase:** MVP - COMPLETE  
@@ -337,7 +578,7 @@ Yantra: 🚀 Starting autonomous project creation...
 
 | # | Feature | Status | Files | Tests | Notes |
 |---|---------|--------|-------|-------|-------|
-| 10.1 | Documentation extraction | ✅ DONE | `src-tauri/src/documentation/mod.rs` (429 lines) | 4 | Features, decisions, changes tracking |
+| 12.1 | Documentation extraction | ✅ DONE | `src-tauri/src/documentation/mod.rs` (429 lines) | 4 | Features, decisions, changes tracking |
 
 ---
 
