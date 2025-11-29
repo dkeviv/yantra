@@ -1811,6 +1811,8 @@ In Scope:
 ✅ **Confidence scoring system**
 ✅ **Known issues database (LLM failures + fixes)**
 ✅ **Basic agent state machine with auto-retry**
+✅ **Guided Mode vs Auto Mode (MVP - Priority)** 🆕
+✅ **Cascading Failure Protection with Checkpoints (MVP - Priority)** 🆕
 ✅ Security vulnerability scanning 
 ✅ Browser integration for runtime validation 
 ✅ Git integration (commit/push via MCP) 
@@ -1889,6 +1891,1493 @@ Week 8: Polish & Beta
 * Collect feedback
 
 Deliverable: Desktop app (macOS, Windows, Linux) that generates, tests, validates, and commits Python code with agentic capabilities and token-aware unlimited context.
+
+---
+
+## Agent Interaction Modes: Guided vs Auto Mode (MVP Phase 1 - Priority Feature)
+
+### Overview
+
+Yantra supports two distinct interaction modes that control the level of user involvement during autonomous code generation, testing, and deployment workflows. Both modes are fully autonomous - the difference is in **when and how the user is informed and consulted**.
+
+**Core Principle:** Yantra is an autonomous agentic platform. The agent executes the entire development lifecycle (generate → test → package → deploy → monitor). The interaction mode determines the frequency and type of user checkpoints during this autonomous execution.
+
+### 1. Auto Mode (Default for Experienced Users)
+
+**Philosophy:** "Trust the agent, intervene only when critical decisions are needed."
+
+The agent executes the full pipeline with minimal user interruption. User is consulted only for:
+
+1. **Architecture changes** (adding/removing components, changing connections)
+2. **User action blockers** (API keys needed, manual setup required, external service configuration)
+3. **Critical failures after 3 auto-retry attempts**
+
+**When Auto Mode Activates:**
+- User explicitly sets mode: "Switch to auto mode"
+- User preference saved in `.yantra/config.json`
+- Suitable for: Production deployments, CI/CD pipelines, experienced developers
+
+**Agent Behavior in Auto Mode:**
+
+```
+User: "Add Stripe payment processing"
+
+Agent executes autonomously:
+├─ 1. Architecture Generation
+│   └─ Creates: Gateway → Payment Service → Stripe API → Database
+│   └─ Silent execution (logs to history, no user prompt)
+│
+├─ 2. Code Generation
+│   ├─ Generates: payment_service.py, stripe_client.py, payment_models.py
+│   ├─ GNN dependency validation
+│   └─ Silent execution
+│
+├─ 3. Testing
+│   ├─ Generates unit tests
+│   ├─ Runs pytest
+│   ├─ Auto-fixes failures (up to 3 attempts)
+│   └─ Silent execution
+│
+├─ 4. Security Scanning
+│   ├─ Semgrep scan
+│   ├─ Auto-fixes vulnerabilities
+│   └─ Silent execution
+│
+├─ 5. BLOCKER DETECTED! ⚠️
+│   └─ Need Stripe API key
+│   
+Agent PAUSES and prompts user:
+┌────────────────────────────────────────────────┐
+│ ⚠️  USER ACTION REQUIRED                       │
+│                                                │
+│ I need a Stripe API key to continue.          │
+│                                                │
+│ Options:                                       │
+│ 1️⃣  Provide Stripe API key now                │
+│ 2️⃣  Skip Stripe integration (mock it)         │
+│ 3️⃣  Pause and configure later                 │
+│                                                │
+│ Your choice:                                   │
+└────────────────────────────────────────────────┘
+
+User: "1" + provides key
+
+├─ 6. Integration Testing (resumes)
+│   ├─ Tests Stripe connection
+│   └─ Silent execution
+│
+├─ 7. Git Commit
+│   └─ Commits with message: "Add Stripe payment processing"
+│   └─ Silent execution
+│
+└─ ✅ Complete
+    Agent: "✅ Stripe payment processing added successfully!
+            - 3 new files created
+            - 12 tests passing
+            - No security vulnerabilities
+            - Committed to Git (commit abc1234)"
+```
+
+**Auto Mode Logging:**
+All actions are logged to `.yantra/logs/agent_activity.log` with timestamps, allowing user to review what happened without being interrupted during execution.
+
+**Architecture Change Exception (Always Requires Consent):**
+
+Even in Auto Mode, architecture changes require user review:
+
+```
+Agent: "I'm planning to add these components:
+        - Payment Service (handles Stripe)
+        - Payment Database (stores transactions)
+        
+       Connections:
+        - Gateway → Payment Service (REST API)
+        - Payment Service → Stripe API (SDK)
+        - Payment Service → Payment DB (PostgreSQL)
+        
+       Impact: No existing features affected
+       
+       Approve? (yes/no/modify)"
+
+User: "yes"
+
+Agent: "✅ Architecture updated. Proceeding with code generation..."
+```
+
+---
+
+### 2. Guided Mode (Default for New Users)
+
+**Philosophy:** "Explain everything, get user consent at each major step."
+
+The agent explains the impact and rationale before executing each major phase. User maintains full visibility and control throughout the autonomous pipeline.
+
+**When Guided Mode Activates:**
+- Default for new users (first 7 days)
+- User can explicitly request: "Switch to guided mode"
+- Automatically activated after 3 failed attempts in Auto Mode
+- Suitable for: Learning Yantra, complex refactoring, high-risk changes
+
+**Agent Behavior in Guided Mode:**
+
+```
+User: "Add Stripe payment processing"
+
+┌────────────────────────────────────────────────┐
+│ 📋 PHASE 1: ARCHITECTURE DESIGN                │
+└────────────────────────────────────────────────┘
+
+Agent: "I'll create this architecture:
+
+Components:
+├─ Payment Service (new)
+│  └─ Handles Stripe integration
+│  └─ Files: payment_service.py, stripe_client.py
+│
+└─ Payment Database (new)
+   └─ Stores transaction history
+   └─ Table: payments (id, amount, status, timestamp)
+
+Connections:
+├─ Gateway → Payment Service (REST API)
+├─ Payment Service → Stripe API (Stripe SDK)
+└─ Payment Service → Payment DB (SQLAlchemy)
+
+Impact Analysis (via GNN):
+✅ No existing components affected
+✅ Gateway already has REST API framework
+⚠️  Will need Stripe API key
+
+Estimated time: 2-3 minutes
+
+Proceed with architecture? (yes/no/modify)"
+
+User: "yes"
+
+┌────────────────────────────────────────────────┐
+│ 📋 PHASE 2: CODE GENERATION                    │
+└────────────────────────────────────────────────┘
+
+Agent: "I'll generate these files:
+
+1. payment_service.py (150 lines)
+   - create_payment(amount, currency)
+   - get_payment_status(payment_id)
+   - refund_payment(payment_id)
+
+2. stripe_client.py (80 lines)
+   - StripeClient wrapper
+   - Error handling and retries
+   - Webhook verification
+
+3. payment_models.py (50 lines)
+   - Payment SQLAlchemy model
+   - Database migrations
+
+Dependencies to install:
+- stripe==7.0.0
+- sqlalchemy==2.0.23
+
+Impact Analysis (via GNN):
+✅ No existing files will be modified
+✅ No breaking changes detected
+
+Proceed with code generation? (yes/no)"
+
+User: "yes"
+
+Agent: "✅ Generated 3 files (280 lines total)
+
+┌────────────────────────────────────────────────┐
+│ 📋 PHASE 3: TESTING                            │
+└────────────────────────────────────────────────┘
+
+Agent: "I'll generate and run these tests:
+
+Unit Tests:
+├─ test_payment_service.py (10 tests)
+│  └─ Test payment creation, status checks, refunds
+│
+└─ test_stripe_client.py (8 tests)
+   └─ Test Stripe API calls (mocked)
+
+Integration Tests:
+└─ test_payment_integration.py (5 tests)
+   └─ End-to-end payment flow
+
+Estimated time: 30 seconds
+
+Run tests? (yes/no)"
+
+User: "yes"
+
+Agent: "Running tests..."
+[Progress: ████████████████ 100%]
+
+Agent: "✅ 23/23 tests passing
+
+┌────────────────────────────────────────────────┐
+│ 📋 PHASE 4: SECURITY SCAN                      │
+└────────────────────────────────────────────────┘
+
+Agent: "Running security scans:
+- Semgrep (OWASP rules)
+- Safety (dependency vulnerabilities)
+- TruffleHog (secret detection)
+
+Estimated time: 10 seconds
+
+Run security scan? (yes/no)"
+
+User: "yes"
+
+Agent: "✅ No vulnerabilities found
+
+┌────────────────────────────────────────────────┐
+│ 📋 PHASE 5: GIT COMMIT                         │
+└────────────────────────────────────────────────┘
+
+Agent: "Ready to commit:
+
+Files changed:
++ payment_service.py (150 lines)
++ stripe_client.py (80 lines)
++ payment_models.py (50 lines)
++ test_payment_service.py (60 lines)
++ test_stripe_client.py (45 lines)
++ test_payment_integration.py (35 lines)
+
+Commit message:
+'feat: Add Stripe payment processing
+
+- Add Payment Service with create/status/refund operations
+- Integrate Stripe SDK with error handling
+- Add Payment database model
+- 23 tests (100% passing)
+- No security vulnerabilities'
+
+Commit? (yes/no/edit message)"
+
+User: "yes"
+
+Agent: "✅ Committed (abc1234)
+
+Summary:
+✅ 6 files created (420 lines)
+✅ 23 tests passing
+✅ Architecture updated
+✅ No security issues
+✅ Committed to Git
+
+Next steps:
+- Add Stripe API key to .env
+- Deploy to staging for integration testing
+
+Done! 🎉"
+```
+
+---
+
+### 3. Guided Mode: Impact Explanation (Natural Language, Not Code Terms)
+
+**Critical Requirement:** In Guided Mode, the agent must explain impact using **natural language descriptions of features/components**, NOT code-level details.
+
+**❌ Bad (Code Terms):**
+```
+Agent: "Modifying payment_service.py will affect:
+- Line 45 in gateway.py (import statement)
+- Line 120 in api_routes.py (function call)
+- test_gateway.py (3 tests need updates)"
+```
+
+**✅ Good (Natural Language):**
+```
+Agent: "Modifying the Payment Service will affect:
+
+Features Impacted:
+├─ 🛒 Shopping Cart Feature
+│   └─ Uses Payment Service to process checkout
+│   └─ Impact: Will need to update checkout flow
+│
+└─ 📊 Admin Dashboard
+    └─ Displays payment statistics
+    └─ Impact: Payment status API will have new fields
+
+Components Impacted:
+├─ Gateway (minimal changes - just API routing)
+└─ Database (no schema changes)
+
+User-Facing Changes:
+✅ No breaking changes for end users
+⚠️  Admin users will see new 'refund' button
+
+Confidence: High (GNN dependency analysis shows clear boundaries)"
+```
+
+**Implementation:** Use GNN to map file dependencies → component dependencies → feature dependencies, then translate to user-friendly descriptions.
+
+---
+
+### 4. Guided Mode: Decision Logging
+
+**Requirement:** All decisions and changes must be logged with user consent.
+
+**Log Format (`.yantra/logs/decisions.log`):**
+
+```
+[2024-11-28 10:23:45] ARCHITECTURE_CHANGE
+User Request: "Add Stripe payment processing"
+Agent Proposal: Add Payment Service, Payment Database
+User Decision: APPROVED
+Reasoning: "Need to support online payments"
+Impact: 0 existing features affected, 2 new components added
+---
+
+[2024-11-28 10:25:30] CODE_GENERATION
+Files: payment_service.py, stripe_client.py, payment_models.py
+User Decision: APPROVED
+GNN Analysis: No breaking changes
+---
+
+[2024-11-28 10:26:15] FEATURE_CHANGE
+Feature: Shopping Cart
+Change: Add payment processing to checkout flow
+User Decision: APPROVED
+Impact: Checkout flow will now call Payment Service
+---
+
+[2024-11-28 10:27:00] COMMIT
+Files: 6 files, 420 lines
+User Decision: APPROVED
+Message: "feat: Add Stripe payment processing"
+Commit Hash: abc1234
+```
+
+**Log Queries:**
+```
+User: "Show me all architecture changes this week"
+Agent: Retrieves and displays all ARCHITECTURE_CHANGE logs from past 7 days
+
+User: "Why did we add the Payment Service?"
+Agent: "On Nov 28, you requested 'Add Stripe payment processing'. 
+        I proposed adding Payment Service and Payment Database.
+        You approved because: 'Need to support online payments'."
+```
+
+---
+
+### 5. Guided Mode: Progress Status (Project-Level)
+
+**Requirement:** Give regular status updates on what is implemented and what will be implemented.
+
+**Status Update Format:**
+
+```
+Agent: "📊 PROJECT STATUS UPDATE
+
+Completed Today:
+✅ Payment Service implementation (100%)
+✅ Stripe SDK integration (100%)
+✅ Payment database models (100%)
+✅ Unit tests (23/23 passing)
+✅ Security scan (0 vulnerabilities)
+
+In Progress:
+⏳ Integration testing (60% complete)
+   └─ Remaining: Test webhook handling
+
+Planned Next:
+📋 Add refund functionality
+📋 Build admin dashboard for payment tracking
+📋 Deploy to staging environment
+
+Overall Project Progress:
+Core Features: 75% complete
+Testing: 85% complete
+Documentation: 40% complete
+Deployment: 0% complete
+
+Next Milestone: Staging Deployment (Est. 2 days)"
+```
+
+**Auto-Generated Progress Reports:**
+
+After every major phase (architecture, generation, testing), agent provides summary:
+
+```
+┌────────────────────────────────────────────────┐
+│ 📊 PROGRESS CHECKPOINT                         │
+└────────────────────────────────────────────────┘
+
+Session Started: 10:15 AM
+Current Time: 10:45 AM (30 minutes elapsed)
+
+Accomplished:
+✅ Architecture designed (Payment Service added)
+✅ 6 files generated (420 lines)
+✅ 23 tests generated and passing
+✅ Security scan passed
+✅ Git commit created
+
+Remaining Today:
+📋 Add Stripe API key
+📋 Run integration tests
+📋 Deploy to staging
+
+Blockers:
+⚠️  Need Stripe API key to proceed
+
+Next Action:
+Please provide Stripe API key or say 'skip' to continue without integration.
+```
+
+---
+
+### 6. Mode Switching
+
+**User Control:**
+
+```
+User: "Switch to auto mode"
+Agent: "✅ Switched to Auto Mode. I'll execute autonomously and notify you only for:
+       - Architecture changes (always require approval)
+       - Critical blockers (API keys, manual setup)
+       - Failures after 3 retry attempts
+       
+       You can switch back anytime with 'switch to guided mode'"
+
+User: "Switch to guided mode"
+Agent: "✅ Switched to Guided Mode. I'll explain each step and ask for approval before:
+       - Architecture changes
+       - Code generation
+       - Testing
+       - Git commits
+       
+       You can switch back anytime with 'switch to auto mode'"
+```
+
+**Automatic Mode Switching:**
+
+```
+# Auto Mode → Guided Mode (after 3 failures)
+Agent: "⚠️  I've failed 3 times trying to fix the database connection.
+       
+       Switching to Guided Mode so you can see what's happening.
+       
+       Issue: Cannot connect to PostgreSQL on localhost:5432
+       
+       Options:
+       1️⃣  Help me diagnose (guided troubleshooting)
+       2️⃣  Skip database for now (use SQLite)
+       3️⃣  Provide database credentials
+       
+       Your choice:"
+```
+
+---
+
+### 7. Implementation Architecture
+
+**Backend (Rust):**
+
+```rust
+// src-tauri/src/agent/interaction_mode.rs
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum InteractionMode {
+    Auto,    // Minimal user prompts
+    Guided,  // Explain and ask at each step
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum UserPromptTrigger {
+    ArchitectureChange,       // Always prompt (both modes)
+    CodeGeneration,           // Prompt in Guided only
+    Testing,                  // Prompt in Guided only
+    SecurityScan,             // Prompt in Guided only
+    GitCommit,                // Prompt in Guided only
+    CriticalBlocker,          // Always prompt (both modes)
+    FailureAfter3Retries,     // Always prompt (both modes)
+}
+
+pub struct InteractionManager {
+    mode: InteractionMode,
+    decision_log: DecisionLog,
+    gnn_engine: Arc<Mutex<GNNEngine>>,
+}
+
+impl InteractionManager {
+    /// Check if user prompt is needed for this action
+    pub fn should_prompt(&self, trigger: UserPromptTrigger) -> bool {
+        match (&self.mode, trigger) {
+            (_, UserPromptTrigger::ArchitectureChange) => true,      // Always
+            (_, UserPromptTrigger::CriticalBlocker) => true,         // Always
+            (_, UserPromptTrigger::FailureAfter3Retries) => true,   // Always
+            (InteractionMode::Guided, _) => true,                    // All triggers in Guided
+            (InteractionMode::Auto, _) => false,                     // Skip others in Auto
+        }
+    }
+    
+    /// Generate natural language impact explanation using GNN
+    pub async fn explain_impact(&self, files: &[PathBuf]) -> ImpactExplanation {
+        let gnn = self.gnn_engine.lock().unwrap();
+        
+        // Get affected components
+        let components = gnn.get_affected_components(files);
+        
+        // Get affected features
+        let features = gnn.get_affected_features(files);
+        
+        // Generate user-friendly explanation
+        ImpactExplanation {
+            features: features.iter().map(|f| {
+                FeatureImpact {
+                    name: f.name.clone(),
+                    description: f.description.clone(),
+                    change_type: f.change_type.clone(),
+                    user_visible: f.user_visible,
+                }
+            }).collect(),
+            components: components.iter().map(|c| {
+                ComponentImpact {
+                    name: c.name.clone(),
+                    change_severity: c.severity.clone(),
+                }
+            }).collect(),
+            confidence: self.calculate_confidence(&features, &components),
+        }
+    }
+    
+    /// Log user decision
+    pub fn log_decision(&mut self, decision: Decision) {
+        self.decision_log.append(decision);
+    }
+    
+    /// Generate progress report
+    pub fn generate_progress_report(&self, session_id: &str) -> ProgressReport {
+        let session = self.decision_log.get_session(session_id);
+        
+        ProgressReport {
+            completed_tasks: session.completed_tasks(),
+            in_progress_tasks: session.in_progress_tasks(),
+            planned_tasks: session.planned_tasks(),
+            overall_progress: session.calculate_progress(),
+            blockers: session.active_blockers(),
+            next_action: session.suggest_next_action(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ImpactExplanation {
+    pub features: Vec<FeatureImpact>,
+    pub components: Vec<ComponentImpact>,
+    pub confidence: f32,  // 0.0-1.0
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FeatureImpact {
+    pub name: String,              // "Shopping Cart", "Admin Dashboard"
+    pub description: String,       // Human-readable explanation
+    pub change_type: String,       // "Modified", "Extended", "No Change"
+    pub user_visible: bool,        // Will users notice this change?
+}
+```
+
+**Frontend (SolidJS):**
+
+```typescript
+// src-ui/stores/interactionModeStore.ts
+
+export interface InteractionModeStore {
+  mode: 'auto' | 'guided';
+  setMode: (mode: 'auto' | 'guided') => void;
+  
+  // Decision log
+  decisions: Decision[];
+  logDecision: (decision: Decision) => void;
+  
+  // Progress tracking
+  currentPhase: string;
+  phaseProgress: number;  // 0-100
+  overallProgress: number;  // 0-100
+  
+  // Pending user prompt
+  pendingPrompt: UserPrompt | null;
+  respondToPrompt: (response: string) => void;
+}
+```
+
+---
+
+### 8. Testing & Validation
+
+**Test Scenarios:**
+
+1. **Auto Mode - Happy Path**
+   - User: "Add user authentication"
+   - Agent executes full pipeline
+   - No user prompts except architecture change
+   - Completes in <3 minutes
+
+2. **Auto Mode - Blocker**
+   - User: "Add email sending"
+   - Agent hits blocker (need SMTP credentials)
+   - Pauses and prompts user
+   - Resumes after user provides credentials
+
+3. **Guided Mode - Full Explanation**
+   - User: "Add payment processing"
+   - Agent explains each phase
+   - User sees impact analysis
+   - All decisions logged
+
+4. **Mode Switching**
+   - User switches modes mid-session
+   - Agent adapts behavior immediately
+   - No loss of context
+
+---
+
+### 9. User Experience Guidelines
+
+**Auto Mode UX:**
+- Minimal interruptions (feels fast and efficient)
+- Background progress indicator (small, non-intrusive)
+- Detailed logs available on demand
+- Notification only for critical events
+
+**Guided Mode UX:**
+- Clear phase headers (Architecture, Generation, Testing, etc.)
+- Impact explanations in natural language
+- Visual progress bars for each phase
+- Approval buttons (Yes/No/Modify)
+- Undo/revert options at each checkpoint
+
+**Mode Indicator:**
+- Always visible in UI (top-right corner)
+- Shows current mode: 🚀 Auto | 🧭 Guided
+- Click to toggle or see mode explanation
+
+---
+
+## Cascading Failure Protection (MVP Phase 1 - Priority Feature)
+
+### Overview
+
+**Problem:** AI agents can enter failure loops where each attempted fix addresses a smaller problem while losing sight of the bigger solution. Without proper safeguards, the agent can make the codebase progressively worse through cascading failures.
+
+**Solution:** Implement a comprehensive checkpoint-based recovery system with intelligent failure detection, automatic rollback, and escalation strategies.
+
+**Core Principle:** Every modification is reversible with one click. The system should automatically detect when it's digging deeper into failure and revert to the last known working state.
+
+---
+
+### 1. Checkpoint System (Critical - MVP Foundation)
+
+**Requirement:** Create a checkpoint before **any** modification that can be restored with one click.
+
+**Checkpoint Granularity:**
+
+```
+Project Checkpoint Hierarchy:
+├─ Session Checkpoint (every chat session)
+├─ Feature Checkpoint (before each feature implementation)
+├─ File Checkpoint (before modifying each file)
+└─ Test Checkpoint (before running tests)
+```
+
+**Checkpoint Storage:**
+
+```rust
+// src-tauri/src/checkpoints/manager.rs
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Checkpoint {
+    pub id: String,                    // UUID
+    pub timestamp: DateTime<Utc>,
+    pub checkpoint_type: CheckpointType,
+    pub description: String,           // User-friendly description
+    pub files_snapshot: HashMap<PathBuf, String>,  // File path → content
+    pub gnn_state: Vec<u8>,           // Serialized GNN state
+    pub architecture_version: i64,     // Architecture version ID
+    pub test_results: Option<TestSummary>,
+    pub confidence_score: f32,         // 0.0-1.0
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum CheckpointType {
+    Session,      // Start of chat session
+    Feature,      // Before implementing feature
+    File,         // Before modifying file
+    Test,         // Before running tests
+    Manual,       // User-requested checkpoint
+}
+
+pub struct CheckpointManager {
+    storage_path: PathBuf,  // .yantra/checkpoints/
+    active_checkpoints: Vec<Checkpoint>,
+    max_checkpoints: usize,  // Default: 20 (keep last 20)
+}
+
+impl CheckpointManager {
+    /// Create checkpoint before any modification
+    pub async fn create_checkpoint(
+        &mut self,
+        checkpoint_type: CheckpointType,
+        description: String,
+        files: &[PathBuf],
+    ) -> Result<String, String> {
+        let checkpoint_id = Uuid::new_v4().to_string();
+        
+        // Snapshot all affected files
+        let mut files_snapshot = HashMap::new();
+        for file_path in files {
+            if file_path.exists() {
+                let content = std::fs::read_to_string(file_path)
+                    .map_err(|e| format!("Failed to read {}: {}", file_path.display(), e))?;
+                files_snapshot.insert(file_path.clone(), content);
+            }
+        }
+        
+        // Snapshot GNN state
+        let gnn_state = self.serialize_gnn_state()?;
+        
+        // Get current architecture version
+        let architecture_version = self.get_current_architecture_version()?;
+        
+        let checkpoint = Checkpoint {
+            id: checkpoint_id.clone(),
+            timestamp: Utc::now(),
+            checkpoint_type,
+            description,
+            files_snapshot,
+            gnn_state,
+            architecture_version,
+            test_results: None,
+            confidence_score: 1.0,  // Assume current state is good
+        };
+        
+        // Save to disk
+        self.save_checkpoint(&checkpoint)?;
+        
+        // Add to active list
+        self.active_checkpoints.push(checkpoint);
+        
+        // Prune old checkpoints if exceeding limit
+        if self.active_checkpoints.len() > self.max_checkpoints {
+            self.prune_old_checkpoints();
+        }
+        
+        Ok(checkpoint_id)
+    }
+    
+    /// Restore from checkpoint (one-click recovery)
+    pub async fn restore_checkpoint(&self, checkpoint_id: &str) -> Result<(), String> {
+        let checkpoint = self.active_checkpoints.iter()
+            .find(|c| c.id == checkpoint_id)
+            .ok_or_else(|| format!("Checkpoint {} not found", checkpoint_id))?;
+        
+        // Restore all files
+        for (file_path, content) in &checkpoint.files_snapshot {
+            std::fs::write(file_path, content)
+                .map_err(|e| format!("Failed to restore {}: {}", file_path.display(), e))?;
+        }
+        
+        // Restore GNN state
+        self.restore_gnn_state(&checkpoint.gnn_state)?;
+        
+        // Restore architecture version
+        self.restore_architecture_version(checkpoint.architecture_version)?;
+        
+        Ok(())
+    }
+    
+    /// List available checkpoints (for user selection)
+    pub fn list_checkpoints(&self) -> Vec<CheckpointSummary> {
+        self.active_checkpoints.iter().map(|c| {
+            CheckpointSummary {
+                id: c.id.clone(),
+                timestamp: c.timestamp,
+                description: c.description.clone(),
+                checkpoint_type: c.checkpoint_type.clone(),
+                files_count: c.files_snapshot.len(),
+                confidence_score: c.confidence_score,
+            }
+        }).collect()
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CheckpointSummary {
+    pub id: String,
+    pub timestamp: DateTime<Utc>,
+    pub description: String,
+    pub checkpoint_type: CheckpointType,
+    pub files_count: usize,
+    pub confidence_score: f32,
+}
+```
+
+**Checkpoint UI (One-Click Restore):**
+
+```
+┌────────────────────────────────────────────────────────────┐
+│ 📸 CHECKPOINTS                                  [Restore ▼]│
+├────────────────────────────────────────────────────────────┤
+│ ✅ Session Start - 10:15 AM (30 min ago)                   │
+│    8 files | Confidence: 100%                [Restore]     │
+├────────────────────────────────────────────────────────────┤
+│ 🔨 Before "Add Payment Service" - 10:20 AM                │
+│    8 files | Confidence: 100% | All tests passing          │
+│                                              [Restore]     │
+├────────────────────────────────────────────────────────────┤
+│ ⚠️  After Payment Service (Failed) - 10:25 AM             │
+│    11 files | Confidence: 45% | 5 tests failing            │
+│                                              [Restore]     │
+├────────────────────────────────────────────────────────────┤
+│ ❌ After Fix Attempt #1 (Failed) - 10:27 AM               │
+│    11 files | Confidence: 30% | 8 tests failing            │
+│                                              [Restore]     │
+└────────────────────────────────────────────────────────────┘
+
+Recommendation: Restore "Before Add Payment Service" (100% confidence)
+```
+
+---
+
+### 2. Impact Assessment (GNN-Based)
+
+**Requirement:** Assess impact using GNN dependencies before making changes.
+
+**Implementation:**
+
+```rust
+// src-tauri/src/agent/impact_analyzer.rs
+
+pub struct ImpactAnalyzer {
+    gnn_engine: Arc<Mutex<GNNEngine>>,
+    checkpoint_manager: CheckpointManager,
+}
+
+impl ImpactAnalyzer {
+    /// Analyze impact of proposed code change
+    pub async fn analyze_impact(
+        &self,
+        files_to_modify: &[PathBuf],
+    ) -> Result<ImpactReport, String> {
+        let gnn = self.gnn_engine.lock().unwrap();
+        
+        // Find all dependent files
+        let dependent_files = gnn.get_all_dependencies(files_to_modify)?;
+        
+        // Find affected features
+        let affected_features = gnn.get_affected_features(files_to_modify)?;
+        
+        // Calculate risk score (0.0-1.0)
+        let risk_score = self.calculate_risk_score(&dependent_files, &affected_features);
+        
+        // Estimate test impact
+        let test_impact = self.estimate_test_impact(files_to_modify)?;
+        
+        Ok(ImpactReport {
+            files_to_modify: files_to_modify.to_vec(),
+            dependent_files,
+            affected_features,
+            risk_score,
+            test_impact,
+            recommendation: self.generate_recommendation(risk_score),
+        })
+    }
+    
+    fn calculate_risk_score(
+        &self,
+        dependent_files: &[PathBuf],
+        affected_features: &[Feature],
+    ) -> f32 {
+        // Risk factors:
+        // - Number of dependent files (more = higher risk)
+        // - Number of affected features (more = higher risk)
+        // - Criticality of affected features (core features = higher risk)
+        
+        let file_risk = (dependent_files.len() as f32 / 10.0).min(1.0);
+        let feature_risk = (affected_features.len() as f32 / 5.0).min(1.0);
+        let criticality_risk = affected_features.iter()
+            .map(|f| f.criticality)
+            .max()
+            .unwrap_or(0.0);
+        
+        // Weighted average
+        (file_risk * 0.3 + feature_risk * 0.3 + criticality_risk * 0.4)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ImpactReport {
+    pub files_to_modify: Vec<PathBuf>,
+    pub dependent_files: Vec<PathBuf>,
+    pub affected_features: Vec<Feature>,
+    pub risk_score: f32,  // 0.0-1.0 (0=safe, 1=high risk)
+    pub test_impact: TestImpact,
+    pub recommendation: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TestImpact {
+    pub tests_to_run: Vec<String>,        // Test file names
+    pub estimated_failures: usize,         // Predicted test failures
+    pub estimated_runtime: Duration,       // How long tests will take
+}
+```
+
+**Impact Display (Guided Mode):**
+
+```
+Agent: "Impact Analysis:
+
+Files to Modify:
+- payment_service.py (new file)
+
+Dependent Files (will be affected):
+- gateway.py (imports Payment Service)
+- api_routes.py (calls Payment Service API)
+
+Affected Features:
+├─ 🛒 Shopping Cart
+│   └─ Uses Payment Service for checkout
+│   └─ Risk: Low (well-isolated dependency)
+│
+└─ 📊 Admin Dashboard  
+    └─ Displays payment statistics
+    └─ Risk: Low (read-only access)
+
+Overall Risk Score: 0.25 (Low Risk) ✅
+
+Tests to Run:
+- test_gateway.py (expected: 2 failures)
+- test_payment_service.py (new tests)
+- test_shopping_cart_integration.py (expected: 0 failures)
+
+Estimated Runtime: 15 seconds
+
+Recommendation: Safe to proceed. Create checkpoint first."
+```
+
+---
+
+### 3. Automated Testing After Changes
+
+**Requirement:** Run automated tests after each change to detect impact immediately.
+
+**Test Execution Strategy:**
+
+```rust
+// src-tauri/src/testing/auto_runner.rs
+
+pub struct AutoTestRunner {
+    checkpoint_manager: Arc<Mutex<CheckpointManager>>,
+    failure_tracker: FailureTracker,
+}
+
+impl AutoTestRunner {
+    /// Run tests after code change
+    pub async fn run_tests_after_change(
+        &mut self,
+        changed_files: &[PathBuf],
+    ) -> Result<TestResult, String> {
+        // 1. Determine which tests to run (based on GNN dependencies)
+        let tests_to_run = self.select_relevant_tests(changed_files)?;
+        
+        // 2. Run tests
+        let test_result = self.execute_tests(&tests_to_run).await?;
+        
+        // 3. Compare with previous test results
+        let regression = self.detect_regression(&test_result)?;
+        
+        // 4. If regression detected, trigger failure recovery
+        if regression.has_new_failures {
+            self.trigger_failure_recovery(regression).await?;
+        }
+        
+        Ok(test_result)
+    }
+    
+    async fn trigger_failure_recovery(&mut self, regression: Regression) -> Result<(), String> {
+        // Increment failure count
+        self.failure_tracker.increment();
+        
+        // If 3 failures, escalate to user
+        if self.failure_tracker.count() >= 3 {
+            self.escalate_to_user(regression).await?;
+        } else {
+            // Auto-retry with fix
+            self.auto_retry_with_fix(regression).await?;
+        }
+        
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct FailureTracker {
+    count: usize,
+    failures: Vec<FailureAttempt>,
+    initial_checkpoint_id: String,
+}
+
+impl FailureTracker {
+    pub fn increment(&mut self) {
+        self.count += 1;
+    }
+    
+    pub fn count(&self) -> usize {
+        self.count
+    }
+    
+    pub fn reset(&mut self) {
+        self.count = 0;
+        self.failures.clear();
+    }
+}
+```
+
+---
+
+### 4. Automatic Revert After Failed Attempts
+
+**Requirement:** After each failed try, revert to the prior working checkpoint automatically.
+
+**Revert Strategy:**
+
+```rust
+// src-tauri/src/agent/failure_recovery.rs
+
+pub struct FailureRecovery {
+    checkpoint_manager: Arc<Mutex<CheckpointManager>>,
+    llm_orchestrator: Arc<Mutex<LLMOrchestrator>>,
+    failure_tracker: FailureTracker,
+}
+
+impl FailureRecovery {
+    /// Handle failure and attempt recovery
+    pub async fn handle_failure(
+        &mut self,
+        failure: Failure,
+    ) -> Result<RecoveryAction, String> {
+        // Record failure
+        self.failure_tracker.failures.push(FailureAttempt {
+            attempt_number: self.failure_tracker.count(),
+            timestamp: Utc::now(),
+            failure_type: failure.failure_type.clone(),
+            error_message: failure.error_message.clone(),
+        });
+        
+        // Revert to last working checkpoint
+        let last_checkpoint = self.get_last_working_checkpoint()?;
+        self.checkpoint_manager.lock().unwrap()
+            .restore_checkpoint(&last_checkpoint.id).await?;
+        
+        // Check if we should escalate
+        if self.failure_tracker.count() >= 3 {
+            return Ok(RecoveryAction::EscalateToUser);
+        }
+        
+        // Attempt auto-fix
+        let fix_strategy = self.generate_fix_strategy(&failure).await?;
+        Ok(RecoveryAction::AutoRetry(fix_strategy))
+    }
+    
+    /// Get last checkpoint with 100% confidence (all tests passing)
+    fn get_last_working_checkpoint(&self) -> Result<Checkpoint, String> {
+        let checkpoint_mgr = self.checkpoint_manager.lock().unwrap();
+        let checkpoints = checkpoint_mgr.list_checkpoints();
+        
+        checkpoints.iter()
+            .find(|c| c.confidence_score >= 0.95)
+            .map(|c| checkpoint_mgr.get_checkpoint(&c.id).unwrap())
+            .ok_or_else(|| "No working checkpoint found".to_string())
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum RecoveryAction {
+    AutoRetry(FixStrategy),       // Try fixing automatically
+    EscalateToUser,                // Ask user for help (after 3 failures)
+    SwitchLLM(String),            // Try different LLM
+    SearchForSolution,             // Use RAG/web search
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FailureAttempt {
+    pub attempt_number: usize,
+    pub timestamp: DateTime<Utc>,
+    pub failure_type: String,
+    pub error_message: String,
+}
+```
+
+**Auto-Revert Flow:**
+
+```
+Attempt 1: Generate payment_service.py
+├─ Run tests
+├─ 5 tests fail
+├─ Failure detected! ❌
+└─ Auto-revert to checkpoint "Before Add Payment Service"
+
+Attempt 2: Generate payment_service.py (with fix)
+├─ Prompt LLM: "Previous attempt failed with: ImportError: stripe module not found"
+├─ LLM suggests: Add stripe to requirements.txt
+├─ Generate code with fix
+├─ Run tests
+├─ 2 tests fail (different error)
+├─ Failure detected! ❌
+└─ Auto-revert to checkpoint "Before Add Payment Service"
+
+Attempt 3: Generate payment_service.py (with different fix)
+├─ Prompt LLM: "Previous attempts failed. Errors: [...]"
+├─ LLM suggests: Mock Stripe in tests
+├─ Generate code with fix
+├─ Run tests
+├─ 1 test fails
+├─ Failure detected! ❌
+└─ Auto-revert to checkpoint "Before Add Payment Service"
+
+After 3 Failures → Escalate to User:
+┌────────────────────────────────────────────────┐
+│ ⚠️  ESCALATION: 3 FAILED ATTEMPTS              │
+│                                                │
+│ I've tried 3 times to add Payment Service     │
+│ and reverted to the last working state each   │
+│ time. Here's what happened:                    │
+│                                                │
+│ Attempt 1: Missing stripe dependency          │
+│ Attempt 2: Import error in tests              │
+│ Attempt 3: Stripe API authentication failed   │
+│                                                │
+│ Current state: Reverted to checkpoint          │
+│ "Before Add Payment Service" (all tests✅)    │
+│                                                │
+│ Options:                                       │
+│ 1️⃣  Provide Stripe API credentials            │
+│ 2️⃣  Try with different LLM (Claude → GPT-4)   │
+│ 3️⃣  Search web/RAG for solution               │
+│ 4️⃣  Skip Payment Service for now              │
+│                                                │
+│ Your choice:                                   │
+└────────────────────────────────────────────────┘
+```
+
+---
+
+### 5. User Escalation After 3 Failures
+
+**Requirement:** After 3 failed tries, ask user for input.
+
+**Escalation UI:**
+
+```typescript
+// src-ui/components/FailureEscalation.tsx
+
+interface FailureEscalationProps {
+  attempts: FailureAttempt[];
+  lastWorkingCheckpoint: CheckpointSummary;
+  suggestedActions: RecoveryAction[];
+}
+
+export function FailureEscalation(props: FailureEscalationProps) {
+  return (
+    <div class="failure-escalation">
+      <h2>⚠️ Need Your Help</h2>
+      
+      <div class="failure-summary">
+        <p>I've attempted {props.attempts.length} times and couldn't succeed.</p>
+        
+        <div class="attempts-list">
+          {props.attempts.map((attempt, i) => (
+            <div class="attempt">
+              <span class="attempt-number">Attempt {i + 1}:</span>
+              <span class="error-message">{attempt.error_message}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      
+      <div class="current-state">
+        <p>✅ Current State: Reverted to last working checkpoint</p>
+        <CheckpointCard checkpoint={props.lastWorkingCheckpoint} />
+      </div>
+      
+      <div class="recovery-options">
+        <h3>What would you like me to do?</h3>
+        {props.suggestedActions.map((action) => (
+          <ActionButton action={action} />
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+### 6. LLM Hot-Swapping
+
+**Requirement:** If user has multiple LLM APIs, ask if they want to try with a different LLM.
+
+**Implementation:**
+
+```rust
+// src-tauri/src/llm/hot_swap.rs
+
+pub struct LLMHotSwap {
+    available_llms: Vec<LLMProvider>,
+    current_llm: String,
+    failure_tracker: FailureTracker,
+}
+
+impl LLMHotSwap {
+    /// Suggest LLM switch after failures
+    pub fn suggest_llm_switch(&self) -> Option<LLMProvider> {
+        // If current LLM failed 3 times, suggest alternative
+        if self.failure_tracker.count() >= 3 {
+            self.available_llms.iter()
+                .find(|llm| llm.name != self.current_llm)
+                .cloned()
+        } else {
+            None
+        }
+    }
+    
+    /// Switch to different LLM
+    pub async fn switch_llm(&mut self, new_llm: LLMProvider) -> Result<(), String> {
+        self.current_llm = new_llm.name.clone();
+        self.failure_tracker.reset();  // Reset failure count with new LLM
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct LLMProvider {
+    pub name: String,              // "Claude", "GPT-4", "Qwen"
+    pub api_key: String,
+    pub capabilities: Vec<String>,  // "code_generation", "reasoning", etc.
+}
+```
+
+**LLM Switch UI:**
+
+```
+Agent: "I've failed 3 times with Claude Sonnet 4.
+
+I noticed you have GPT-4 Turbo configured as well.
+
+Would you like me to try again with GPT-4? It may have 
+different strengths for this type of problem.
+
+Options:
+1️⃣  Yes, try GPT-4 Turbo
+2️⃣  No, stick with Claude (get more specific guidance)
+3️⃣  Try Qwen Coder (specialized for code)
+
+Your choice:"
+```
+
+---
+
+### 7. RAG/Web Search with User Consent
+
+**Requirement:** Use RAG or web search to find solutions, but only with user consent.
+
+**Implementation:**
+
+```rust
+// src-tauri/src/agent/knowledge_search.rs
+
+pub struct KnowledgeSearch {
+    rag_engine: Option<RAGEngine>,
+    web_search_enabled: bool,
+}
+
+impl KnowledgeSearch {
+    /// Request user permission for external search
+    pub async fn request_search_permission(
+        &self,
+        query: &str,
+    ) -> Result<SearchPermission, String> {
+        // Show prompt to user
+        let prompt = format!(
+            "I'd like to search for solutions to this problem:\n\n\
+             Query: {}\n\n\
+             Where should I look?\n\
+             1️⃣  Local knowledge base (RAG - your past solutions)\n\
+             2️⃣  Web search (Google, StackOverflow, GitHub)\n\
+             3️⃣  Both\n\
+             4️⃣  Neither (I'll provide guidance)\n\n\
+             Your choice:",
+            query
+        );
+        
+        // Wait for user response
+        let response = self.prompt_user(&prompt).await?;
+        
+        Ok(match response.as_str() {
+            "1" => SearchPermission::RAGOnly,
+            "2" => SearchPermission::WebOnly,
+            "3" => SearchPermission::Both,
+            _ => SearchPermission::None,
+        })
+    }
+    
+    /// Execute search with user-approved permission
+    pub async fn search_for_solution(
+        &self,
+        query: &str,
+        permission: SearchPermission,
+    ) -> Result<Vec<Solution>, String> {
+        let mut solutions = Vec::new();
+        
+        match permission {
+            SearchPermission::RAGOnly => {
+                if let Some(rag) = &self.rag_engine {
+                    solutions.extend(rag.search(query).await?);
+                }
+            },
+            SearchPermission::WebOnly => {
+                if self.web_search_enabled {
+                    solutions.extend(self.web_search(query).await?);
+                }
+            },
+            SearchPermission::Both => {
+                if let Some(rag) = &self.rag_engine {
+                    solutions.extend(rag.search(query).await?);
+                }
+                if self.web_search_enabled {
+                    solutions.extend(self.web_search(query).await?);
+                }
+            },
+            SearchPermission::None => {},
+        }
+        
+        Ok(solutions)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum SearchPermission {
+    RAGOnly,
+    WebOnly,
+    Both,
+    None,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Solution {
+    pub source: String,          // "RAG", "StackOverflow", "GitHub"
+    pub title: String,
+    pub description: String,
+    pub code_snippet: Option<String>,
+    pub relevance_score: f32,    // 0.0-1.0
+}
+```
+
+**Search Consent UI:**
+
+```
+Agent: "I found similar issues in our knowledge base:
+
+Option 1: RAG Search Results (Local)
+├─ "Stripe integration error" (90% match)
+│   └─ Solution: Add API key to environment
+│
+└─ "Payment processing tests failing" (75% match)
+    └─ Solution: Mock Stripe API in tests
+
+Should I also search the web for more solutions?
+
+✅ Benefits: More comprehensive solutions
+⚠️  Privacy: Query sent to external search API
+
+Search web? (yes/no)"
+```
+
+---
+
+### 8. Testing & Validation
+
+**Test Scenarios:**
+
+1. **Happy Path (No Failures)**
+   - Create checkpoint
+   - Make code change
+   - Tests pass
+   - Checkpoint becomes "last working"
+
+2. **Single Failure + Auto-Recovery**
+   - Create checkpoint
+   - Make code change
+   - Tests fail
+   - Auto-revert to checkpoint
+   - Retry with fix
+   - Tests pass ✅
+
+3. **3 Failures + User Escalation**
+   - Create checkpoint
+   - Attempt 1: Fail → Revert → Retry
+   - Attempt 2: Fail → Revert → Retry
+   - Attempt 3: Fail → Revert → Escalate to user
+   - User provides guidance
+   - Retry with user input
+   - Tests pass ✅
+
+4. **LLM Hot-Swap**
+   - 3 failures with Claude
+   - Suggest GPT-4 switch
+   - User approves
+   - Retry with GPT-4
+   - Tests pass ✅
+
+5. **One-Click Restore from UI**
+   - User clicks "Restore" on checkpoint
+   - System reverts all files instantly
+   - GNN state restored
+   - Tests pass ✅
+
+---
+
+### 9. Performance Targets
+
+| Operation | Target | Notes |
+|-----------|--------|-------|
+| Create checkpoint | <500ms | Snapshot 10-20 files |
+| Restore checkpoint | <1s | Restore all files + GNN |
+| Impact analysis | <100ms | GNN dependency traversal |
+| List checkpoints | <50ms | Query from memory |
+| Prune old checkpoints | <200ms | Background operation |
+
+---
+
+### 10. Storage Management
+
+**Checkpoint Storage Strategy:**
+
+```
+.yantra/
+├─ checkpoints/
+│   ├─ session_2024-11-28_10-15.json
+│   ├─ feature_payment_2024-11-28_10-20.json
+│   ├─ file_payment_service_2024-11-28_10-25.json
+│   └─ ... (keep last 20 checkpoints)
+│
+└─ checkpoint_index.db (SQLite)
+    └─ Tracks all checkpoints with metadata
+```
+
+**Auto-Pruning:**
+- Keep last 20 checkpoints by default
+- User-marked "important" checkpoints never pruned
+- Prune in background (non-blocking)
+- Compress old checkpoints (gzip) to save space
 
 ---
 

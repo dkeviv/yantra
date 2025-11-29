@@ -5,10 +5,12 @@
 pub mod types;
 pub mod storage;
 pub mod commands;
+pub mod deviation_detector;
 
 pub use types::*;
 pub use storage::ArchitectureStorage;
 pub use commands::*;
+pub use deviation_detector::{DeviationDetector, DeviationCheck, AlignmentResult, Deviation, Severity};
 
 use std::path::PathBuf;
 
