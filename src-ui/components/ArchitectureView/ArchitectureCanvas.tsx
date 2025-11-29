@@ -249,26 +249,30 @@ export default function ArchitectureCanvas() {
             <Show
               when={architectureState.isLoading}
               fallback={
-                <div class="text-gray-400 text-center">
-                  <div class="text-6xl mb-4">🏗️</div>
-                  <p class="text-xl mb-2">No Architecture Loaded</p>
-                  <p class="text-sm">Create or load an architecture to get started</p>
-                  <button
-                    onClick={async () => {
-                      const name = prompt('Architecture name:');
-                      if (name) {
-                        const { createArchitecture } = await import('../../stores/architectureStore');
-                        try {
-                          await createArchitecture(name);
-                        } catch (error) {
-                          alert('Failed to create architecture');
-                        }
-                      }
-                    }}
-                    class="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
-                  >
-                    Create New Architecture
-                  </button>
+                <div class="text-gray-400 text-center max-w-md">
+                  <div class="text-6xl mb-6">🏗️</div>
+                  <p class="text-xl mb-3 font-semibold">No Architecture Yet</p>
+                  <p class="text-sm mb-4 leading-relaxed">
+                    Tell me in <span class="text-blue-400 font-medium">chat</span> what you want to build, 
+                    and I'll generate the architecture diagram for you automatically.
+                  </p>
+                  <div class="bg-gray-800/50 border border-gray-700 rounded-lg p-4 text-left">
+                    <div class="text-xs text-gray-500 mb-2">Example prompts:</div>
+                    <div class="space-y-2 text-sm">
+                      <div class="flex items-start gap-2">
+                        <span class="text-blue-400">💬</span>
+                        <span>"Create a REST API with JWT authentication"</span>
+                      </div>
+                      <div class="flex items-start gap-2">
+                        <span class="text-blue-400">💬</span>
+                        <span>"Build a 3-tier web app with React and FastAPI"</span>
+                      </div>
+                      <div class="flex items-start gap-2">
+                        <span class="text-blue-400">💬</span>
+                        <span>"Add Redis caching to my architecture"</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               }
             >

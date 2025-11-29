@@ -2744,14 +2744,537 @@ critical_files = [
 
 A comprehensive architecture visualization and governance system that enables **design-first development**, automatic architecture generation from existing code, and bidirectional sync between conceptual architecture and implementation.
 
-**Key Principle:** Architecture is the source of truth. Code must align with architecture, not vice versa.
+**Key Principle:** Architecture is automatically generated and continuously monitored. Code must align with architecture.
 
 **Three Core Capabilities:**
-1. **Design-First Development** - User describes intent → AI generates architecture → User approves → AI generates code
-2. **Import & Reverse Engineer** - Existing codebase → GNN analysis → AI generates architecture → User refines
-3. **Continuous Alignment Checking** - Code change → Compare to architecture → Alert if misaligned → Enforce governance
+1. **Automatic Architecture Generation** - User provides specs/intent → Agent generates architecture → Agent generates code → Agent monitors for deviations
+2. **Deviation Detection During Implementation** - Agent generates code → Checks alignment → Alerts user if deviation → User decides (update arch or fix code)
+3. **Continuous Alignment Monitoring** - Code changes → Compare to architecture → Alert if misaligned → Enforce governance through user decision
 
 ---
+
+### 🤖 Agent-Driven Architecture (Autonomous Mode)
+
+**CRITICAL DESIGN PRINCIPLE:** This is an **agentic platform** - all architecture operations happen through the agent, not manual UI interactions.
+
+#### Interaction Model
+
+**❌ NOT THIS (Manual Mode):**
+```
+User clicks "Create Architecture" button
+→ User drags components
+→ User draws connections
+→ User clicks "Save"
+→ Manual diagram creation
+```
+
+**✅ THIS (Agent-Driven Mode):**
+```
+User (in chat): "Build a REST API with JWT auth"
+→ Agent: Analyzes intent
+→ Agent: Generates architecture diagram
+→ Agent: Auto-saves to database
+→ Architecture View: Shows read-only visualization
+→ User: Reviews in Architecture View tab
+→ User (in chat): "Add Redis caching layer"
+→ Agent: Updates architecture
+→ Agent: Auto-saves (keeps last 3 versions)
+→ Architecture View: Updates visualization
+```
+
+#### Auto-Save with Rule of 3 Versioning
+
+**Specification:** Every architecture change is automatically saved with version history following the Rule of 3.
+
+**Rule of 3 Implementation:**
+- Keep current version + 3 most recent past versions (total: 4 versions)
+- When 5th version is created, delete the oldest (version 1)
+- Versions are immutable once created
+- Agent can revert to any of the 3 past versions
+
+**Version Metadata:**
+```rust
+struct ArchitectureVersion {
+    version_number: u32,           // Incremental: 1, 2, 3, 4...
+    snapshot_json: String,         // Full architecture state
+    timestamp: DateTime,           // When created
+    change_type: ChangeType,       // AgentGenerated, AgentUpdated, AgentReverted
+    agent_reasoning: String,       // Why this change was made
+    user_intent: String,           // Original user message that triggered change
+}
+
+enum ChangeType {
+    AgentGenerated,    // Agent created new architecture
+    AgentUpdated,      // Agent modified existing architecture
+    AgentReverted,     // Agent reverted to older version
+    GNNSynced,         // Synced from code analysis
+}
+```
+
+**Storage:**
+```sql
+-- Only keep 4 versions (current + 3 past)
+-- Auto-delete oldest when creating 5th version
+CREATE TABLE architecture_versions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    version_number INTEGER NOT NULL,
+    snapshot_json TEXT NOT NULL,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    change_type TEXT NOT NULL,  -- 'agent_generated', 'agent_updated', 'agent_reverted', 'gnn_synced'
+    agent_reasoning TEXT,
+    user_intent TEXT,
+    -- Constraint: Only keep 4 versions
+    CHECK (version_number IN (
+        SELECT version_number FROM architecture_versions 
+        ORDER BY version_number DESC 
+        LIMIT 4
+    ))
+);
+```
+
+**Agent Commands (Via Chat):**
+```
+User: "Show me the architecture"
+→ Agent: Opens Architecture View tab, shows current version
+
+User: "Revert to previous architecture"
+→ Agent: Loads version N-1, auto-saves as new version N+1
+→ Agent: "Reverted to version 5 (from 2 minutes ago)"
+
+User: "Show architecture history"
+→ Agent: Lists last 3 versions with timestamps and changes
+
+User: "Why did you add Redis?"
+→ Agent: Shows version history and reasoning
+```
+
+#### Architecture View UI (Read-Only Visualization)
+
+**No Manual Controls:**
+- ❌ No "Create Architecture" button
+- ❌ No "Add Component" button
+- ❌ No "Save" button
+- ❌ No "Load" button
+- ❌ No drag-to-create connections
+- ❌ No manual component editing
+
+**Read-Only Features:**
+- ✅ Zoom and pan navigation
+- ✅ Click component to see details (files, status)
+- ✅ Click connection to see relationship type
+- ✅ Filter by component type (Frontend/Backend/Database)
+- ✅ Version history display (auto-updated)
+- ✅ Export view (Markdown/Mermaid/JSON) - via agent command
+
+**Empty State Message:**
+```
+┌─────────────────────────────────────────────┐
+│                                             │
+│              🏗️ No Architecture Yet          │
+│                                             │
+│  Tell me in chat what you want to build,   │
+│  and I'll generate the architecture for    │
+│  you automatically.                         │
+│                                             │
+│  Example: "Create a REST API with auth"    │
+│                                             │
+└─────────────────────────────────────────────┘
+```
+
+#### Agent Workflow Examples
+
+**Example 1: Create New Architecture**
+```
+User: "Build a 3-tier web app with React, FastAPI, PostgreSQL"
+
+Agent thinks:
+1. Parse intent: 3-tier, React frontend, FastAPI backend, PostgreSQL
+2. Generate architecture:
+   - Component: React Frontend (type: UIComponent, layer: frontend)
+   - Component: FastAPI Backend (type: Service, layer: backend)
+   - Component: PostgreSQL (type: Database, layer: database)
+   - Connection: Frontend → Backend (APICall)
+   - Connection: Backend → Database (DataFlow)
+3. Auto-save to database (version 1)
+4. Export to architecture.json and architecture.md
+5. Notify user
+
+Agent responds: "✅ Created 3-tier architecture with 3 components and 2 connections. 
+Switch to Architecture View tab to see the diagram."
+
+Architecture View: Auto-updates to show new diagram
+```
+
+**Example 2: Update Existing Architecture**
+```
+User: "Add Redis caching between FastAPI and PostgreSQL"
+
+Agent thinks:
+1. Load current architecture (version 3)
+2. Analyze: Need Redis component + connections
+3. Generate update:
+   - Add Component: Redis (type: Cache, layer: backend)
+   - Add Connection: FastAPI → Redis (DataFlow)
+   - Add Connection: Redis → PostgreSQL (DataFlow)
+4. Auto-save (version 4, deletes version 1 per Rule of 3)
+5. Store reasoning: "Added Redis for caching per user request"
+6. Export updated diagram
+
+Agent responds: "✅ Added Redis caching layer. Architecture updated to version 4."
+
+Architecture View: Auto-updates to show Redis node and connections
+```
+
+**Example 3: Revert Architecture**
+```
+User: "Actually, remove Redis. Go back to the previous version."
+
+Agent thinks:
+1. Load version history (versions 2, 3, 4)
+2. User wants version 3 (before Redis was added)
+3. Create version 5 as copy of version 3
+4. Auto-save (version 5, deletes version 2 per Rule of 3)
+5. Store reasoning: "Reverted to version 3 per user request"
+
+Agent responds: "✅ Reverted to version 3 (without Redis). Now at version 5."
+
+Architecture View: Updates to show version 3 state (no Redis)
+```
+
+---
+
+### 🔍 Automatic Architecture Generation & Deviation Detection
+
+**CRITICAL WORKFLOW:** Yantra automatically generates architecture from specifications or code generation, then monitors for deviations during implementation.
+
+#### Workflow 1: Architecture from Specifications
+
+**Trigger:** User provides specifications or high-level requirements in chat
+
+```
+User: "Build a REST API with JWT authentication, user management, and PostgreSQL"
+
+Agent thinks:
+1. Parse requirements → Extract components:
+   - API Gateway (handles routing)
+   - Auth Service (JWT tokens, login/logout)
+   - User Service (CRUD operations)
+   - PostgreSQL Database (data persistence)
+
+2. Infer connections:
+   - Client → API Gateway (HTTPS)
+   - API Gateway → Auth Service (verify JWT)
+   - API Gateway → User Service (route requests)
+   - Auth Service → Database (store tokens)
+   - User Service → Database (store users)
+
+3. Generate architecture diagram
+4. Auto-save (version 1)
+5. Show in Architecture View
+
+Agent responds: "✅ Generated architecture with 4 components. Review in Architecture View tab."
+```
+
+**Architecture becomes the source of truth for implementation.**
+
+#### Workflow 2: Deviation Detection During Code Generation
+
+**Scenario:** Agent generates code that deviates from planned architecture
+
+```
+Architecture says:
+  API Gateway → Auth Service → Database
+  (3-tier: Gateway can't directly access Database)
+
+Agent generates code:
+  api/gateway.py:
+    import psycopg2
+    conn = psycopg2.connect(...)  # DIRECT DB ACCESS!
+
+Deviation Detector triggers:
+1. GNN analyzes new code in gateway.py
+2. Detects: gateway.py imports psycopg2 (database library)
+3. Checks architecture: Gateway should only call Auth Service
+4. Identifies: ARCHITECTURAL DEVIATION
+5. Calculates severity: HIGH (violates layering principle)
+6. Pauses code generation
+7. Alerts user with options
+
+Agent responds: "⚠️ ARCHITECTURE DEVIATION DETECTED
+
+I was about to add direct database access to API Gateway, but the architecture 
+specifies that Gateway should only communicate with Auth Service.
+
+Current Architecture:
+  Gateway → Auth Service → Database ✓
+
+My Code Would Create:
+  Gateway → Database (direct access) ❌
+
+This violates the 3-tier architecture principle.
+
+What would you like me to do?
+
+1️⃣ Update Architecture - Allow Gateway to access Database directly (simpler, but less maintainable)
+2️⃣ Fix Code - Keep architecture, generate code that uses Auth Service (maintains separation)
+3️⃣ Cancel - Stop code generation, let me review
+
+Your choice (1/2/3): "
+
+User: "2"
+
+Agent: "✅ Fixing code to match architecture. Generating Auth Service client in Gateway..."
+```
+
+#### Workflow 3: Deviation Detection After Code Generation
+
+**Scenario:** User manually edits code, breaking architecture alignment
+
+```
+User manually edits: src/gateway.py
+  - Adds: from database import query_users
+  - Calls database directly, bypassing User Service
+
+On Save:
+1. GNN detects new import: database.query_users
+2. File change event → Architecture Validator runs
+3. Check: gateway.py should only import user_service
+4. Detect: ARCHITECTURAL MISALIGNMENT
+5. Show warning in UI + chat
+
+Agent: "⚠️ Code-Architecture Misalignment Detected
+
+File: src/gateway.py
+Change: Added direct database import
+
+Architecture expects:
+  Gateway → User Service → Database
+
+Code now has:
+  Gateway → Database (direct)
+
+This breaks the service layer pattern.
+
+Options:
+1️⃣ Update Architecture - Remove User Service layer (architectural change)
+2️⃣ Revert Code - Undo your changes to gateway.py
+3️⃣ Refactor Code - Move database logic to User Service (maintain architecture)
+
+Recommended: Option 3 (maintain clean architecture)
+
+Your choice (1/2/3): "
+```
+
+#### Implementation Architecture
+
+**Deviation Detection System:**
+
+```rust
+// src-tauri/src/architecture/deviation_detector.rs
+
+pub struct DeviationDetector {
+    gnn_engine: Arc<Mutex<GNNEngine>>,
+    architecture_manager: ArchitectureManager,
+}
+
+impl DeviationDetector {
+    /// Check if new/modified code aligns with architecture
+    pub async fn check_code_alignment(
+        &self,
+        file_path: &Path,
+        architecture_id: &str,
+    ) -> Result<AlignmentResult, String> {
+        // 1. Get current architecture
+        let arch = self.architecture_manager.load(architecture_id)?;
+        
+        // 2. Find which component owns this file
+        let component = arch.find_component_by_file(file_path)?;
+        
+        // 3. Get GNN dependencies for this file
+        let actual_deps = self.gnn_engine.lock().unwrap()
+            .get_file_dependencies(file_path)?;
+        
+        // 4. Get expected dependencies from architecture
+        let expected_deps = arch.get_component_dependencies(&component.id)?;
+        
+        // 5. Compare actual vs expected
+        let deviations = self.compare_dependencies(actual_deps, expected_deps)?;
+        
+        // 6. Calculate severity
+        let severity = self.calculate_severity(&deviations);
+        
+        Ok(AlignmentResult {
+            is_aligned: deviations.is_empty(),
+            deviations,
+            severity,
+            recommendations: self.generate_recommendations(&deviations),
+        })
+    }
+    
+    /// Monitor for deviations during code generation
+    pub async fn monitor_code_generation(
+        &self,
+        generated_code: &str,
+        target_file: &Path,
+        architecture_id: &str,
+    ) -> Result<DeviationCheck, String> {
+        // 1. Parse generated code (tree-sitter)
+        let imports = self.extract_imports(generated_code)?;
+        
+        // 2. Get expected dependencies from architecture
+        let arch = self.architecture_manager.load(architecture_id)?;
+        let component = arch.find_component_by_file(target_file)?;
+        let allowed_deps = arch.get_allowed_dependencies(&component.id)?;
+        
+        // 3. Check for violations
+        let violations = imports.iter()
+            .filter(|imp| !allowed_deps.contains(imp))
+            .collect::<Vec<_>>();
+        
+        if !violations.is_empty() {
+            return Ok(DeviationCheck {
+                has_deviation: true,
+                violations,
+                severity: self.calculate_severity_from_violations(&violations),
+                pause_generation: true,
+                user_prompt: self.generate_user_prompt(&violations, &component),
+            });
+        }
+        
+        Ok(DeviationCheck {
+            has_deviation: false,
+            violations: vec![],
+            severity: Severity::None,
+            pause_generation: false,
+            user_prompt: None,
+        })
+    }
+}
+
+pub enum Severity {
+    None,        // No deviation
+    Low,         // Minor deviation (e.g., extra utility import)
+    Medium,      // Moderate (e.g., skip one layer but maintain pattern)
+    High,        // Major violation (e.g., break layering completely)
+    Critical,    // Catastrophic (e.g., circular dependencies)
+}
+
+pub struct AlignmentResult {
+    pub is_aligned: bool,
+    pub deviations: Vec<Deviation>,
+    pub severity: Severity,
+    pub recommendations: Vec<String>,
+}
+
+pub struct Deviation {
+    pub deviation_type: DeviationType,
+    pub expected: String,
+    pub actual: String,
+    pub affected_file: PathBuf,
+    pub explanation: String,
+}
+
+pub enum DeviationType {
+    UnexpectedDependency,     // Code imports something not in architecture
+    MissingDependency,        // Architecture expects import, code doesn't have it
+    WrongConnectionType,      // Using wrong communication pattern
+    LayerViolation,           // Bypassing layers
+    CircularDependency,       // Creating cycle in directed graph
+}
+```
+
+**Integration Points:**
+
+1. **During Code Generation (project_orchestrator.rs):**
+```rust
+// Before writing generated code
+let deviation_check = deviation_detector
+    .monitor_code_generation(&generated_code, &target_file, &architecture_id)
+    .await?;
+
+if deviation_check.has_deviation {
+    // Pause generation
+    // Show user prompt
+    // Wait for user decision
+    match user_decision {
+        Decision::UpdateArchitecture => {
+            // Modify architecture to allow new dependency
+            architecture_manager.add_connection(...)?;
+        },
+        Decision::FixCode => {
+            // Regenerate code that matches architecture
+            let fixed_code = llm_orchestrator.fix_architectural_violation(...)?;
+        },
+        Decision::Cancel => {
+            return Err("Code generation cancelled by user");
+        },
+    }
+}
+
+// Proceed with writing file
+```
+
+2. **After File Save (file watcher):**
+```rust
+// When user manually edits file
+on_file_save(file_path) {
+    if let Some(architecture_id) = project.active_architecture_id {
+        let result = deviation_detector
+            .check_code_alignment(&file_path, &architecture_id)
+            .await?;
+        
+        if !result.is_aligned {
+            // Show warning in UI
+            ui.show_deviation_warning(result);
+            
+            // Add message to chat
+            chat.add_system_message(&format!(
+                "⚠️ Architecture misalignment detected in {}\n\n{}",
+                file_path.display(),
+                result.format_user_friendly()
+            ));
+        }
+    }
+}
+```
+
+**User Decision Flow:**
+
+```
+┌──────────────────────────────────┐
+│  Deviation Detected              │
+├──────────────────────────────────┤
+│  Expected: A → B → C             │
+│  Actual:   A → C (skips B)       │
+│                                  │
+│  Severity: HIGH                  │
+│                                  │
+│  Options:                        │
+│  1️⃣ Update Architecture          │
+│  2️⃣ Fix Code                     │
+│  3️⃣ Cancel                       │
+└──────────────────────────────────┘
+           ↓
+    User chooses 1️⃣
+           ↓
+┌──────────────────────────────────┐
+│  Architecture Updated            │
+├──────────────────────────────────┤
+│  Added: A → C connection         │
+│  Reason: User approved shortcut  │
+│  Version: 5 (was 4)              │
+│                                  │
+│  ✅ Code now matches arch        │
+└──────────────────────────────────┘
+```
+
+#### Benefits
+
+1. **Prevents Drift:** Architecture never diverges from code
+2. **Enforces Governance:** Maintains architectural decisions
+3. **Documents Decisions:** Every deviation has reasoning
+4. **Enables Rollback:** Can revert to previous architecture if needed
+5. **Teaches Best Practices:** Users learn architectural patterns
 
 ### 1. Core Workflows
 
