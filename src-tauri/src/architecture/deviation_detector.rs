@@ -57,7 +57,7 @@ pub struct Violation {
     pub allowed_alternatives: Vec<String>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Severity {
     None,       // No deviation
     Low,        // Minor deviation (e.g., extra utility import)
@@ -110,7 +110,8 @@ impl DeviationDetector {
         
         // 2. Get expected dependencies from architecture
         let arch = self.architecture_manager.get_architecture(architecture_id)
-            .map_err(|e| format!("Failed to load architecture: {}", e))?;
+            .map_err(|e| format!("Failed to load architecture: {}", e))?
+            .ok_or_else(|| format!("Architecture {} not found", architecture_id))?;
         
         // 3. Find which component this file belongs to
         let component = arch.components.iter()
@@ -134,7 +135,7 @@ impl DeviationDetector {
         }
         
         // 6. Calculate severity
-        let severity = self.calculate_severity(&violations, &component.component_type);
+        let severity = self.calculate_severity(&violations, &component.category);
         
         // 7. Generate user prompt if violations found
         let user_prompt = if !violations.is_empty() {
@@ -163,7 +164,8 @@ impl DeviationDetector {
     ) -> Result<AlignmentResult, String> {
         // 1. Get current architecture
         let arch = self.architecture_manager.get_architecture(architecture_id)
-            .map_err(|e| format!("Failed to load architecture: {}", e))?;
+            .map_err(|e| format!("Failed to load architecture: {}", e))?
+            .ok_or_else(|| format!("Architecture {} not found", architecture_id))?;
         
         // 2. Find which component owns this file
         let component = arch.components.iter()
@@ -173,8 +175,33 @@ impl DeviationDetector {
         // 3. Get GNN dependencies for this file
         let actual_deps = {
             let gnn = self.gnn_engine.lock().map_err(|e| format!("GNN lock error: {}", e))?;
-            gnn.get_file_dependencies(file_path)
-                .unwrap_or_else(|_| Vec::new())
+            let graph = gnn.get_graph();
+            
+            // Find nodes that belong to this file (store nodes to avoid temporary value issue)
+            let file_path_str = file_path.to_string_lossy().to_string();
+            let all_nodes = graph.get_all_nodes();
+            let source_nodes: Vec<_> = all_nodes.iter()
+                .filter(|n| n.file_path == file_path_str)
+                .collect();
+            
+            let mut deps = Vec::new();
+            for source in source_nodes {
+                // Get all outgoing edges (imports and calls)
+                let imports = graph.get_outgoing_edges(&source.id, crate::gnn::EdgeType::Imports);
+                let calls = graph.get_outgoing_edges(&source.id, crate::gnn::EdgeType::Calls);
+                
+                for edge in imports.into_iter().chain(calls.into_iter()) {
+                    // Find target node and extract its file path (reuse all_nodes)
+                    if let Some(target) = all_nodes.iter().find(|n| n.id == edge.target_id) {
+                        if !target.file_path.is_empty() && target.file_path != file_path_str {
+                            deps.push(target.file_path.clone());
+                        }
+                    }
+                }
+            }
+            deps.sort();
+            deps.dedup();
+            deps
         };
         
         // 4. Get expected dependencies from architecture
@@ -463,6 +490,376 @@ impl DeviationDetector {
         
         recs
     }
+
+    // ========================================================================
+    // FEATURE 2.15: ARCHITECTURE AUTO-CORRECTION
+    // ========================================================================
+
+    /// Auto-correct minor deviations in code to match architecture
+    /// 
+    /// Handles simple fixes automatically:
+    /// - Remove unexpected imports
+    /// - Add missing imports from architecture
+    /// - Reorder imports to match layer structure
+    /// 
+    /// Returns: (corrected_code, changes_made)
+    pub async fn auto_correct_code(
+        &self,
+        original_code: &str,
+        file_path: &Path,
+        architecture_id: &str,
+    ) -> Result<(String, Vec<String>), String> {
+        let mut corrected_code = original_code.to_string();
+        let mut changes = Vec::new();
+        
+        // 1. Get alignment status
+        let alignment = self.check_code_alignment(file_path, architecture_id).await?;
+        
+        // 2. Only auto-correct Low severity deviations
+        if alignment.severity > Severity::Low {
+            return Err(format!(
+                "Cannot auto-correct {} severity deviations. Manual review required.",
+                match alignment.severity {
+                    Severity::Medium => "Medium",
+                    Severity::High => "High",
+                    Severity::Critical => "Critical",
+                    _ => "Unknown"
+                }
+            ));
+        }
+        
+        // 3. Handle each deviation
+        for deviation in &alignment.deviations {
+            match deviation.deviation_type {
+                DeviationType::UnexpectedDependency => {
+                    // Remove the unexpected import
+                    corrected_code = self.remove_import(&corrected_code, &deviation.actual, file_path)?;
+                    changes.push(format!("Removed unexpected import: {}", deviation.actual));
+                },
+                DeviationType::MissingDependency => {
+                    // Add the missing import
+                    corrected_code = self.add_import(&corrected_code, &deviation.expected, file_path)?;
+                    changes.push(format!("Added missing import: {}", deviation.expected));
+                },
+                _ => {
+                    // Cannot auto-correct complex deviations
+                    return Err(format!("Cannot auto-correct {:?} deviation", deviation.deviation_type));
+                }
+            }
+        }
+        
+        Ok((corrected_code, changes))
+    }
+
+    /// Remove an import statement from code
+    fn remove_import(&self, code: &str, import_to_remove: &str, file_path: &Path) -> Result<String, String> {
+        let extension = file_path.extension()
+            .and_then(|e| e.to_str())
+            .ok_or_else(|| "No file extension".to_string())?;
+        
+        let mut result = String::new();
+        
+        for line in code.lines() {
+            let trimmed = line.trim();
+            let should_keep = match extension {
+                "py" => {
+                    // Remove Python imports
+                    !(trimmed.starts_with(&format!("import {}", import_to_remove)) ||
+                      trimmed.starts_with(&format!("from {}", import_to_remove)))
+                },
+                "js" | "jsx" | "ts" | "tsx" => {
+                    // Remove JS imports
+                    !(trimmed.contains(&format!("from '{}'", import_to_remove)) ||
+                      trimmed.contains(&format!("from \"{}\"", import_to_remove)) ||
+                      trimmed.contains(&format!("require('{}')", import_to_remove)) ||
+                      trimmed.contains(&format!("require(\"{}\")", import_to_remove)))
+                },
+                _ => true,
+            };
+            
+            if should_keep {
+                result.push_str(line);
+                result.push('\n');
+            }
+        }
+        
+        Ok(result)
+    }
+
+    /// Add an import statement to code
+    fn add_import(&self, code: &str, import_to_add: &str, file_path: &Path) -> Result<String, String> {
+        let extension = file_path.extension()
+            .and_then(|e| e.to_str())
+            .ok_or_else(|| "No file extension".to_string())?;
+        
+        let import_statement = match extension {
+            "py" => format!("import {}\n", import_to_add),
+            "js" | "jsx" | "ts" | "tsx" => format!("import {} from '{}';\n", import_to_add, import_to_add),
+            _ => return Err("Unsupported file type".to_string()),
+        };
+        
+        // Insert after existing imports or at the top
+        let mut result = String::new();
+        let mut import_added = false;
+        let mut last_import_seen = false;
+        
+        for line in code.lines() {
+            let trimmed = line.trim();
+            let is_import = trimmed.starts_with("import ") || trimmed.starts_with("from ");
+            
+            if is_import {
+                last_import_seen = true;
+            } else if last_import_seen && !trimmed.is_empty() && !import_added {
+                // Add our import after the last import block
+                result.push_str(&import_statement);
+                import_added = true;
+            }
+            
+            result.push_str(line);
+            result.push('\n');
+        }
+        
+        // If no imports found, add at the top
+        if !import_added {
+            return Ok(format!("{}{}", import_statement, code));
+        }
+        
+        Ok(result)
+    }
+
+    // ========================================================================
+    // FEATURE 2.16: ARCHITECTURE IMPACT ANALYSIS
+    // ========================================================================
+
+    /// Analyze impact of proposed code changes on architecture
+    /// 
+    /// Before LLM generates code, analyzes:
+    /// - Which components will be affected
+    /// - How many files need changes
+    /// - Risk level (breaking changes, API changes)
+    /// - Cascading dependencies
+    /// 
+    /// Returns: Impact assessment for user review
+    pub async fn analyze_change_impact(
+        &self,
+        change_description: &str,
+        target_component_id: &str,
+        architecture_id: &str,
+    ) -> Result<ImpactAnalysis, String> {
+        // 1. Get architecture
+        let arch = self.architecture_manager.get_architecture(architecture_id)
+            .map_err(|e| format!("Failed to load architecture: {}", e))?
+            .ok_or_else(|| format!("Architecture {} not found", architecture_id))?;
+        
+        // 2. Find target component
+        let component = arch.components.iter()
+            .find(|c| c.id == target_component_id)
+            .ok_or_else(|| format!("Component {} not found", target_component_id))?;
+        
+        // 3. Analyze direct dependencies (components that depend on this one)
+        let dependent_components = self.find_dependent_components(&arch, target_component_id);
+        
+        // 4. Analyze transitive dependencies (entire dependency chain)
+        let transitive_deps = self.find_transitive_dependencies(&arch, target_component_id);
+        
+        // 5. Estimate affected files using GNN
+        let affected_files = {
+            let gnn = self.gnn_engine.lock().map_err(|e| format!("GNN lock error: {}", e))?;
+            let graph = gnn.get_graph();
+            
+            // Count files in target component and dependents
+            let mut file_count = component.files.len();
+            for dep_id in &dependent_components {
+                if let Some(dep_comp) = arch.components.iter().find(|c| &c.id == dep_id) {
+                    file_count += dep_comp.files.len();
+                }
+            }
+            
+            file_count
+        };
+        
+        // 6. Calculate risk level
+        let risk_level = self.calculate_risk_level(
+            &dependent_components,
+            &transitive_deps,
+            component,
+            change_description,
+        );
+        
+        // 7. Generate warnings
+        let warnings = self.generate_impact_warnings(
+            &risk_level,
+            &dependent_components,
+            &transitive_deps,
+            component,
+        );
+        
+        // 8. Estimate change scope
+        let change_scope = if affected_files <= 3 {
+            ChangeScope::Isolated
+        } else if affected_files <= 10 {
+            ChangeScope::Moderate
+        } else {
+            ChangeScope::Widespread
+        };
+        
+        Ok(ImpactAnalysis {
+            target_component: component.name.clone(),
+            affected_components: dependent_components.len(),
+            affected_files,
+            transitive_depth: transitive_deps.len(),
+            risk_level,
+            change_scope,
+            warnings,
+            proceed_recommendation: risk_level <= RiskLevel::Medium,
+        })
+    }
+
+    /// Find components that directly depend on the target component
+    fn find_dependent_components(
+        &self,
+        arch: &crate::architecture::types::Architecture,
+        target_id: &str,
+    ) -> Vec<String> {
+        arch.connections.iter()
+            .filter(|c| c.target_id == target_id)
+            .map(|c| c.source_id.clone())
+            .collect()
+    }
+
+    /// Find all components in the transitive dependency chain
+    fn find_transitive_dependencies(
+        &self,
+        arch: &crate::architecture::types::Architecture,
+        target_id: &str,
+    ) -> Vec<String> {
+        let mut visited = std::collections::HashSet::new();
+        let mut stack = vec![target_id.to_string()];
+        let mut result = Vec::new();
+        
+        while let Some(current) = stack.pop() {
+            if visited.contains(&current) {
+                continue;
+            }
+            visited.insert(current.clone());
+            
+            // Find all components that depend on current
+            for conn in &arch.connections {
+                if conn.target_id == current && !visited.contains(&conn.source_id) {
+                    stack.push(conn.source_id.clone());
+                    result.push(conn.source_id.clone());
+                }
+            }
+        }
+        
+        result
+    }
+
+    /// Calculate risk level of the proposed change
+    fn calculate_risk_level(
+        &self,
+        dependents: &[String],
+        transitives: &[String],
+        component: &crate::architecture::types::Component,
+        change_description: &str,
+    ) -> RiskLevel {
+        // Critical: Many dependents or API changes
+        if dependents.len() > 5 || transitives.len() > 10 {
+            return RiskLevel::Critical;
+        }
+        
+        if change_description.to_lowercase().contains("api") ||
+           change_description.to_lowercase().contains("interface") ||
+           change_description.to_lowercase().contains("breaking") {
+            return RiskLevel::Critical;
+        }
+        
+        // High: Multiple dependents or external-facing component
+        if dependents.len() > 2 {
+            return RiskLevel::High;
+        }
+        
+        if component.category.contains("API") || component.category.contains("Gateway") {
+            return RiskLevel::High;
+        }
+        
+        // Medium: Some dependents
+        if dependents.len() > 0 {
+            return RiskLevel::Medium;
+        }
+        
+        // Low: Isolated component
+        RiskLevel::Low
+    }
+
+    /// Generate warnings for the impact analysis
+    fn generate_impact_warnings(
+        &self,
+        risk: &RiskLevel,
+        dependents: &[String],
+        transitives: &[String],
+        component: &crate::architecture::types::Component,
+    ) -> Vec<String> {
+        let mut warnings = Vec::new();
+        
+        match risk {
+            RiskLevel::Critical => {
+                warnings.push("⛔ CRITICAL RISK: This change affects many components".to_string());
+                warnings.push(format!("   {} direct dependents, {} transitive dependencies", 
+                    dependents.len(), transitives.len()));
+                warnings.push("   Requires thorough testing and staged rollout".to_string());
+            },
+            RiskLevel::High => {
+                warnings.push("⚠️  HIGH RISK: Multiple components will be affected".to_string());
+                warnings.push(format!("   {} components depend on '{}'", dependents.len(), component.name));
+            },
+            RiskLevel::Medium => {
+                warnings.push("⚡ MODERATE RISK: Some dependencies detected".to_string());
+                warnings.push("   Test dependent components after changes".to_string());
+            },
+            RiskLevel::Low => {
+                warnings.push("✅ LOW RISK: Changes are relatively isolated".to_string());
+            },
+        }
+        
+        // Add specific component warnings
+        if !dependents.is_empty() {
+            warnings.push(format!("\nAffected components: {}", dependents.join(", ")));
+        }
+        
+        warnings
+    }
+}
+
+// ============================================================================
+// NEW TYPES FOR IMPACT ANALYSIS
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ImpactAnalysis {
+    pub target_component: String,
+    pub affected_components: usize,
+    pub affected_files: usize,
+    pub transitive_depth: usize,
+    pub risk_level: RiskLevel,
+    pub change_scope: ChangeScope,
+    pub warnings: Vec<String>,
+    pub proceed_recommendation: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum RiskLevel {
+    Low,
+    Medium,
+    High,
+    Critical,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ChangeScope {
+    Isolated,    // Affects only target component
+    Moderate,    // Affects 2-10 files
+    Widespread,  // Affects 10+ files
 }
 
 // ============================================================================
@@ -512,6 +909,63 @@ from auth.service import verify_token
             Violation { import_path: "d".to_string(), reason: "".to_string(), allowed_alternatives: vec![] },
         ];
         assert_eq!(detector.calculate_severity(&many_violations, "Service"), Severity::Critical);
+    }
+
+    #[test]
+    fn test_remove_import() {
+        let detector = create_test_detector();
+        let code = r#"import os
+import unauthorized_module
+import sys
+
+def main():
+    pass
+"#;
+        
+        let result = detector.remove_import(code, "unauthorized_module", Path::new("test.py")).unwrap();
+        assert!(!result.contains("unauthorized_module"));
+        assert!(result.contains("import os"));
+        assert!(result.contains("import sys"));
+    }
+
+    #[test]
+    fn test_add_import() {
+        let detector = create_test_detector();
+        let code = r#"import os
+import sys
+
+def main():
+    pass
+"#;
+        
+        let result = detector.add_import(code, "required_module", Path::new("test.py")).unwrap();
+        assert!(result.contains("import required_module"));
+        assert!(result.contains("import os"));
+    }
+
+    #[test]
+    fn test_risk_level_calculation() {
+        let detector = create_test_detector();
+        let component = crate::architecture::types::Component {
+            id: "test".to_string(),
+            name: "TestService".to_string(),
+            category: "Service".to_string(),
+            files: vec![],
+            description: String::new(),
+        };
+        
+        // Low risk: no dependents
+        let risk = detector.calculate_risk_level(&[], &[], &component, "minor change");
+        assert_eq!(risk, RiskLevel::Low);
+        
+        // Critical risk: API change
+        let risk = detector.calculate_risk_level(&[], &[], &component, "breaking API change");
+        assert_eq!(risk, RiskLevel::Critical);
+        
+        // High risk: multiple dependents
+        let dependents = vec!["A".to_string(), "B".to_string(), "C".to_string()];
+        let risk = detector.calculate_risk_level(&dependents, &[], &component, "change");
+        assert_eq!(risk, RiskLevel::High);
     }
 
     fn create_test_detector() -> DeviationDetector {

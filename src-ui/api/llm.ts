@@ -7,9 +7,22 @@ import { invoke } from '@tauri-apps/api/tauri';
 export interface LLMConfig {
   has_claude_key: boolean;
   has_openai_key: boolean;
-  primary_provider: 'Claude' | 'OpenAI';
+  has_openrouter_key: boolean;
+  has_groq_key: boolean;
+  has_gemini_key: boolean;
+  primary_provider: 'Claude' | 'OpenAI' | 'OpenRouter' | 'Groq' | 'Gemini';
   max_retries: number;
   timeout_seconds: number;
+  selected_models: string[];
+}
+
+export interface ModelInfo {
+  id: string;
+  name: string;
+  description: string;
+  context_window: number;
+  max_output_tokens: number;
+  supports_code: boolean;
 }
 
 export interface ChatMessage {
@@ -83,9 +96,9 @@ export const llmApi = {
 
   /**
    * Set primary LLM provider
-   * @param provider - 'claude' or 'openai'
+   * @param provider - 'claude', 'openai', 'openrouter', 'groq', or 'gemini'
    */
-  async setProvider(provider: 'claude' | 'openai'): Promise<void> {
+  async setProvider(provider: 'claude' | 'openai' | 'openrouter' | 'groq' | 'gemini'): Promise<void> {
     await invoke('set_llm_provider', { provider });
   },
 
@@ -106,11 +119,66 @@ export const llmApi = {
   },
 
   /**
-   * Clear API key for a provider
-   * @param provider - 'claude' or 'openai'
+   * Set OpenRouter API key
+   * @param apiKey - Your OpenRouter API key
    */
-  async clearKey(provider: 'claude' | 'openai'): Promise<void> {
+  async setOpenRouterKey(apiKey: string): Promise<void> {
+    await invoke('set_openrouter_key', { apiKey });
+  },
+
+  /**
+   * Set Groq API key
+   * @param apiKey - Your Groq API key
+   */
+  async setGroqKey(apiKey: string): Promise<void> {
+    await invoke('set_groq_key', { apiKey });
+  },
+
+  /**
+   * Set Gemini API key
+   * @param apiKey - Your Gemini API key
+   */
+  async setGeminiKey(apiKey: string): Promise<void> {
+    await invoke('set_gemini_key', { apiKey });
+  },
+
+  /**
+   * Clear API key for a provider
+   * @param provider - 'claude', 'openai', 'openrouter', 'groq', or 'gemini'
+   */
+  async clearKey(provider: 'claude' | 'openai' | 'openrouter' | 'groq' | 'gemini'): Promise<void> {
     await invoke('clear_llm_key', { provider });
+  },
+
+  /**
+   * Get available models for a specific provider
+   * @param provider - 'claude', 'openai', 'openrouter', 'groq', or 'gemini'
+   */
+  async getAvailableModels(provider: 'claude' | 'openai' | 'openrouter' | 'groq' | 'gemini'): Promise<ModelInfo[]> {
+    return await invoke<ModelInfo[]>('get_available_models', { provider });
+  },
+
+  /**
+   * Get default model for a specific provider
+   * @param provider - 'claude', 'openai', 'openrouter', 'groq', or 'gemini'
+   */
+  async getDefaultModel(provider: 'claude' | 'openai' | 'openrouter' | 'groq' | 'gemini'): Promise<string> {
+    return await invoke<string>('get_default_model', { provider });
+  },
+
+  /**
+   * Set selected models for user
+   * @param modelIds - Array of model IDs to show in chat panel
+   */
+  async setSelectedModels(modelIds: string[]): Promise<void> {
+    await invoke('set_selected_models', { modelIds });
+  },
+
+  /**
+   * Get selected models
+   */
+  async getSelectedModels(): Promise<string[]> {
+    return await invoke<string[]>('get_selected_models');
   },
 
   /**

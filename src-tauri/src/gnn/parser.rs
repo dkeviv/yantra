@@ -13,9 +13,12 @@ pub fn parse_python_file(
     file_path: &Path,
 ) -> Result<(Vec<CodeNode>, Vec<CodeEdge>), String> {
     let mut parser = Parser::new();
+    // tree-sitter-python 0.23 uses LANGUAGE constant (LanguageFn)
+    let lang_fn: extern "C" fn() -> *const std::os::raw::c_void = unsafe { std::mem::transmute(tree_sitter_python::LANGUAGE) };
+    let language = unsafe { tree_sitter::Language::from_raw(lang_fn() as *const tree_sitter::ffi::TSLanguage) };
     parser
-        .set_language(tree_sitter_python::language())
-        .map_err(|e| format!("Failed to set language: {}", e))?;
+        .set_language(&language)
+        .map_err(|e| format!("Failed to set Python language: {}", e))?;
     
     let tree = parser
         .parse(code, None)
@@ -86,6 +89,9 @@ fn extract_function(
         file_path: file_path_str.clone(),
         line_start: node.start_position().row + 1,
         line_end: node.end_position().row + 1,
+        code_snippet: extract_code_snippet(node, code),
+        docstring: extract_docstring(node, code),
+        ..Default::default()
     };
     
     nodes.push(func_node);
@@ -120,6 +126,9 @@ fn extract_class(
         file_path: file_path_str.clone(),
         line_start: node.start_position().row + 1,
         line_end: node.end_position().row + 1,
+        code_snippet: extract_code_snippet(node, code),
+        docstring: extract_docstring(node, code),
+        ..Default::default()
     };
     
     nodes.push(class_node);
@@ -166,6 +175,7 @@ fn extract_import(
                 file_path: file_path_str.clone(),
                 line_start: node.start_position().row + 1,
                 line_end: node.end_position().row + 1,
+                ..Default::default()
             };
             
             nodes.push(import_node);
@@ -239,6 +249,55 @@ fn extract_inheritance(
 
 fn get_node_text(node: &Node, code: &str) -> String {
     code[node.byte_range()].to_string()
+}
+
+/// Extract code snippet from a node (with reasonable size limit)
+fn extract_code_snippet(node: &Node, code: &str) -> Option<String> {
+    const MAX_SNIPPET_LENGTH: usize = 1000; // 1KB max per node
+    
+    let snippet = get_node_text(node, code);
+    
+    // Truncate if too long (keep first 900 chars + indicator)
+    if snippet.len() > MAX_SNIPPET_LENGTH {
+        Some(format!("{}... [truncated]", &snippet[..900]))
+    } else if !snippet.is_empty() {
+        Some(snippet)
+    } else {
+        None
+    }
+}
+
+/// Extract docstring from a function or class node
+fn extract_docstring(node: &Node, code: &str) -> Option<String> {
+    // In Python, docstring is usually the first statement in a function/class body
+    // Look for a block node and then an expression_statement with a string
+    if let Some(body) = node.child_by_field_name("body") {
+        let mut cursor = body.walk();
+        for child in body.children(&mut cursor) {
+            if child.kind() == "expression_statement" {
+                // Check if it's a string (docstring)
+                if let Some(string_child) = child.child(0) {
+                    if string_child.kind() == "string" {
+                        let docstring = get_node_text(&string_child, code);
+                        // Remove quotes and clean up
+                        let cleaned = docstring
+                            .trim()
+                            .trim_start_matches("\"\"\"")
+                            .trim_start_matches("'''")
+                            .trim_start_matches('"')
+                            .trim_start_matches('\'')
+                            .trim_end_matches("\"\"\"")
+                            .trim_end_matches("'''")
+                            .trim_end_matches('"')
+                            .trim_end_matches('\'')
+                            .trim();
+                        return Some(cleaned.to_string());
+                    }
+                }
+            }
+        }
+    }
+    None
 }
 
 #[cfg(test)]

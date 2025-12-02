@@ -1,18 +1,89 @@
 // File: src-ui/components/ChatPanel.tsx
-// Purpose: Chat interface component for user interaction with agent-first commands
-// Dependencies: solid-js, appStore, agentStore
-// Last Updated: November 28, 2025
+// Purpose: Agent interface for user-agent interaction with minimal UI design
+// Features:
+//   - Model selection in header (top right)
+//   - Reduced font sizes and padding for minimal UI
+//   - Send button inside textarea container
+//   - Terminal-like message display
+// Dependencies: solid-js, appStore, agentStore, llmStore
+// Last Updated: November 29, 2025
 
-import { Component, For, createSignal, Show } from 'solid-js';
+import { Component, For, createSignal, Show, createEffect, onMount } from 'solid-js';
 import { appStore } from '../stores/appStore';
-import { llmApi, type ChatMessage } from '../api/llm';
+import { llmApi, type ChatMessage, type ModelInfo } from '../api/llm';
 import { terminalStore } from '../stores/terminalStore';
+import { layoutStore } from '../stores/layoutStore';
 import LLMSettings from './LLMSettings';
+import StatusIndicator from './StatusIndicator';
 
 const ChatPanel: Component = () => {
   const [input, setInput] = createSignal('');
-  const [selectedModel, setSelectedModel] = createSignal('claude-sonnet-4');
+  const [selectedModel, setSelectedModel] = createSignal('');
+  const [availableModels, setAvailableModels] = createSignal<ModelInfo[]>([]);
   const [showApiConfig, setShowApiConfig] = createSignal(false);
+  const [currentProvider, setCurrentProvider] = createSignal<string>('');
+
+  // Load available models when component mounts or provider changes
+  onMount(async () => {
+    try {
+      const config = await llmApi.getConfig();
+      const provider = config.primary_provider.toLowerCase();
+      setCurrentProvider(provider);
+      await loadModelsForProvider(provider);
+    } catch (error) {
+      console.error('Failed to load initial config:', error);
+    }
+  });
+
+  // Function to load models for a specific provider
+  const loadModelsForProvider = async (provider: string) => {
+    try {
+      // Get all available models
+      const allModels = await llmApi.getAvailableModels(provider as any);
+      
+      // Get user's selected models
+      const selectedIds = await llmApi.getSelectedModels();
+      
+      // Filter: Show selected models only, or all if no selection
+      const modelsToShow = selectedIds.length > 0
+        ? allModels.filter(m => selectedIds.includes(m.id))
+        : allModels;
+      
+      setAvailableModels(modelsToShow);
+      
+      // Set default model if no model is selected
+      if (!selectedModel() && modelsToShow.length > 0) {
+        const defaultModel = await llmApi.getDefaultModel(provider as any);
+        // Use default if it's in the filtered list, otherwise use first
+        const modelToUse = modelsToShow.find(m => m.id === defaultModel) 
+          ? defaultModel 
+          : modelsToShow[0].id;
+        setSelectedModel(modelToUse);
+      }
+    } catch (error) {
+      console.error(`Failed to load models for ${provider}:`, error);
+      setAvailableModels([]);
+    }
+  };
+
+  // Watch for provider changes (when user changes provider in settings)
+  createEffect(() => {
+    // Re-check config periodically or on certain events
+    const interval = setInterval(async () => {
+      try {
+        const config = await llmApi.getConfig();
+        const provider = config.primary_provider.toLowerCase();
+        if (provider !== currentProvider()) {
+          setCurrentProvider(provider);
+          await loadModelsForProvider(provider);
+        }
+      } catch (error) {
+        // Silently fail - user might not have configured provider yet
+      }
+    }, 2000); // Check every 2 seconds
+
+    return () => clearInterval(interval);
+  });
 
   const handleSend = async () => {
     const message = input().trim();
@@ -157,17 +228,70 @@ const ChatPanel: Component = () => {
 
   return (
     <div class="flex flex-col h-full bg-gray-900">
-      {/* Header */}
-      <div class="px-6 py-4 border-b border-gray-700">
-        <h2 class="text-xl font-bold text-white inline-block">Chat</h2>
-        <span class="text-sm text-gray-400 ml-3">- Describe what you want to build</span>
+      {/* Header - Model selection in top right */}
+      <div class="px-3 py-2 border-b border-gray-700 flex items-center justify-between"
+           style={{
+             "background-color": "var(--bg-secondary)",
+             "border-bottom-color": "var(--border-primary)"
+           }}>
+        <div class="flex items-center gap-2">
+          <h2 class="text-base font-bold" style={{ "color": "var(--text-primary)" }}>Agent</h2>
+          <StatusIndicator 
+            status={appStore.isGenerating() ? 'running' : 'idle'}
+            size="small"
+          />
+          {/* Expand Button */}
+          <button
+            onClick={() => layoutStore.togglePanelExpansion('agent')}
+            class="ml-1 px-1.5 py-0.5 text-xs rounded hover:opacity-70 transition-opacity"
+            style={{
+              "background-color": layoutStore.isExpanded('agent') ? "var(--accent-primary)" : "var(--bg-tertiary)",
+              "color": "var(--text-primary)",
+            }}
+            title={layoutStore.isExpanded('agent') ? "Collapse panel" : "Expand panel"}
+          >
+            {layoutStore.isExpanded('agent') ? '◀' : '▶'}
+          </button>
+        </div>
+        <div class="flex items-center gap-2">
+          {/* Model Selection */}
+          <select
+            value={selectedModel()}
+            onChange={(e) => setSelectedModel(e.currentTarget.value)}
+            class="bg-gray-700 text-white text-[11px] px-2 py-1 rounded border border-gray-600 focus:border-primary-500 focus:outline-none"
+            title="Select LLM model"
+            aria-label="Select LLM model"
+            disabled={availableModels().length === 0}
+          >
+            <Show when={availableModels().length === 0}>
+              <option value="">No models available</option>
+            </Show>
+            <Show when={availableModels().length > 0}>
+              <For each={availableModels()}>
+                {(model) => (
+                  <option value={model.id} title={model.description}>
+                    {model.name}
+                  </option>
+                )}
+              </For>
+            </Show>
+          </select>
+          {/* API Config Button */}
+          <button
+            onClick={() => setShowApiConfig(!showApiConfig())}
+            class="p-1 text-gray-400 hover:text-white transition-colors"
+            title="API Configuration"
+          >
+            ⚙️
+          </button>
+        </div>
       </div>
 
-      {/* Messages - Terminal-like, immersive */}
-      <div class="flex-1 overflow-y-auto px-3 py-2 space-y-1">
+      {/* Messages - Terminal-like with reduced font and padding */}
+      <div class="flex-1 overflow-y-auto px-2 py-1 space-y-0.5">
         <For each={appStore.messages()}>
           {(message) => (
-            <div class="font-mono text-xs leading-relaxed">
+            <div class="font-mono text-[11px] leading-relaxed">
               <span class={message.role === 'user' ? 'text-green-400' : 'text-blue-400'}>
                 {message.role === 'user' ? 'You' : 'Yantra'}
               </span>
@@ -178,7 +302,7 @@ const ChatPanel: Component = () => {
         </For>
 
         {appStore.isGenerating() && (
-          <div class="font-mono text-xs leading-relaxed">
+          <div class="font-mono text-[11px] leading-relaxed">
             <span class="text-blue-400">Yantra</span>
             <span class="text-gray-500 mx-1">›</span>
             <span class="text-gray-400 animate-pulse">Generating...</span>
@@ -186,69 +310,47 @@ const ChatPanel: Component = () => {
         )}
       </div>
 
-      {/* Input Area - Single Immersive Panel */}
-      <div class="px-6 py-4 border-t border-gray-700">
-        {/* Unified Input Panel */}
-        <div class="bg-gray-800 rounded-lg p-3">
-          {/* Top row: Model selector and API config */}
-          <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-700">
-            <div class="flex items-center gap-2">
-              {/* Model Selection */}
-              <select
-                value={selectedModel()}
-                onChange={(e) => setSelectedModel(e.currentTarget.value)}
-                class="bg-gray-700 text-white text-xs rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                title="Select LLM model"
-              >
-                <option value="claude-sonnet-4">Claude Sonnet 4</option>
-                <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                <option value="claude-opus">Claude Opus</option>
-                <option value="gpt-4">GPT-4</option>
-              </select>
-
-              {/* API Config Button */}
+      {/* API Config Modal */}
+      <Show when={showApiConfig()}>
+        <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div class="bg-gray-800 rounded-lg p-4 max-w-lg w-full mx-4">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-sm font-bold text-white">API Configuration</h3>
               <button
-                onClick={() => setShowApiConfig(!showApiConfig())}
-                class="p-1 text-gray-400 hover:text-white transition-colors"
-                title="Configure API settings"
+                onClick={() => setShowApiConfig(false)}
+                class="text-gray-400 hover:text-white"
               >
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
+                ✕
               </button>
             </div>
+            <LLMSettings />
+          </div>
+        </div>
+      </Show>
 
-            {/* Send button on the right - Minimal */}
+      {/* Input Area - Send button inside textarea */}
+      <div class="px-3 py-2 border-t border-gray-700">
+        <div class="bg-gray-800 rounded-lg p-2">
+          {/* Textarea with inline send button */}
+          <div class="relative">
+            <textarea
+              value={input()}
+              onInput={(e) => setInput(e.currentTarget.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Type your message... (Enter to send, Shift+Enter for new line)"
+              class="w-full bg-transparent text-white text-[11px] placeholder-gray-500 focus:outline-none resize-none pr-10"
+              rows="3"
+            />
+            {/* Send button inside textarea container */}
             <button
               onClick={handleSend}
               disabled={!input().trim() || appStore.isGenerating()}
-              class="p-1.5 text-primary-400 hover:text-primary-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              title="Send (Enter)"
+              class="absolute right-1 bottom-1 p-1.5 rounded bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              title="Send message (Enter)"
             >
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
+              ▶
             </button>
           </div>
-
-          {/* Textarea */}
-          <textarea
-            value={input()}
-            onInput={(e) => setInput(e.currentTarget.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Ask me anything... (e.g., 'create a sample program', 'run npm test', 'show dependencies')"
-            class="w-full bg-transparent text-white focus:outline-none resize-none"
-            rows="3"
-            disabled={appStore.isGenerating()}
-          />
-
-          {/* API Configuration - Full LLM Settings */}
-          <Show when={showApiConfig()}>
-            <div class="mt-3 pt-3 border-t border-gray-700">
-              <LLMSettings />
-            </div>
-          </Show>
         </div>
       </div>
     </div>

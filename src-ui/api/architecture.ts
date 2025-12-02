@@ -1,14 +1,10 @@
 /**
  * Architecture API - TypeScript wrapper for Tauri architecture commands
  * 
- * Provides type-safe access to all 11 architecture Tauri commands:
- * - create_architecture, get_architecture
- * - create_component, update_component, delete_component
- * - create_connection, delete_connection
- * - save_architecture_version, list_architecture_versions, restore_architecture_version
- * - export_architecture
- * 
+ * Provides type-safe access to all architecture Tauri commands
  * Types match Rust backend: src-tauri/src/architecture/types.rs
+ * 
+ * Updated: November 29, 2025 - Fixed types to match Rust backend exactly
  */
 
 import { invoke } from '@tauri-apps/api/tauri';
@@ -17,9 +13,16 @@ import { invoke } from '@tauri-apps/api/tauri';
 // TYPES (Match Rust types.rs exactly)
 // ============================================================================
 
-export type ComponentType = 'Planned' | 'InProgress' | 'Implemented' | 'Misaligned';
+/**
+ * Component types with progress tracking
+ */
+export type ComponentType =
+  | { type: 'Planned' }
+  | { type: 'InProgress'; completed: number; total: number }
+  | { type: 'Implemented'; total: number }
+  | { type: 'Misaligned'; reason: string };
 
-export type ComponentCategory = 'Backend' | 'Frontend' | 'Database' | 'External' | 'Utility';
+export type ComponentCategory = 'frontend' | 'backend' | 'database' | 'external' | 'utility';
 
 export type ConnectionType = 'DataFlow' | 'ApiCall' | 'Event' | 'Dependency' | 'Bidirectional';
 
@@ -31,13 +34,14 @@ export interface Position {
 export interface Component {
   id: string;
   name: string;
-  component_type: ComponentCategory;
-  status: ComponentType;
+  description: string;
+  component_type: ComponentType;
+  category: ComponentCategory;
   position: Position;
-  description?: string;
   files: string[];
-  created_at: string;
-  updated_at: string;
+  metadata: Record<string, string>;
+  created_at: number;
+  updated_at: number;
 }
 
 export interface Connection {
@@ -45,27 +49,30 @@ export interface Connection {
   source_id: string;
   target_id: string;
   connection_type: ConnectionType;
-  label?: string;
-  created_at: string;
+  description: string;
+  metadata: Record<string, string>;
+  created_at: number;
+  updated_at: number;
 }
 
 export interface Architecture {
   id: string;
   name: string;
-  description?: string;
+  description: string;
   components: Component[];
   connections: Connection[];
-  created_at: string;
-  updated_at: string;
+  metadata: Record<string, string>;
+  created_at: number;
+  updated_at: number;
 }
 
 export interface ArchitectureVersion {
   id: string;
   architecture_id: string;
-  version_number: number;
-  description?: string;
-  data_snapshot: string; // JSON string of Architecture
-  created_at: string;
+  version: number;
+  commit_message: string;
+  snapshot: Architecture;
+  created_at: number;
 }
 
 export type ExportFormat = 'markdown' | 'mermaid' | 'json';
@@ -124,18 +131,18 @@ export async function getArchitecture(architectureId: string): Promise<Architect
 export async function createComponent(
   architectureId: string,
   name: string,
-  componentType: ComponentCategory,
-  position: Position,
-  description?: string,
-  files: string[] = []
+  description: string,
+  category: ComponentCategory,
+  position: Position
 ): Promise<Component> {
   const response = await invoke<CommandResponse<Component>>('create_component', {
-    architectureId,
-    name,
-    componentType,
-    position,
-    description,
-    files,
+    request: {
+      architecture_id: architectureId,
+      name,
+      description,
+      category,
+      position,
+    },
   });
 
   if (!response.success || !response.data) {
@@ -148,44 +155,24 @@ export async function createComponent(
 /**
  * Update an existing component
  */
-export async function updateComponent(
-  architectureId: string,
-  componentId: string,
-  name?: string,
-  componentType?: ComponentCategory,
-  status?: ComponentType,
-  position?: Position,
-  description?: string,
-  files?: string[]
-): Promise<Component> {
-  const response = await invoke<CommandResponse<Component>>('update_component', {
-    architectureId,
-    componentId,
-    name,
-    componentType,
-    status,
-    position,
-    description,
-    files,
+export async function updateComponent(component: Component): Promise<void> {
+  const response = await invoke<CommandResponse<void>>('update_component', {
+    request: {
+      component,
+    },
   });
 
-  if (!response.success || !response.data) {
+  if (!response.success) {
     throw new Error(response.error || 'Failed to update component');
   }
-
-  return response.data;
 }
 
 /**
  * Delete a component from an architecture
  */
-export async function deleteComponent(
-  architectureId: string,
-  componentId: string
-): Promise<void> {
+export async function deleteComponent(componentId: string): Promise<void> {
   const response = await invoke<CommandResponse<null>>('delete_component', {
-    architectureId,
-    componentId,
+    component_id: componentId,
   });
 
   if (!response.success) {
@@ -201,14 +188,16 @@ export async function createConnection(
   sourceId: string,
   targetId: string,
   connectionType: ConnectionType,
-  label?: string
+  description: string
 ): Promise<Connection> {
   const response = await invoke<CommandResponse<Connection>>('create_connection', {
-    architectureId,
-    sourceId,
-    targetId,
-    connectionType,
-    label,
+    request: {
+      architecture_id: architectureId,
+      source_id: sourceId,
+      target_id: targetId,
+      connection_type: connectionType,
+      description,
+    },
   });
 
   if (!response.success || !response.data) {
@@ -221,13 +210,9 @@ export async function createConnection(
 /**
  * Delete a connection from an architecture
  */
-export async function deleteConnection(
-  architectureId: string,
-  connectionId: string
-): Promise<void> {
+export async function deleteConnection(connectionId: string): Promise<void> {
   const response = await invoke<CommandResponse<null>>('delete_connection', {
-    architectureId,
-    connectionId,
+    connection_id: connectionId,
   });
 
   if (!response.success) {
@@ -240,13 +225,15 @@ export async function deleteConnection(
  */
 export async function saveArchitectureVersion(
   architectureId: string,
-  description?: string
+  commitMessage: string
 ): Promise<ArchitectureVersion> {
   const response = await invoke<CommandResponse<ArchitectureVersion>>(
     'save_architecture_version',
     {
-      architectureId,
-      description,
+      request: {
+        architecture_id: architectureId,
+        commit_message: commitMessage,
+      },
     }
   );
 
@@ -266,7 +253,7 @@ export async function listArchitectureVersions(
   const response = await invoke<CommandResponse<ArchitectureVersion[]>>(
     'list_architecture_versions',
     {
-      architectureId,
+      architecture_id: architectureId,
     }
   );
 
@@ -281,14 +268,12 @@ export async function listArchitectureVersions(
  * Restore architecture to a previous version
  */
 export async function restoreArchitectureVersion(
-  architectureId: string,
   versionId: string
 ): Promise<Architecture> {
   const response = await invoke<CommandResponse<Architecture>>(
     'restore_architecture_version',
     {
-      architectureId,
-      versionId,
+      version_id: versionId,
     }
   );
 
@@ -307,8 +292,10 @@ export async function exportArchitecture(
   format: ExportFormat
 ): Promise<string> {
   const response = await invoke<CommandResponse<string>>('export_architecture', {
-    architectureId,
-    format,
+    request: {
+      architecture_id: architectureId,
+      format,
+    },
   });
 
   if (!response.success || !response.data) {
@@ -325,33 +312,49 @@ export async function exportArchitecture(
 /**
  * Get status indicator emoji for a component
  */
-export function getStatusIndicator(status: ComponentType): string {
-  switch (status) {
-    case 'Planned':
-      return '📋';
-    case 'InProgress':
-      return '🔄';
-    case 'Implemented':
-      return '✅';
-    case 'Misaligned':
-      return '⚠️';
+export function getStatusIndicator(componentType: ComponentType): string {
+  if (componentType.type === 'Planned') {
+    return '📋';
+  } else if (componentType.type === 'InProgress') {
+    return '🔄';
+  } else if (componentType.type === 'Implemented') {
+    return '✅';
+  } else if (componentType.type === 'Misaligned') {
+    return '⚠️';
   }
+  return '📋'; // default
+}
+
+/**
+ * Get status text for UI display
+ */
+export function getStatusText(componentType: ComponentType): string {
+  if (componentType.type === 'Planned') {
+    return 'Planned';
+  } else if (componentType.type === 'InProgress') {
+    return `In Progress (${componentType.completed}/${componentType.total})`;
+  } else if (componentType.type === 'Implemented') {
+    return `Implemented (${componentType.total})`;
+  } else if (componentType.type === 'Misaligned') {
+    return 'Misaligned';
+  }
+  return 'Unknown';
 }
 
 /**
  * Get status color for UI styling
  */
-export function getStatusColor(status: ComponentType): string {
-  switch (status) {
-    case 'Planned':
-      return '#9ca3af'; // gray
-    case 'InProgress':
-      return '#fbbf24'; // yellow
-    case 'Implemented':
-      return '#10b981'; // green
-    case 'Misaligned':
-      return '#ef4444'; // red
+export function getStatusColor(componentType: ComponentType): string {
+  if (componentType.type === 'Planned') {
+    return '#9ca3af'; // gray
+  } else if (componentType.type === 'InProgress') {
+    return '#fbbf24'; // yellow
+  } else if (componentType.type === 'Implemented') {
+    return '#10b981'; // green
+  } else if (componentType.type === 'Misaligned') {
+    return '#ef4444'; // red
   }
+  return '#9ca3af'; // default gray
 }
 
 /**

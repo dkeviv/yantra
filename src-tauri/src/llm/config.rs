@@ -58,6 +58,24 @@ impl LLMConfigManager {
         self.save()
     }
 
+    /// Set OpenRouter API key
+    pub fn set_openrouter_key(&mut self, api_key: String) -> Result<(), String> {
+        self.config.openrouter_api_key = Some(api_key);
+        self.save()
+    }
+
+    /// Set Groq API key
+    pub fn set_groq_key(&mut self, api_key: String) -> Result<(), String> {
+        self.config.groq_api_key = Some(api_key);
+        self.save()
+    }
+
+    /// Set Gemini API key
+    pub fn set_gemini_key(&mut self, api_key: String) -> Result<(), String> {
+        self.config.gemini_api_key = Some(api_key);
+        self.save()
+    }
+
     /// Update retry settings
     pub fn set_retry_config(&mut self, max_retries: u32, timeout_seconds: u64) -> Result<(), String> {
         self.config.max_retries = max_retries;
@@ -70,6 +88,9 @@ impl LLMConfigManager {
         match provider {
             LLMProvider::Claude => self.config.claude_api_key = None,
             LLMProvider::OpenAI => self.config.openai_api_key = None,
+            LLMProvider::OpenRouter => self.config.openrouter_api_key = None,
+            LLMProvider::Groq => self.config.groq_api_key = None,
+            LLMProvider::Gemini => self.config.gemini_api_key = None,
             LLMProvider::Qwen => self.config.openai_api_key = None, // Qwen uses OpenAI-compatible API
         }
         self.save()
@@ -98,10 +119,40 @@ impl LLMConfigManager {
         SanitizedConfig {
             has_claude_key: self.config.claude_api_key.is_some(),
             has_openai_key: self.config.openai_api_key.is_some(),
+            has_openrouter_key: self.config.openrouter_api_key.is_some(),
+            has_groq_key: self.config.groq_api_key.is_some(),
+            has_gemini_key: self.config.gemini_api_key.is_some(),
             primary_provider: self.config.primary_provider,
             max_retries: self.config.max_retries,
             timeout_seconds: self.config.timeout_seconds,
+            selected_models: self.config.selected_models.clone(),
         }
+    }
+
+    /// Set selected models for the user
+    pub fn set_selected_models(&mut self, model_ids: Vec<String>) -> Result<(), String> {
+        self.config.selected_models = model_ids;
+        self.save()
+    }
+
+    /// Add a model to selected models
+    pub fn add_selected_model(&mut self, model_id: String) -> Result<(), String> {
+        if !self.config.selected_models.contains(&model_id) {
+            self.config.selected_models.push(model_id);
+            self.save()?;
+        }
+        Ok(())
+    }
+
+    /// Remove a model from selected models
+    pub fn remove_selected_model(&mut self, model_id: &str) -> Result<(), String> {
+        self.config.selected_models.retain(|m| m != model_id);
+        self.save()
+    }
+
+    /// Get selected models
+    pub fn get_selected_models(&self) -> Vec<String> {
+        self.config.selected_models.clone()
     }
 }
 
@@ -110,9 +161,13 @@ impl LLMConfigManager {
 pub struct SanitizedConfig {
     pub has_claude_key: bool,
     pub has_openai_key: bool,
+    pub has_openrouter_key: bool,
+    pub has_groq_key: bool,
+    pub has_gemini_key: bool,
     pub primary_provider: LLMProvider,
     pub max_retries: u32,
     pub timeout_seconds: u64,
+    pub selected_models: Vec<String>,
 }
 
 #[cfg(test)]

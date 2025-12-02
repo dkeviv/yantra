@@ -10,3 +10,4 @@ pub mod security;
 pub mod browser;
 pub mod git;
 pub mod bridge;
+pub mod architecture;

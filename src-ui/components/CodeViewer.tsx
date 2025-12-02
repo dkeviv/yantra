@@ -5,6 +5,7 @@
 
 import { Component, onMount, createEffect, onCleanup, For, Show } from 'solid-js';
 import { appStore } from '../stores/appStore';
+import { layoutStore } from '../stores/layoutStore';
 import { monaco } from '../monaco-setup';
 
 const CodeViewer: Component = () => {
@@ -104,8 +105,29 @@ const CodeViewer: Component = () => {
         </div>
       </Show>
 
-      {/* Header */}
-        {/* Editor */}      {/* Monaco Editor */}
+      {/* Header with expand button when no file tabs */}
+      <Show when={appStore.openFiles().length === 0}>
+        <div class="px-3 py-2 border-b border-gray-700 flex items-center justify-between"
+             style={{
+               "background-color": "var(--bg-secondary)",
+               "border-bottom-color": "var(--border-primary)"
+             }}>
+          <h2 class="text-sm font-medium" style={{ "color": "var(--text-secondary)" }}>Editor</h2>
+          <button
+            onClick={() => layoutStore.togglePanelExpansion('editor')}
+            class="px-1.5 py-0.5 text-xs rounded hover:opacity-70 transition-opacity"
+            style={{
+              "background-color": layoutStore.isExpanded('editor') ? "var(--accent-primary)" : "var(--bg-tertiary)",
+              "color": "var(--text-primary)",
+            }}
+            title={layoutStore.isExpanded('editor') ? "Collapse panel" : "Expand panel"}
+          >
+            {layoutStore.isExpanded('editor') ? '◀' : '▶'}
+          </button>
+        </div>
+      </Show>
+
+      {/* Monaco Editor */}
       <div ref={editorContainer} class="flex-1" />
     </div>
   );

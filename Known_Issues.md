@@ -93,6 +93,122 @@ Version/commit where fixed
 
 ## Resolved Issues
 
+### Issue #5: Component Tests Failing Due to Missing CSS Classes and Mock Issues
+
+**Status:** ✅ Fixed  
+**Severity:** High  
+**Reported:** November 30, 2025  
+**Component:** Testing / Frontend Components  
+**Fixed By:** Session 3 (Nov 30, 2025)
+
+#### Description
+After migrating from Vitest to Jest for component testing, 52 out of 76 component tests were failing (32% pass rate). Tests were hanging indefinitely and failing due to missing CSS classes, incorrect mock data, and implementation mismatches.
+
+#### Steps to Reproduce
+1. Run `npm run test:components`
+2. Observe: Tests hang for very long time, must be manually cancelled
+3. When completed: Only 24/76 tests passing
+
+#### Root Causes
+
+**1. Test Hanging (Most Critical):**
+- Tauri mock function `jest.fn()` returns `undefined` instead of Promises
+- TaskPanel's `onMount()` calls `await invoke('get_task_queue')`
+- `await undefined` → never resolves → infinite wait
+- Each test waits until timeout → 76 tests × ~5s timeout = 6+ minutes
+
+**2. Missing CSS Classes:**
+- StatusIndicator: Missing `.status-indicator`, `.idle`, `.running`, size classes
+- ThemeToggle: Wrong theme names ('dark-blue' vs 'dark'), wrong localStorage key
+- TaskPanel: Missing `.backdrop`, `.task-panel`, `.close-button`, badge classes
+
+**3. Design Mismatches:**
+- Statistics labels: "Active" vs expected "In Progress", "Done" vs "Completed"
+- Missing Failed count in statistics display
+- Timestamps showing formatted dates instead of relative times
+- Error messages not displaying for failed tasks
+
+**4. Size and Color Issues:**
+- StatusIndicator not applying explicit pixel dimensions (16px, 24px, 32px)
+- CSS variables not being used (used other variable names)
+
+#### Fixes Applied
+
+**1. Created Tauri Module Mock (`src-ui/__mocks__/@tauri-apps/api/tauri.js`):**
+```javascript
+export const invoke = jest.fn((cmd) => {
+  switch (cmd) {
+    case 'get_task_queue': return Promise.resolve([...tasks...]);
+    case 'get_current_task': return Promise.resolve({...task...});
+    case 'get_task_stats': return Promise.resolve({...stats...});
+    default: return Promise.resolve(null);
+  }
+});
+```
+✅ Tests now complete in <1 second instead of hanging
+
+**2. Fixed StatusIndicator:**
+- Added `.status-indicator` class to container
+- Added dynamic status classes (`.idle`, `.running`)
+- Added dynamic size classes (`.small`, `.medium`, `.large`)
+- Changed default size from 'medium' to 'small'
+- Added explicit pixel dimensions: `width: sizePixels[size()]`
+- Changed colors to use `var(--color-primary)`
+
+**3. Fixed ThemeToggle:**
+- Changed theme type: `'dark-blue'|'bright-white'` → `'dark'|'bright'`
+- Changed localStorage key: `'yantra-theme'` → `'theme'`
+- Replaced SVG icons with emoji (🌙 and ☀️)
+- Added try-catch for localStorage errors (jsdom compatibility)
+
+**4. Fixed TaskPanel:**
+- Added structural classes: `.backdrop`, `.task-panel`, `.close-button`, `.current-task`
+- Added badge classes: `.badge-pending`, `.badge-in-progress`, `.badge-completed`, `.badge-failed`
+- Added priority classes: `.priority-critical`, `.priority-high`, `.priority-medium`, `.priority-low`
+- Changed statistics labels: "Active" → "In Progress", "Done" → "Completed"
+- Added 5th statistic: Failed count
+- Implemented relative time formatting: `formatDate()` returns "2 minutes ago"
+- Ensured error messages display for failed tasks
+
+**5. Fixed Test Data:**
+- Added `error` field to failed tasks in test mock data
+- Added `total` field to mockStats
+- Fixed auto-refresh test expectations (2 calls → 3 calls for queue + current + stats)
+- Fixed rapid clicking test expectation (10 clicks from 'dark' → 'dark', not 'bright')
+
+#### Files Changed
+1. `src-ui/__mocks__/@tauri-apps/api/tauri.js` - Created Tauri API mock
+2. `src-ui/components/StatusIndicator.tsx` - Added CSS classes, dimensions, colors
+3. `src-ui/components/ThemeToggle.tsx` - Fixed theme names, localStorage, error handling
+4. `src-ui/components/TaskPanel.tsx` - Added CSS classes, fixed labels, timestamps, stats
+5. `src-ui/components/__tests__/TaskPanel.test.tsx` - Updated mock data and expectations
+6. `src-ui/components/__tests__/ThemeToggle.test.tsx` - Fixed rapid clicking test, added waitFor import
+7. `jest.setup.cjs` - Added complementary Tauri mock
+
+#### Results
+- **Before:** 24/76 tests passing (32%) - tests hung indefinitely
+- **After:** 74/76 tests passing (97%) - tests complete in <1 second
+- **Improvement:** +50 tests fixed (+65 percentage points)
+
+**Remaining 2 Failures:**
+- StatusIndicator dimension test - jsdom limitation (getComputedStyle returns empty string)
+- StatusIndicator CSS variables test - jsdom limitation (computed styles not available)
+
+These 2 tests would pass in a real browser but fail in jsdom due to technical limitations of the test environment.
+
+#### Test Suite Summary
+| Component | Tests Passing | Total Tests | Pass Rate |
+|-----------|---------------|-------------|-----------|
+| StatusIndicator | 18/20 | 20 | 90% |
+| ThemeToggle | 25/25 | 25 | 100% |
+| TaskPanel | 31/31 | 31 | 100% |
+| **Total** | **74/76** | **76** | **97%** |
+
+#### Fixed In
+Multiple commits (November 30, 2025)
+
+---
+
 ### Issue #2: Divider Cursor Offset ~100px to the Right
 
 **Status:** ✅ Fixed  
@@ -391,5 +507,140 @@ Commit: 4401f6b (November 28, 2025)
 
 ---
 
-**Last Updated:** November 20, 2025  
-**Next Update:** When issues are discovered
+## Issue #3: Dual Test System Required (Vitest + Jest)
+
+**Status:** Resolved (Workaround Implemented)  
+**Severity:** Medium  
+**Reported:** December 2024  
+**Component:** Testing Infrastructure  
+**Assigned:** N/A
+
+### Description
+SolidJS component tests cannot run in vitest due to JSX transformation issues. Required implementing a dual test system using both vitest and Jest.
+
+**Problem:**
+- Vitest failed to resolve `solid-js/jsx-dev-runtime` for component tests
+- Root cause: Version conflicts between vitest's bundled Vite and vite-plugin-solid
+- Multiple attempted fixes failed (aliases, different JSX modes, plugin configurations)
+
+**Solution Implemented:**
+- **Vitest**: Store and utility tests (49 tests, 100% passing)
+- **Jest**: Component tests (76 tests, 24 passing, 52 failing)
+
+### Technical Details
+
+**Failed Attempts:**
+1. ❌ Alias jsx-dev-runtime to dev.js
+2. ❌ Use vite-plugin-solid in vitest.config.ts
+3. ❌ Different JSX transform modes
+4. ❌ Merge vite and vitest configs
+
+**Working Solution:**
+
+**Vitest Configuration** (`vitest.config.ts`):
+```typescript
+resolve: {
+  alias: {
+    'solid-js/web': path.resolve(__dirname, './node_modules/solid-js/web/dist/web.js'),
+    'solid-js': path.resolve(__dirname, './node_modules/solid-js/dist/solid.js'),
+  },
+  conditions: ['browser'],
+},
+test: {
+  exclude: ['**/src-ui/components/__tests__/**'], // Components use Jest
+}
+```
+
+**Jest Configuration** (`jest.config.cjs`):
+```javascript
+transform: {
+  '^.+\\.(t|j)sx?$': ['babel-jest', { 
+    presets: [
+      'babel-preset-solid',  // Transforms SolidJS JSX
+      '@babel/preset-env',
+      '@babel/preset-typescript',
+    ],
+  }],
+}
+```
+
+### ES Module vs CommonJS Configuration
+
+**Challenge**: Project uses `"type": "module"` in package.json, but Jest configs use CommonJS.
+
+**Solution**: Rename all Jest configs to `.cjs`:
+- `jest.config.cjs`
+- `jest.setup.cjs`
+- `babel.config.cjs`
+
+Use `require()` instead of `import` in `.cjs` files.
+
+### Test Syntax Migration
+
+**From Vitest:**
+```typescript
+import { describe, it, expect, vi } from 'vitest';
+const mockFn = vi.fn();
+vi.useFakeTimers();
+```
+
+**To Jest:**
+```typescript
+// describe, it, expect are globals (no import needed)
+const mockFn = jest.fn();
+jest.useFakeTimers();
+```
+
+### Usage
+
+```bash
+npm test                    # Run all tests (stores + components)
+npm run test:stores         # Vitest only
+npm run test:components     # Jest only
+npm run test:components:watch  # Jest watch mode
+```
+
+### Current Status
+
+**Store Tests (Vitest): ✅ 49/49 (100%)**
+- appStore: 12/12
+- layoutStore: 29/29
+- simple: 3/3
+- tauri: 5/5
+
+**Component Tests (Jest): ⚠️ 24/76 (32%)**
+- StatusIndicator: 4/20
+- ThemeToggle: 1/25
+- TaskPanel: 19/31
+
+**Overall: 73/125 (58%)**
+
+**Note**: Component test failures are due to implementation issues (missing CSS classes, Tauri mock not invoking), NOT Jest migration issues. The Jest framework is working correctly.
+
+### Troubleshooting
+
+**"Cannot use namespace 'jest' as a value"**
+- TypeScript compile error (expected)
+- Fixed by installing `@types/jest`
+- Jest provides globals at runtime
+
+**"Cannot use import statement outside a module"**
+- Using ES6 syntax in CommonJS `.cjs` file
+- Fixed by using `require()` instead of `import`
+
+**"module is not defined in ES module scope"**
+- Using `module.exports` in `.js` file with `"type": "module"`
+- Fixed by renaming to `.cjs` extension
+
+### Future Plans
+
+When vitest + vite-plugin-solid compatibility improves, we may consolidate to a single test runner. Until then, dual system provides:
+- **Vitest**: Fast, ESM-native, perfect for unit tests
+- **Jest**: Mature, excellent Babel transforms, great for components
+
+---
+
+**Last Updated:** December 2024  
+**Next Update:** When component test issues are resolved
+
+```

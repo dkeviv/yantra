@@ -24,18 +24,22 @@ interface ComponentNodeData {
 export default function ComponentNode({ data }: NodeProps<ComponentNodeData>) {
   const { component, isSelected } = data;
 
+  // Get status text from component_type
+  const statusText = archAPI.getStatusText(component.component_type);
+  
   // Calculate status color
-  const statusColor = archAPI.getStatusColor(component.status);
-  const statusIndicator = archAPI.getStatusIndicator(component.status);
+  const statusColor = archAPI.getStatusColor(component.component_type);
+  const statusIndicator = archAPI.getStatusIndicator(component.component_type);
 
   // Get file count text
   const fileCount = component.files.length;
   const fileCountText = () => {
-    if (component.status === 'Planned') {
+    if (component.component_type.type === 'Planned') {
       return 'No files yet';
-    } else if (component.status === 'InProgress') {
-      return `${fileCount} file${fileCount !== 1 ? 's' : ''} (in progress)`;
-    } else if (component.status === 'Implemented') {
+    } else if (component.component_type.type === 'InProgress') {
+      const { completed, total } = component.component_type;
+      return `${completed}/${total} files (in progress)`;
+    } else if (component.component_type.type === 'Implemented') {
       return `${fileCount} file${fileCount !== 1 ? 's' : ''}`;
     } else {
       return `${fileCount} file${fileCount !== 1 ? 's' : ''} (misaligned)`;
@@ -95,7 +99,7 @@ export default function ComponentNode({ data }: NodeProps<ComponentNodeData>) {
           <span class="text-2xl">{statusIndicator}</span>
           <div>
             <div class="text-white font-semibold">{component.name}</div>
-            <div class="text-xs text-gray-400">{component.component_type}</div>
+            <div class="text-xs text-gray-400">{statusText}</div>
           </div>
         </div>
         <button

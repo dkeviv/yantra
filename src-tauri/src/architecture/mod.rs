@@ -1,16 +1,24 @@
 // Architecture View System - Main Module
 // Purpose: Coordinate architecture storage, types, and operations
 // Created: November 27, 2025
+// Updated: November 28, 2025 - Added generator and analyzer modules
 
 pub mod types;
 pub mod storage;
 pub mod commands;
 pub mod deviation_detector;
+pub mod generator;
+pub mod analyzer;
 
 pub use types::*;
 pub use storage::ArchitectureStorage;
 pub use commands::*;
-pub use deviation_detector::{DeviationDetector, DeviationCheck, AlignmentResult, Deviation, Severity};
+pub use deviation_detector::{
+    DeviationDetector, DeviationCheck, AlignmentResult, Deviation, Severity,
+    ImpactAnalysis, RiskLevel, ChangeScope
+};
+pub use generator::ArchitectureGenerator;
+pub use analyzer::ArchitectureAnalyzer;
 
 use std::path::PathBuf;
 

@@ -35,12 +35,16 @@ pub mod confidence;
 pub mod validation;
 pub mod orchestrator;
 pub mod project_orchestrator;
+pub mod project_initializer;
 pub mod terminal;
 pub mod dependencies;
 pub mod execution;
 pub mod packaging;
 pub mod deployment;
 pub mod monitoring;
+pub mod task_queue;
+pub mod database;
+pub mod http_client;
 
 // Re-export key types (many not yet used but part of public API)
 #[allow(unused_imports)]
@@ -48,11 +52,15 @@ pub use state::{AgentPhase, AgentState, AgentStateManager};
 #[allow(unused_imports)]
 pub use confidence::{ConfidenceScore, ConfidenceFactor};
 #[allow(unused_imports)]
+pub use task_queue::{Task, TaskQueue, TaskStatus, TaskPriority, TaskStats};
+#[allow(unused_imports)]
 pub use validation::{ValidationResult, ValidationError, validate_dependencies};
 #[allow(unused_imports)]
 pub use orchestrator::{orchestrate_code_generation, OrchestrationResult};
 #[allow(unused_imports)]
 pub use project_orchestrator::{ProjectOrchestrator, ProjectPlan, ProjectResult, ProjectTemplate, FileToGenerate, TestSummary};
+#[allow(unused_imports)]
+pub use project_initializer::{ProjectInitializer, InitializationResult, ApprovalResult, ArchitectureSource, ProjectAnalysisReport};
 #[allow(unused_imports)]
 pub use terminal::{TerminalExecutor, TerminalOutput, ExecutionResult};
 #[allow(unused_imports)]

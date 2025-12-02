@@ -29,15 +29,16 @@ import * as archAPI from '../../api/architecture';
  * Convert architecture component to Cytoscape node
  */
 function componentToNode(component: ArchComponent): ElementDefinition {
-  const statusColor = archAPI.getStatusColor(component.status);
-  const statusIndicator = archAPI.getStatusIndicator(component.status);
+  const statusColor = archAPI.getStatusColor(component.component_type);
+  const statusIndicator = archAPI.getStatusIndicator(component.component_type);
+  const statusText = archAPI.getStatusText(component.component_type);
   const isSelected = component.id === architectureState.selectedComponentId;
   
   return {
     group: 'nodes',
     data: {
       id: component.id,
-      label: `${statusIndicator} ${component.name}\n${component.component_type}`,
+      label: `${statusIndicator} ${component.name}\n${component.category}\n${statusText}`,
       'background-color': statusColor,
       'border-color': isSelected ? '#3b82f6' : statusColor,
     },
@@ -59,7 +60,7 @@ function connectionToEdge(connection: any): ElementDefinition {
       id: connection.id,
       source: connection.source_id,
       target: connection.target_id,
-      label: connection.label || connection.connection_type,
+      label: connection.description || connection.connection_type,
       'line-color': color,
     },
     classes: isSelected ? 'selected' : '',

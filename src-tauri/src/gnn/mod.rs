@@ -1,19 +1,29 @@
 // File: src-tauri/src/gnn/mod.rs
 // Purpose: Graph Neural Network module for code dependency tracking
 // Dependencies: tree-sitter, petgraph, rusqlite
-// Last Updated: November 20, 2025
+// Last Updated: November 30, 2025
 
 pub mod parser;
 pub mod parser_js;
+pub mod parser_rust;
+pub mod parser_go;
+pub mod parser_java;
+pub mod parser_c;
+pub mod parser_cpp;
+pub mod parser_ruby;
+pub mod parser_php;
+pub mod parser_swift;
+pub mod parser_kotlin;
 pub mod graph;
 pub mod persistence;
 pub mod incremental;
 pub mod features;
+pub mod embeddings;
 
 use std::path::Path;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CodeNode {
     pub id: String,
     pub node_type: NodeType,
@@ -21,6 +31,16 @@ pub struct CodeNode {
     pub file_path: String,
     pub line_start: usize,
     pub line_end: usize,
+    
+    // Semantic layer (optional)
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub semantic_embedding: Option<Vec<f32>>,
+    
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub code_snippet: Option<String>,
+    
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub docstring: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -30,6 +50,12 @@ pub enum NodeType {
     Variable,
     Import,
     Module,
+}
+
+impl Default for NodeType {
+    fn default() -> Self {
+        NodeType::Module
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -46,6 +72,10 @@ pub enum EdgeType {
     Imports,
     Inherits,
     Defines,
+    /// Test file tests a source function/class
+    Tests,
+    /// Test file depends on source file (general relationship)
+    TestDependency,
 }
 
 pub struct GNNEngine {
@@ -53,6 +83,12 @@ pub struct GNNEngine {
     db: persistence::Database,
     incremental_tracker: incremental::IncrementalTracker,
 }
+
+// SAFETY: GNNEngine is always accessed through a Mutex, which provides exclusive access
+// The SQLite connection is never accessed concurrently because the Mutex ensures
+// only one thread can access the GNNEngine at a time
+unsafe impl Send for GNNEngine {}
+unsafe impl Sync for GNNEngine {}
 
 impl GNNEngine {
     /// Create a new GNN engine with database at specified path
@@ -70,7 +106,7 @@ impl GNNEngine {
         })
     }
     
-    /// Parse a file (Python, JavaScript, or TypeScript) and add its nodes and edges to the graph
+    /// Parse a file (Python, JavaScript, TypeScript, Rust, Go, Java, C, C++, Ruby, PHP, Swift, Kotlin) and add its nodes and edges to the graph
     pub fn parse_file(&mut self, file_path: &Path) -> Result<(), String> {
         let code = std::fs::read_to_string(file_path)
             .map_err(|e| format!("Failed to read file: {}", e))?;
@@ -79,10 +115,18 @@ impl GNNEngine {
         
         let (nodes, edges) = match extension {
             Some("py") => parser::parse_python_file(&code, file_path)?,
-            Some("js") => parser_js::parse_javascript_file(&code, file_path)?,
+            Some("js") | Some("jsx") => parser_js::parse_javascript_file(&code, file_path)?,
             Some("ts") => parser_js::parse_typescript_file(&code, file_path)?,
             Some("tsx") => parser_js::parse_tsx_file(&code, file_path)?,
-            Some("jsx") => parser_js::parse_javascript_file(&code, file_path)?, // JSX uses JS parser
+            Some("rs") => parser_rust::parse_rust_file(&code, file_path)?,
+            Some("go") => parser_go::parse_go_file(&code, file_path)?,
+            Some("java") => parser_java::parse_java_file(&code, file_path)?,
+            Some("c") | Some("h") => parser_c::parse_c_file(&code, file_path)?,
+            Some("cpp") | Some("cc") | Some("cxx") | Some("hpp") | Some("hxx") => parser_cpp::parse_cpp_file(&code, file_path)?,
+            Some("rb") => parser_ruby::parse_ruby_file(&code, file_path)?,
+            Some("php") => parser_php::parse_php_file(&code, file_path)?,
+            Some("swift") => parser_swift::parse_swift_file(&code, file_path)?,
+            Some("kt") | Some("kts") => parser_kotlin::parse_kotlin_file(&code, file_path)?,
             _ => return Err(format!("Unsupported file extension: {:?}", extension)),
         };
         
@@ -103,7 +147,8 @@ impl GNNEngine {
         let mut python_files = Vec::new();
         self.collect_python_files(project_path, &mut python_files)?;
         
-        // Pass 1: Parse all files and add nodes only
+        // Pass 1: Parse all files and collect nodes and edges
+        let mut all_nodes = Vec::new();
         let mut all_edges = Vec::new();
         for file_path in &python_files {
             let code = std::fs::read_to_string(file_path)
@@ -111,11 +156,7 @@ impl GNNEngine {
             
             match parser::parse_python_file(&code, file_path) {
                 Ok((nodes, edges)) => {
-                    // Add all nodes to graph
-                    for node in nodes {
-                        self.graph.add_node(node);
-                    }
-                    // Store edges for second pass
+                    all_nodes.extend(nodes);
                     all_edges.extend(edges);
                 }
                 Err(e) => {
@@ -124,7 +165,41 @@ impl GNNEngine {
             }
         }
         
-        // Pass 2: Add all edges now that all nodes exist
+        // Pass 2: Generate embeddings for nodes with code snippets (optional, lazy)
+        if all_nodes.iter().any(|n| n.code_snippet.is_some()) {
+            if let Ok(mut embedder) = embeddings::EmbeddingGenerator::new(embeddings::EmbeddingModel::MiniLM) {
+                println!("Generating semantic embeddings for {} nodes...", all_nodes.len());
+                let start = std::time::Instant::now();
+                
+                for node in &mut all_nodes {
+                    if node.code_snippet.is_some() {
+                        match embedder.generate_embedding(node) {
+                            Ok(embedding) => {
+                                node.semantic_embedding = Some(embedding);
+                            }
+                            Err(e) => {
+                                eprintln!("Warning: Failed to generate embedding for {}: {}", node.id, e);
+                            }
+                        }
+                    }
+                }
+                
+                let duration = start.elapsed();
+                println!("Generated embeddings in {:?} ({:.2}ms per node)", 
+                    duration, 
+                    duration.as_secs_f64() * 1000.0 / all_nodes.len() as f64
+                );
+            } else {
+                eprintln!("Warning: Failed to initialize embedding generator, skipping semantic embeddings");
+            }
+        }
+        
+        // Pass 3: Add all nodes to graph
+        for node in all_nodes {
+            self.graph.add_node(node);
+        }
+        
+        // Pass 4: Add all edges now that all nodes exist
         for edge in all_edges {
             if let Err(e) = self.graph.add_edge(edge) {
                 // Only warn, don't fail - some edges might be to external modules
@@ -136,7 +211,7 @@ impl GNNEngine {
         Ok(())
     }
     
-    /// Collect all supported source files in directory tree (Python, JavaScript, TypeScript)
+    /// Collect all supported source files in directory tree (Python, JavaScript, TypeScript, Rust, Go, Java, C, C++, Ruby, PHP, Swift, Kotlin)
     fn collect_python_files(&self, dir_path: &Path, files: &mut Vec<std::path::PathBuf>) -> Result<(), String> {
         if !dir_path.is_dir() {
             return Ok(());
@@ -158,8 +233,11 @@ impl GNNEngine {
                 }
                 self.collect_python_files(&path, files)?;
             } else if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
-                // Support Python, JavaScript, TypeScript
-                if matches!(ext, "py" | "js" | "ts" | "jsx" | "tsx") {
+                // Support Python, JavaScript, TypeScript, Rust, Go, Java, C, C++, Ruby, PHP, Swift, Kotlin
+                if matches!(ext, "py" | "js" | "ts" | "jsx" | "tsx" | 
+                           "rs" | "go" | "java" |
+                           "c" | "h" | "cpp" | "cc" | "cxx" | "hpp" | "hxx" |
+                           "rb" | "php" | "swift" | "kt" | "kts") {
                     files.push(path);
                 }
             }
@@ -168,7 +246,7 @@ impl GNNEngine {
         Ok(())
     }
     
-    /// Recursively scan directory for Python files (deprecated - use build_graph instead)
+    /// Recursively scan directory for supported files (deprecated - use build_graph instead)
     #[allow(dead_code)]
     fn scan_directory(&mut self, dir_path: &Path) -> Result<(), String> {
         if !dir_path.is_dir() {
@@ -190,9 +268,15 @@ impl GNNEngine {
                     continue;
                 }
                 self.scan_directory(&path)?;
-            } else if path.extension().and_then(|s| s.to_str()) == Some("py") {
-                if let Err(e) = self.parse_file(&path) {
-                    eprintln!("Warning: Failed to parse {}: {}", path.display(), e);
+            } else if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
+                // Support all languages
+                if matches!(ext, "py" | "js" | "ts" | "jsx" | "tsx" | 
+                           "rs" | "go" | "java" |
+                           "c" | "h" | "cpp" | "cc" | "cxx" | "hpp" | "hxx" |
+                           "rb" | "php" | "swift" | "kt" | "kts") {
+                    if let Err(e) = self.parse_file(&path) {
+                        eprintln!("Warning: Failed to parse {}: {}", path.display(), e);
+                    }
                 }
             }
         }
@@ -231,6 +315,111 @@ impl GNNEngine {
     /// Get reference to the underlying graph
     pub fn get_graph(&self) -> &graph::CodeGraph {
         &self.graph
+    }
+    
+    /// Get the total count of nodes in the graph
+    pub fn get_node_count(&self) -> usize {
+        self.graph.get_all_nodes().len()
+    }
+    
+    /// Identify if a file is a test file based on naming conventions
+    pub fn is_test_file(file_path: &Path) -> bool {
+        let file_name = file_path.file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("");
+        
+        let path_str = file_path.to_str().unwrap_or("");
+        
+        // Python test patterns: test_*.py, *_test.py, tests/ directory
+        // JavaScript test patterns: *.test.js, *.test.ts, *.spec.js, *.spec.ts, __tests__/ directory
+        file_name.starts_with("test_") 
+            || file_name.ends_with("_test.py")
+            || file_name.ends_with("_test.js")
+            || file_name.ends_with("_test.ts")
+            || file_name.contains(".test.")
+            || file_name.contains(".spec.")
+            || path_str.contains("/tests/")
+            || path_str.contains("/test/")
+            || path_str.contains("/__tests__/")
+            || path_str.contains("/spec/")
+    }
+    
+    /// Map test file to its corresponding source file
+    pub fn find_source_file_for_test(&self, test_file_path: &Path) -> Option<String> {
+        let file_name = test_file_path.file_name()?.to_str()?;
+        
+        // Remove test patterns to find source file name
+        let source_name = file_name
+            .replace("test_", "")
+            .replace("_test", "")
+            .replace(".test", "")
+            .replace(".spec", "");
+        
+        // Try to find matching source file in graph (exclude test files)
+        for node in self.graph.get_all_nodes() {
+            let node_path = Path::new(&node.file_path);
+            
+            // Skip if this is itself a test file
+            if Self::is_test_file(node_path) {
+                continue;
+            }
+            
+            // Check if this source file matches the expected name
+            if node.file_path.ends_with(&source_name) {
+                return Some(node.file_path.clone());
+            }
+        }
+        
+        None
+    }
+    
+    /// Create test-to-source edges for all test files in the graph
+    pub fn create_test_edges(&mut self) -> Result<usize, String> {
+        let mut test_edges_created = 0;
+        let all_nodes: Vec<CodeNode> = self.graph.get_all_nodes().into_iter().cloned().collect();
+        
+        for node in &all_nodes {
+            let file_path = Path::new(&node.file_path);
+            
+            if Self::is_test_file(file_path) {
+                // Create TestDependency edge from test file to source file
+                if let Some(source_file) = self.find_source_file_for_test(file_path) {
+                    // Find all nodes in source file
+                    for source_node in &all_nodes {
+                        if source_node.file_path == source_file {
+                            // Create Tests edge if test function tests source function
+                            // Pattern: test_function_name tests function_name
+                            if node.name.starts_with("test_") {
+                                let tested_name = node.name.strip_prefix("test_").unwrap_or("");
+                                if source_node.name == tested_name || source_node.name.contains(tested_name) {
+                                    let edge = CodeEdge {
+                                        edge_type: EdgeType::Tests,
+                                        source_id: node.id.clone(),
+                                        target_id: source_node.id.clone(),
+                                    };
+                                    self.graph.add_edge(edge)?;
+                                    test_edges_created += 1;
+                                }
+                            }
+                            
+                            // Also create general TestDependency edge
+                            let dep_edge = CodeEdge {
+                                edge_type: EdgeType::TestDependency,
+                                source_id: node.id.clone(),
+                                target_id: source_node.id.clone(),
+                            };
+                            if let Err(_) = self.graph.add_edge(dep_edge) {
+                                // Edge might already exist, ignore
+                            } else {
+                                test_edges_created += 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        Ok(test_edges_created)
     }
     
     /// Incremental update: process only changed files (<50ms target per file)

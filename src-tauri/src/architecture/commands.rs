@@ -1,25 +1,40 @@
 // Architecture View System - Tauri Commands
 // Purpose: Expose architecture operations to the frontend
 // Created: November 28, 2025
+// Updated: November 28, 2025 - Added generation and analysis commands
 
 use crate::architecture::{
     Architecture, ArchitectureManager, Component, Connection, ConnectionType, 
-    Position, ArchitectureVersion
+    Position, ArchitectureVersion, ArchitectureGenerator, ArchitectureAnalyzer
 };
+use crate::agent::project_initializer::{
+    ProjectInitializer, InitializationResult, CodeReviewResult, ArchitectureImpact
+};
+use crate::gnn::GNNEngine;
+use crate::llm::orchestrator::LLMOrchestrator;
 use serde::{Deserialize, Serialize};
-use std::sync::Mutex;
+use std::path::PathBuf;
+use std::sync::Arc;
 use tauri::State;
 
 /// Global architecture manager state
 pub struct ArchitectureState {
-    pub manager: Mutex<ArchitectureManager>,
+    pub manager: std::sync::Mutex<ArchitectureManager>,
+    pub gnn: Arc<tokio::sync::Mutex<GNNEngine>>,
+    pub llm: Arc<tokio::sync::Mutex<LLMOrchestrator>>,
+    pub initializer: Arc<tokio::sync::Mutex<ProjectInitializer>>,
 }
 
 impl ArchitectureState {
-    pub fn new() -> Result<Self, String> {
+    pub fn new(gnn: Arc<tokio::sync::Mutex<GNNEngine>>, llm: Arc<tokio::sync::Mutex<LLMOrchestrator>>) -> Result<Self, String> {
         let manager = ArchitectureManager::new()?;
+        let initializer = ProjectInitializer::new(gnn.clone(), llm.clone())?;
+        
         Ok(Self {
-            manager: Mutex::new(manager),
+            manager: std::sync::Mutex::new(manager),
+            gnn,
+            llm,
+            initializer: Arc::new(tokio::sync::Mutex::new(initializer)),
         })
     }
 }
@@ -259,6 +274,44 @@ pub fn restore_architecture_version(
     }
 }
 
+/// Generate architecture from user intent using AI
+#[tauri::command]
+pub async fn generate_architecture_from_intent(
+    arch_state: State<'_, ArchitectureState>,
+    _project_name: String,
+    user_intent: String,
+) -> Result<Architecture, String> {
+    println!("🔍 Tauri command: generate_architecture_from_intent");
+    
+    // Clone the Arc before creating generator to avoid holding the lock
+    let llm = arch_state.llm.clone();
+    
+    // Create generator
+    let generator = ArchitectureGenerator::new(llm);
+    
+    // Generate architecture from user intent
+    generator.generate_from_intent(&user_intent).await
+}
+
+/// Generate architecture from existing code using GNN
+#[tauri::command]
+pub async fn generate_architecture_from_code(
+    arch_state: State<'_, ArchitectureState>,
+    project_path: String,
+) -> Result<Architecture, String> {
+    println!("🔍 Tauri command: generate_architecture_from_code");
+    
+    // Clone the Arc before creating analyzer to avoid holding the lock
+    let gnn = arch_state.gnn.clone();
+    let path = PathBuf::from(project_path);
+    
+    // Create analyzer
+    let analyzer = ArchitectureAnalyzer::new(gnn);
+    
+    // Generate architecture from code
+    analyzer.generate_from_code(&path).await
+}
+
 /// Export architecture to different formats
 #[tauri::command]
 pub fn export_architecture(
@@ -379,19 +432,141 @@ fn export_to_json(architecture: &Architecture) -> Result<String, String> {
         .map_err(|e| format!("Failed to serialize architecture: {}", e))
 }
 
+// ============================================================================
+// Project Initialization Commands
+// ============================================================================
+
+/// Initialize a new project with architecture
+#[tauri::command]
+pub async fn initialize_new_project(
+    arch_state: State<'_, ArchitectureState>,
+    project_path: String,
+    user_intent: String,
+) -> Result<InitializationResult, String> {
+    println!("🔍 Tauri command: initialize_new_project");
+    
+    let path = PathBuf::from(project_path);
+    let initializer = arch_state.initializer.clone();
+    
+    // Use async lock and capture result before guard drops
+    let result = initializer
+        .lock()
+        .await
+        .initialize_new_project(&user_intent, &path)
+        .await;
+    
+    result
+}
+
+/// Initialize an existing project
+#[tauri::command]
+pub async fn initialize_existing_project(
+    arch_state: State<'_, ArchitectureState>,
+    project_path: String,
+) -> Result<InitializationResult, String> {
+    println!("🔍 Tauri command: initialize_existing_project");
+    
+    let path = PathBuf::from(project_path);
+    let initializer = arch_state.initializer.clone();
+    
+    let result = initializer
+        .lock()
+        .await
+        .initialize_existing_project(&path)
+        .await;
+    
+    result
+}
+
+/// Review existing code against architecture
+#[tauri::command]
+pub async fn review_existing_code(
+    arch_state: State<'_, ArchitectureState>,
+    project_path: String,
+    architecture_id: String,
+) -> Result<CodeReviewResult, String> {
+    println!("🔍 Tauri command: review_existing_code");
+    
+    // Get the architecture first (without holding the lock across await)
+    let architecture = {
+        let manager = arch_state.manager.lock().unwrap();
+        match manager.get_architecture(&architecture_id)? {
+            Some(arch) => arch,
+            None => return Err(format!("Architecture {} not found", architecture_id)),
+        }
+    };
+    
+    let path = PathBuf::from(project_path);
+    let initializer = arch_state.initializer.clone();
+    
+    let result = initializer
+        .lock()
+        .await
+        .review_existing_code(&path, &architecture)
+        .await;
+    
+    result
+}
+
+/// Analyze requirement impact on architecture
+#[tauri::command]
+pub async fn analyze_requirement_impact(
+    arch_state: State<'_, ArchitectureState>,
+    requirement: String,
+    architecture_id: String,
+) -> Result<ArchitectureImpact, String> {
+    println!("🔍 Tauri command: analyze_requirement_impact");
+    
+    // Get the architecture first (without holding the lock across await)
+    let architecture = {
+        let manager = arch_state.manager.lock().unwrap();
+        match manager.get_architecture(&architecture_id)? {
+            Some(arch) => arch,
+            None => return Err(format!("Architecture {} not found", architecture_id)),
+        }
+    };
+    
+    let initializer = arch_state.initializer.clone();
+    
+    let result = initializer
+        .lock()
+        .await
+        .analyze_requirement_impact(&requirement, &architecture)
+        .await;
+    
+    result
+}
+
+/// Check if project is initialized
+#[tauri::command]
+pub async fn is_project_initialized(
+    arch_state: State<'_, ArchitectureState>,
+    project_path: String,
+) -> Result<bool, String> {
+    println!("🔍 Tauri command: is_project_initialized");
+    
+    let path = PathBuf::from(project_path);
+    Ok(arch_state.initializer.lock().await.is_initialized(&path))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use tempfile::tempdir;
-    use std::path::PathBuf;
+    use tokio::sync::Mutex;
 
     fn create_test_state() -> ArchitectureState {
         let dir = tempdir().unwrap();
         let db_path = dir.path().join("test.db");
-        let manager = ArchitectureManager::with_path(db_path).unwrap();
-        ArchitectureState {
-            manager: Mutex::new(manager),
-        }
+        
+        // Create mock GNN and LLM for testing
+        let gnn_db_path = dir.path().join("gnn.db");
+        let gnn = Arc::new(Mutex::new(GNNEngine::new(&gnn_db_path).unwrap()));
+        
+        let llm_config = crate::llm::LLMConfig::default();
+        let llm = Arc::new(Mutex::new(LLMOrchestrator::new(llm_config)));
+        
+        ArchitectureState::new(gnn, llm).unwrap()
     }
 
     #[test]

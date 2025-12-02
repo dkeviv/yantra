@@ -1,10 +1,13 @@
 // File: src-tauri/src/llm/orchestrator.rs
 // Purpose: Multi-LLM orchestrator with failover and circuit breaker
-// Dependencies: claude, openai modules
-// Last Updated: November 20, 2025
+// Dependencies: claude, openai, openrouter modules
+// Last Updated: November 29, 2025
 
 use super::claude::ClaudeClient;
 use super::openai::OpenAIClient;
+use super::openrouter::OpenRouterClient;
+use super::groq::GroqClient;
+use super::gemini::GeminiClient;
 use super::{CodeGenerationRequest, CodeGenerationResponse, LLMConfig, LLMError, LLMProvider};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -80,12 +83,20 @@ pub struct LLMOrchestrator {
     config: LLMConfig,
     claude_client: Option<ClaudeClient>,
     openai_client: Option<OpenAIClient>,
+    openrouter_client: Option<OpenRouterClient>,
+    groq_client: Option<GroqClient>,
+    gemini_client: Option<GeminiClient>,
     claude_circuit: Arc<RwLock<CircuitBreaker>>,
     openai_circuit: Arc<RwLock<CircuitBreaker>>,
+    openrouter_circuit: Arc<RwLock<CircuitBreaker>>,
+    groq_circuit: Arc<RwLock<CircuitBreaker>>,
+    gemini_circuit: Arc<RwLock<CircuitBreaker>>,
 }
 
 impl LLMOrchestrator {
     pub fn new(config: LLMConfig) -> Self {
+        let timeout = Duration::from_secs(config.timeout_seconds);
+
         let claude_client = config.claude_api_key.as_ref().map(|key| {
             ClaudeClient::new(key.clone(), config.timeout_seconds)
         });
@@ -94,12 +105,30 @@ impl LLMOrchestrator {
             OpenAIClient::new(key.clone(), config.timeout_seconds)
         });
 
+        let openrouter_client = config.openrouter_api_key.as_ref().map(|key| {
+            OpenRouterClient::new(key.clone(), config.timeout_seconds)
+        });
+
+        let groq_client = config.groq_api_key.as_ref().map(|key| {
+            GroqClient::new(key.clone(), timeout)
+        });
+
+        let gemini_client = config.gemini_api_key.as_ref().map(|key| {
+            GeminiClient::new(key.clone(), timeout)
+        });
+
         Self {
             config: config.clone(),
             claude_client,
             openai_client,
+            openrouter_client,
+            groq_client,
+            gemini_client,
             claude_circuit: Arc::new(RwLock::new(CircuitBreaker::new(3, 60))),
             openai_circuit: Arc::new(RwLock::new(CircuitBreaker::new(3, 60))),
+            openrouter_circuit: Arc::new(RwLock::new(CircuitBreaker::new(3, 60))),
+            groq_circuit: Arc::new(RwLock::new(CircuitBreaker::new(3, 60))),
+            gemini_circuit: Arc::new(RwLock::new(CircuitBreaker::new(3, 60))),
         }
     }
 
@@ -117,6 +146,9 @@ impl LLMOrchestrator {
         let primary_result = match self.config.primary_provider {
             LLMProvider::Claude => self.try_claude(request).await,
             LLMProvider::OpenAI => self.try_openai(request).await,
+            LLMProvider::OpenRouter => self.try_openrouter(request).await,
+            LLMProvider::Groq => self.try_groq(request).await,
+            LLMProvider::Gemini => self.try_gemini(request).await,
             LLMProvider::Qwen => self.try_openai(request).await, // Qwen uses OpenAI-compatible API
         };
 
@@ -128,6 +160,9 @@ impl LLMOrchestrator {
         let secondary_result = match self.config.primary_provider {
             LLMProvider::Claude => self.try_openai(request).await,
             LLMProvider::OpenAI => self.try_claude(request).await,
+            LLMProvider::OpenRouter => self.try_claude(request).await,
+            LLMProvider::Groq => self.try_claude(request).await,
+            LLMProvider::Gemini => self.try_claude(request).await,
             LLMProvider::Qwen => self.try_claude(request).await,
         };
 
@@ -252,6 +287,165 @@ impl LLMOrchestrator {
         Err(last_error.unwrap_or_else(|| LLMError {
             message: "OpenAI request failed after retries".to_string(),
             provider: Some(LLMProvider::OpenAI),
+            is_retryable: false,
+        }))
+    }
+
+    async fn try_openrouter(
+        &self,
+        request: &CodeGenerationRequest,
+    ) -> Result<CodeGenerationResponse, LLMError> {
+        let client = self.openrouter_client.as_ref().ok_or_else(|| LLMError {
+            message: "OpenRouter API key not configured".to_string(),
+            provider: Some(LLMProvider::OpenRouter),
+            is_retryable: false,
+        })?;
+
+        // Check circuit breaker
+        let mut circuit = self.openrouter_circuit.write().await;
+        if !circuit.can_attempt() {
+            return Err(LLMError {
+                message: "OpenRouter circuit breaker is open".to_string(),
+                provider: Some(LLMProvider::OpenRouter),
+                is_retryable: true,
+            });
+        }
+        drop(circuit);
+
+        let mut last_error = None;
+
+        for attempt in 0..self.config.max_retries {
+            // Exponential backoff
+            if attempt > 0 {
+                let delay = Duration::from_millis(100 * 2_u64.pow(attempt));
+                tokio::time::sleep(delay).await;
+            }
+
+            match client.generate_code(request).await {
+                Ok(response) => {
+                    let mut circuit = self.openrouter_circuit.write().await;
+                    circuit.record_success();
+                    return Ok(response);
+                }
+                Err(e) => {
+                    last_error = Some(e.clone());
+                    if !e.is_retryable {
+                        break;
+                    }
+                }
+            }
+        }
+
+        let mut circuit = self.openrouter_circuit.write().await;
+        circuit.record_failure();
+
+        Err(last_error.unwrap_or_else(|| LLMError {
+            message: "OpenRouter request failed after retries".to_string(),
+            provider: Some(LLMProvider::OpenRouter),
+            is_retryable: false,
+        }))
+    }
+
+    /// Try Groq with retry and circuit breaker
+    async fn try_groq(&self, request: &CodeGenerationRequest) -> Result<CodeGenerationResponse, LLMError> {
+        let Some(ref client) = self.groq_client else {
+            return Err(LLMError {
+                message: "Groq client not configured (no API key)".to_string(),
+                provider: Some(LLMProvider::Groq),
+                is_retryable: false,
+            });
+        };
+
+        let mut circuit = self.groq_circuit.write().await;
+        if !circuit.can_attempt() {
+            return Err(LLMError {
+                message: "Groq circuit breaker is open".to_string(),
+                provider: Some(LLMProvider::Groq),
+                is_retryable: false,
+            });
+        }
+        drop(circuit);
+
+        let mut last_error = None;
+        for attempt in 0..self.config.max_retries {
+            if attempt > 0 {
+                let delay = Duration::from_millis(100 * 2_u64.pow(attempt));
+                tokio::time::sleep(delay).await;
+            }
+
+            match client.generate_code(request).await {
+                Ok(response) => {
+                    let mut circuit = self.groq_circuit.write().await;
+                    circuit.record_success();
+                    return Ok(response);
+                }
+                Err(e) => {
+                    last_error = Some(e.clone());
+                    if !e.is_retryable {
+                        break;
+                    }
+                }
+            }
+        }
+
+        let mut circuit = self.groq_circuit.write().await;
+        circuit.record_failure();
+
+        Err(last_error.unwrap_or_else(|| LLMError {
+            message: "Groq request failed after retries".to_string(),
+            provider: Some(LLMProvider::Groq),
+            is_retryable: false,
+        }))
+    }
+
+    /// Try Gemini with retry and circuit breaker
+    async fn try_gemini(&self, request: &CodeGenerationRequest) -> Result<CodeGenerationResponse, LLMError> {
+        let Some(ref client) = self.gemini_client else {
+            return Err(LLMError {
+                message: "Gemini client not configured (no API key)".to_string(),
+                provider: Some(LLMProvider::Gemini),
+                is_retryable: false,
+            });
+        };
+
+        let mut circuit = self.gemini_circuit.write().await;
+        if !circuit.can_attempt() {
+            return Err(LLMError {
+                message: "Gemini circuit breaker is open".to_string(),
+                provider: Some(LLMProvider::Gemini),
+                is_retryable: false,
+            });
+        }
+        drop(circuit);
+
+        let mut last_error = None;
+        for attempt in 0..self.config.max_retries {
+            if attempt > 0 {
+                let delay = Duration::from_millis(100 * 2_u64.pow(attempt));
+                tokio::time::sleep(delay).await;
+            }
+
+            match client.generate_code(request).await {
+                Ok(response) => {
+                    let mut circuit = self.gemini_circuit.write().await;
+                    circuit.record_success();
+                    return Ok(response);
+                }
+                Err(e) => {
+                    last_error = Some(e.clone());
+                    if !e.is_retryable {
+                        break;
+                    }
+                }
+            }
+        }
+
+        let mut circuit = self.gemini_circuit.write().await;
+        circuit.record_failure();
+
+        Err(last_error.unwrap_or_else(|| LLMError {
+            message: "Gemini request failed after retries".to_string(),
+            provider: Some(LLMProvider::Gemini),
             is_retryable: false,
         }))
     }
@@ -417,9 +611,13 @@ mod tests {
         let config = LLMConfig {
             claude_api_key: Some("test_claude_key".to_string()),
             openai_api_key: Some("test_openai_key".to_string()),
+            openrouter_api_key: None,
+            groq_api_key: None,
+            gemini_api_key: None,
             primary_provider: LLMProvider::Claude,
             max_retries: 3,
             timeout_seconds: 30,
+            selected_models: vec![],
         };
 
         let orchestrator = LLMOrchestrator::new(config);

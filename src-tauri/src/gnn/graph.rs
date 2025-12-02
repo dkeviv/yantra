@@ -211,6 +211,7 @@ mod tests {
             file_path: "test.py".to_string(),
             line_start: 1,
             line_end: 5,
+            ..Default::default()
         };
         
         graph.add_node(node);
@@ -228,6 +229,7 @@ mod tests {
             file_path: "test.py".to_string(),
             line_start: 1,
             line_end: 5,
+            ..Default::default()
         };
         
         let node2 = CodeNode {
@@ -237,6 +239,7 @@ mod tests {
             file_path: "test.py".to_string(),
             line_start: 7,
             line_end: 10,
+            ..Default::default()
         };
         
         graph.add_node(node1);
@@ -264,6 +267,7 @@ mod tests {
             file_path: "test.py".to_string(),
             line_start: 1,
             line_end: 5,
+            ..Default::default()
         };
         
         let node2 = CodeNode {
@@ -273,6 +277,7 @@ mod tests {
             file_path: "test.py".to_string(),
             line_start: 7,
             line_end: 10,
+            ..Default::default()
         };
         
         graph.add_node(node1);
@@ -365,6 +370,165 @@ impl CodeGraph {
         } else {
             Vec::new()
         }
+    }
+
+    /// Find semantically similar nodes using embeddings
+    /// 
+    /// Returns nodes sorted by similarity score (highest first).
+    /// Only nodes with embeddings are considered.
+    /// 
+    /// # Arguments
+    /// * `query_embedding` - Query embedding vector
+    /// * `min_similarity` - Minimum cosine similarity threshold (0.0 to 1.0)
+    /// * `max_results` - Maximum number of results to return
+    pub fn find_similar_nodes(
+        &self,
+        query_embedding: &[f32],
+        min_similarity: f32,
+        max_results: usize,
+    ) -> Vec<(CodeNode, f32)> {
+        use super::embeddings::EmbeddingGenerator;
+        
+        let mut results: Vec<(CodeNode, f32)> = self
+            .graph
+            .node_weights()
+            .filter_map(|node| {
+                if let Some(embedding) = &node.semantic_embedding {
+                    let similarity = EmbeddingGenerator::cosine_similarity(
+                        query_embedding,
+                        embedding,
+                    );
+                    
+                    if similarity >= min_similarity {
+                        Some((node.clone(), similarity))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect();
+        
+        // Sort by similarity (descending)
+        results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        
+        // Limit results
+        results.truncate(max_results);
+        
+        results
+    }
+
+    /// Find nodes semantically similar to a target node
+    /// 
+    /// Convenience method that uses the target node's embedding.
+    pub fn find_similar_to_node(
+        &self,
+        target_node_id: &str,
+        min_similarity: f32,
+        max_results: usize,
+    ) -> Result<Vec<(CodeNode, f32)>, String> {
+        let target_idx = self
+            .node_map
+            .get(target_node_id)
+            .ok_or_else(|| format!("Node not found: {}", target_node_id))?;
+        
+        let target_node = self
+            .graph
+            .node_weight(*target_idx)
+            .ok_or_else(|| "Node weight not found".to_string())?;
+        
+        let embedding = target_node
+            .semantic_embedding
+            .as_ref()
+            .ok_or_else(|| format!("Node {} has no embedding", target_node_id))?;
+        
+        Ok(self.find_similar_nodes(embedding, min_similarity, max_results))
+    }
+
+    /// Find semantically similar nodes within N hops of target
+    /// 
+    /// Combines structural (BFS) and semantic (embeddings) search.
+    /// This is more powerful than pure semantic search as it respects
+    /// code structure while finding semantically related code.
+    pub fn find_similar_in_neighborhood(
+        &self,
+        target_node_id: &str,
+        max_hops: usize,
+        min_similarity: f32,
+        max_results: usize,
+    ) -> Result<Vec<(CodeNode, f32)>, String> {
+        use petgraph::visit::Bfs;
+        use std::collections::HashSet;
+        use super::embeddings::EmbeddingGenerator;
+        
+        let target_idx = self
+            .node_map
+            .get(target_node_id)
+            .ok_or_else(|| format!("Node not found: {}", target_node_id))?;
+        
+        let target_node = self
+            .graph
+            .node_weight(*target_idx)
+            .ok_or_else(|| "Node weight not found".to_string())?;
+        
+        let target_embedding = target_node
+            .semantic_embedding
+            .as_ref()
+            .ok_or_else(|| format!("Node {} has no embedding", target_node_id))?;
+        
+        // BFS to find nodes within max_hops
+        let mut neighborhood = HashSet::new();
+        let mut bfs = Bfs::new(&self.graph, *target_idx);
+        let mut depth_map: HashMap<NodeIndex, usize> = HashMap::new();
+        depth_map.insert(*target_idx, 0);
+        
+        while let Some(idx) = bfs.next(&self.graph) {
+            let depth = *depth_map.get(&idx).unwrap_or(&0);
+            
+            if depth <= max_hops {
+                neighborhood.insert(idx);
+                
+                // Track depth for neighbors
+                for neighbor in self.graph.neighbors(idx) {
+                    depth_map.entry(neighbor).or_insert(depth + 1);
+                }
+            }
+        }
+        
+        // Filter by semantic similarity
+        let mut results: Vec<(CodeNode, f32)> = neighborhood
+            .iter()
+            .filter_map(|&idx| {
+                let node = self.graph.node_weight(idx)?;
+                
+                // Skip target node itself
+                if node.id == target_node_id {
+                    return None;
+                }
+                
+                if let Some(embedding) = &node.semantic_embedding {
+                    let similarity = EmbeddingGenerator::cosine_similarity(
+                        target_embedding,
+                        embedding,
+                    );
+                    
+                    if similarity >= min_similarity {
+                        Some((node.clone(), similarity))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect();
+        
+        // Sort by similarity
+        results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        results.truncate(max_results);
+        
+        Ok(results)
     }
 }
 

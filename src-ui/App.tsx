@@ -6,6 +6,7 @@
 import { Component, createSignal, onMount, Show } from 'solid-js';
 import { appStore } from './stores/appStore';
 import { terminalStore } from './stores/terminalStore';
+import { layoutStore } from './stores/layoutStore';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/tauri';
 import FileTree from './components/FileTree';
@@ -17,11 +18,15 @@ import { AgentStatus } from './components/AgentStatus';
 import { Notifications } from './components/Notifications';
 import DocumentationPanels from './components/DocumentationPanels';
 import ArchitectureView from './components/ArchitectureView';
+import ThemeToggle from './components/ThemeToggle';
+import TaskPanel from './components/TaskPanel';
 
 const App: Component = () => {
   const [isDragging, setIsDragging] = createSignal<number | null>(null);
   const [terminalHeight, setTerminalHeight] = createSignal(0); // Terminal hidden by default
   const [showDocsPanels, setShowDocsPanels] = createSignal(false); // Toggle between Files and Docs
+  const [showTaskPanel, setShowTaskPanel] = createSignal(false);
+  const [isResizingFileExplorer, setIsResizingFileExplorer] = createSignal(false);
 
   // Handle panel resizing
   const handleMouseDown = (panelIndex: number) => (e: MouseEvent) => {
@@ -37,10 +42,25 @@ const App: Component = () => {
     }
   };
 
+  // Handle File Explorer resize
+  const handleFileExplorerResize = (e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizingFileExplorer(true);
+    document.body.classList.add('dragging-horizontal');
+  };
+
   const handleMouseMove = (e: MouseEvent) => {
-    if (isDragging() === null) return;
+    if (isDragging() === null && !isResizingFileExplorer()) return;
     
     e.preventDefault();
+
+    // Handle File Explorer width resizing
+    if (isResizingFileExplorer()) {
+      const newWidth = e.clientX;
+      layoutStore.updateFileExplorerWidth(newWidth);
+      return;
+    }
 
     if (isDragging() === 3) {
       // Dragging terminal horizontal divider
@@ -93,6 +113,7 @@ const App: Component = () => {
 
   const handleMouseUp = () => {
     setIsDragging(null);
+    setIsResizingFileExplorer(false);
     // Remove dragging classes from body
     document.body.classList.remove('dragging-horizontal', 'dragging-vertical');
   };
@@ -281,17 +302,37 @@ const App: Component = () => {
       <Notifications />
 
       {/* Top Bar - YANTRA Title */}
-      <div class="h-10 bg-gray-950 border-b border-gray-700 flex items-center justify-between px-4 flex-shrink-0">
-        <div class="text-xl font-bold tracking-wider" style={{ color: '#FFFFFF' }}>YANTRA</div>
+      <div class="h-10 bg-gray-950 border-b border-gray-700 flex items-center justify-between px-4 flex-shrink-0"
+           style={{
+             "background-color": "var(--bg-elevated)",
+             "border-bottom-color": "var(--border-primary)"
+           }}>
+        <div class="flex items-center gap-3">
+          <div class="text-xl font-bold tracking-wider" style={{ color: "var(--text-primary)" }}>YANTRA</div>
+          <ThemeToggle />
+        </div>
         <div class="flex items-center gap-2">
+          {/* Task Panel Toggle Button */}
+          <button
+            onClick={() => setShowTaskPanel(!showTaskPanel())}
+            class="px-3 py-1 text-xs rounded transition-colors"
+            style={{
+              "background-color": showTaskPanel() ? "var(--accent-primary)" : "var(--bg-tertiary)",
+              "color": "var(--text-primary)",
+            }}
+            title="Toggle Task Panel"
+          >
+            {showTaskPanel() ? '📋 Hide Tasks' : '📋 Show Tasks'}
+          </button>
+          
           {/* Terminal Toggle Button */}
           <button
             onClick={() => setTerminalHeight(terminalHeight() > 0 ? 0 : 30)}
-            class={`px-3 py-1 text-xs rounded transition-colors ${
-              terminalHeight() > 0
-                ? 'bg-primary-600 text-white hover:bg-primary-700'
-                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-            }`}
+            class="px-3 py-1 text-xs rounded transition-colors"
+            style={{
+              "background-color": terminalHeight() > 0 ? "var(--accent-primary)" : "var(--bg-tertiary)",
+              "color": "var(--text-primary)",
+            }}
             title="Toggle Terminal (Cmd+`)"
           >
             {terminalHeight() > 0 ? '🖥️ Hide Terminal' : '🖥️ Show Terminal'}
@@ -301,9 +342,17 @@ const App: Component = () => {
 
       {/* Main Layout - 3 Column Design */}
       <div class="flex flex-1 overflow-hidden">
-        {/* Left Column - File Tree OR Documentation Panels (20% width) */}
+        {/* Left Column - File Tree OR Documentation Panels */}
         <Show when={appStore.showFileTree()}>
-          <div class="w-64 flex flex-col bg-gray-800 border-r border-gray-700">
+          <div 
+            class="flex flex-col bg-gray-800 border-r border-gray-700 relative"
+            style={{ 
+              width: layoutStore.isExpanded('fileExplorer') 
+                ? '70%' 
+                : `${layoutStore.fileExplorerWidth()}px`,
+              transition: 'width 0.3s ease'
+            }}
+          >
             {/* Toggle Buttons */}
             <div class="flex border-b border-gray-700">
               <button
@@ -339,6 +388,16 @@ const App: Component = () => {
             </div>
             {/* Agent Status at bottom */}
             <AgentStatus />
+            
+            {/* Resize Handle for FileExplorer width - only when not expanded */}
+            <Show when={!layoutStore.isExpanded('fileExplorer')}>
+              <div
+                class="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary-500 transition-colors"
+                style={{ "background-color": "var(--border-primary)" }}
+                onMouseDown={handleFileExplorerResize}
+                title="Drag to resize"
+              />
+            </Show>
           </div>
         </Show>
 
@@ -350,8 +409,18 @@ const App: Component = () => {
           />
         </Show>
 
-        {/* Center Column - Chat Panel (Full Height, 45% default) */}
-        <div class="flex-1 flex flex-col" style={{ width: `${appStore.chatWidth()}%` }}>
+        {/* Center Column - Chat Panel */}
+        <div 
+          class="flex-1 flex flex-col" 
+          style={{ 
+            width: layoutStore.isExpanded('agent') 
+              ? '70%' 
+              : layoutStore.isExpanded('fileExplorer') || layoutStore.isExpanded('editor')
+              ? '15%'
+              : `${appStore.chatWidth()}%`,
+            transition: 'width 0.3s ease'
+          }}
+        >
           <ChatPanel />
         </div>
 
@@ -363,40 +432,63 @@ const App: Component = () => {
           />
         </Show>
 
-        {/* Right Column - Code + Terminal Stack (35% default) */}
+        {/* Right Column - Code + Terminal Stack */}
         <Show when={appStore.showCode()}>
-          <div class="flex flex-col" style={{ width: `${appStore.codeWidth()}%` }}>
+          <div 
+            class="flex flex-col" 
+            style={{ 
+              width: layoutStore.isExpanded('editor') 
+                ? '70%' 
+                : layoutStore.isExpanded('fileExplorer') || layoutStore.isExpanded('agent')
+                ? '15%'
+                : `${appStore.codeWidth()}%`,
+              transition: 'width 0.3s ease'
+            }}
+          >
             {/* View Selector Tabs */}
+            {/* View tabs - Minimal UI with inline icons */}
             <div class="flex bg-gray-800 border-b border-gray-700">
               <button
-                class={`px-4 py-2 text-sm transition-colors ${
+                class={`px-3 py-1.5 text-xs transition-colors ${
                   appStore.activeView() === 'editor'
                     ? 'bg-gray-900 text-white border-b-2 border-primary-500'
                     : 'text-gray-400 hover:text-white'
                 }`}
                 onClick={() => appStore.setActiveView('editor')}
+                title="Editor"
               >
-                ✏️ Editor
+                <span class="inline-flex items-center gap-1.5">
+                  <span>✏️</span>
+                  <span>Editor</span>
+                </span>
               </button>
               <button
-                class={`px-4 py-2 text-sm transition-colors ${
+                class={`px-3 py-1.5 text-xs transition-colors ${
                   appStore.activeView() === 'dependencies'
                     ? 'bg-gray-900 text-white border-b-2 border-primary-500'
                     : 'text-gray-400 hover:text-white'
                 }`}
                 onClick={() => appStore.setActiveView('dependencies')}
+                title="Dependencies"
               >
-                🔗 Dependencies
+                <span class="inline-flex items-center gap-1.5">
+                  <span>🔗</span>
+                  <span>Deps</span>
+                </span>
               </button>
               <button
-                class={`px-4 py-2 text-sm transition-colors ${
+                class={`px-3 py-1.5 text-xs transition-colors ${
                   appStore.activeView() === 'architecture'
                     ? 'bg-gray-900 text-white border-b-2 border-primary-500'
                     : 'text-gray-400 hover:text-white'
                 }`}
                 onClick={() => appStore.setActiveView('architecture')}
+                title="Architecture"
               >
-                🏗️ Architecture
+                <span class="inline-flex items-center gap-1.5">
+                  <span>🏗️</span>
+                  <span>Arch</span>
+                </span>
               </button>
             </div>
 
@@ -429,6 +521,12 @@ const App: Component = () => {
           </div>
         </Show>
       </div>
+      
+      {/* Task Panel Overlay */}
+      <TaskPanel 
+        isOpen={showTaskPanel()}
+        onClose={() => setShowTaskPanel(false)}
+      />
     </div>
   );
 };

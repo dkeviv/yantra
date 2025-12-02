@@ -279,6 +279,7 @@ mod tests {
             file_path: file_path.to_string(),
             line_start: 1,
             line_end: 10,
+            ..Default::default()
         }
     }
 

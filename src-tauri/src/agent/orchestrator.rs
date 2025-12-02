@@ -702,6 +702,116 @@ pub async fn orchestrate_with_execution(
     }
 }
 
+/// Find tests that should be run based on changed files
+/// Uses GNN test tracking to identify affected tests
+pub fn find_affected_tests(
+    gnn: &GNNEngine,
+    changed_files: &[String],
+) -> Vec<String> {
+    let mut affected_tests = Vec::new();
+    
+    for changed_file in changed_files {
+        let changed_path = std::path::Path::new(changed_file);
+        
+        // Skip if the changed file itself is a test file
+        if GNNEngine::is_test_file(changed_path) {
+            // Test file changed - just run this test
+            affected_tests.push(changed_file.clone());
+            continue;
+        }
+        
+        // Find test files that test this source file
+        let all_nodes = gnn.get_graph().get_all_nodes().into_iter().cloned().collect::<Vec<_>>();
+        
+        for test_node in &all_nodes {
+            let test_path = std::path::Path::new(&test_node.file_path);
+            
+            if !GNNEngine::is_test_file(test_path) {
+                continue;
+            }
+            
+            // Check if this test file tests the changed source file
+            if let Some(source_file) = gnn.find_source_file_for_test(test_path) {
+                if source_file == *changed_file || changed_file.ends_with(&source_file) {
+                    affected_tests.push(test_node.file_path.clone());
+                }
+            }
+        }
+    }
+    
+    // Remove duplicates
+    affected_tests.sort();
+    affected_tests.dedup();
+    
+    affected_tests
+}
+
+/// Calculate test coverage metrics from GNN
+pub fn calculate_test_coverage(gnn: &GNNEngine) -> TestCoverageMetrics {
+    let all_nodes = gnn.get_graph().get_all_nodes().into_iter().cloned().collect::<Vec<_>>();
+    
+    // Count source files (non-test files)
+    let source_files: Vec<_> = all_nodes.iter()
+        .filter(|n| !GNNEngine::is_test_file(std::path::Path::new(&n.file_path)))
+        .map(|n| &n.file_path)
+        .collect::<std::collections::HashSet<_>>()
+        .into_iter()
+        .cloned()
+        .collect();
+    
+    // Count test files
+    let test_files: Vec<_> = all_nodes.iter()
+        .filter(|n| GNNEngine::is_test_file(std::path::Path::new(&n.file_path)))
+        .map(|n| &n.file_path)
+        .collect::<std::collections::HashSet<_>>()
+        .into_iter()
+        .cloned()
+        .collect();
+    
+    // Count tested source files
+    let tested_files: Vec<_> = source_files.iter()
+        .filter(|source_file| {
+            test_files.iter().any(|test_file| {
+                let test_path = std::path::Path::new(test_file);
+                gnn.find_source_file_for_test(test_path)
+                    .as_ref() == Some(source_file)
+            })
+        })
+        .cloned()
+        .collect();
+    
+    // Find untested files
+    let untested_files: Vec<_> = source_files.iter()
+        .filter(|f| !tested_files.contains(f))
+        .cloned()
+        .collect();
+    
+    let coverage_percentage = if source_files.len() > 0 {
+        (tested_files.len() as f64 / source_files.len() as f64) * 100.0
+    } else {
+        0.0
+    };
+    
+    TestCoverageMetrics {
+        total_source_files: source_files.len(),
+        total_test_files: test_files.len(),
+        tested_source_files: tested_files.len(),
+        untested_source_files: untested_files.len(),
+        coverage_percentage,
+        untested_files,
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TestCoverageMetrics {
+    pub total_source_files: usize,
+    pub total_test_files: usize,
+    pub tested_source_files: usize,
+    pub untested_source_files: usize,
+    pub coverage_percentage: f64,
+    pub untested_files: Vec<String>,
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -940,4 +1050,78 @@ mod tests {
         assert!(overall > 0.0 && overall <= 1.0);
         assert!(overall < 0.6); // Should be lower with many test failures
     }
+    
+    #[test]
+    fn test_find_affected_tests() {
+        // Create a test project with test tracking
+        let temp_dir = tempdir().unwrap();
+        let db_path = temp_dir.path().join("test_graph.db");
+        
+        let mut gnn = GNNEngine::new(&db_path).unwrap();
+        
+        // Build graph from test_project
+        let test_project = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .join("test_project");
+        
+        if test_project.exists() {
+            gnn.build_graph(&test_project).unwrap();
+            gnn.create_test_edges().unwrap();
+            
+            // Test finding affected tests when calculator.py changes
+            let calc_path = test_project.join("calculator.py");
+            let changed_files = vec![calc_path.to_str().unwrap().to_string()];
+            
+            let affected = find_affected_tests(&gnn, &changed_files);
+            
+            // Should find test_calculator.py as affected
+            assert!(affected.len() > 0, "Should find at least one affected test");
+            assert!(affected.iter().any(|t| t.ends_with("test_calculator.py")),
+                    "Should find test_calculator.py as affected test");
+            
+            println!("✅ Found {} affected test(s) for calculator.py", affected.len());
+        }
+    }
+    
+    #[test]
+    fn test_calculate_test_coverage() {
+        // Create a test project with test tracking
+        let temp_dir = tempdir().unwrap();
+        let db_path = temp_dir.path().join("test_coverage.db");
+        
+        let mut gnn = GNNEngine::new(&db_path).unwrap();
+        
+        // Build graph from test_project
+        let test_project = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .join("test_project");
+        
+        if test_project.exists() {
+            gnn.build_graph(&test_project).unwrap();
+            gnn.create_test_edges().unwrap();
+            
+            let metrics = calculate_test_coverage(&gnn);
+            
+            println!("📊 Test Coverage Metrics:");
+            println!("  Total source files: {}", metrics.total_source_files);
+            println!("  Total test files: {}", metrics.total_test_files);
+            println!("  Tested source files: {}", metrics.tested_source_files);
+            println!("  Coverage: {:.1}%", metrics.coverage_percentage);
+            
+            assert!(metrics.total_source_files > 0, "Should have source files");
+            assert!(metrics.total_test_files > 0, "Should have test files");
+            assert!(metrics.coverage_percentage >= 0.0 && metrics.coverage_percentage <= 100.0,
+                    "Coverage should be between 0 and 100%");
+            
+            if metrics.untested_files.len() > 0 {
+                println!("\n⚠️  Untested files:");
+                for file in &metrics.untested_files {
+                    println!("    - {}", file);
+                }
+            }
+        }
+    }
 }
+

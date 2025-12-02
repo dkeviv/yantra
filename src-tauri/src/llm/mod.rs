@@ -1,15 +1,19 @@
 // File: src-tauri/src/llm/mod.rs
 // Purpose: Multi-LLM orchestration module for code generation
 // Dependencies: reqwest, tokio, serde
-// Last Updated: November 21, 2025
+// Last Updated: November 29, 2025
 
 pub mod claude;
 pub mod openai;
+pub mod openrouter;
+pub mod groq;
+pub mod gemini;
 pub mod orchestrator;
 pub mod prompts;
 pub mod context;
 pub mod config;
 pub mod tokens;
+pub mod models;
 
 use serde::{Deserialize, Serialize};
 
@@ -18,9 +22,15 @@ use serde::{Deserialize, Serialize};
 pub struct LLMConfig {
     pub claude_api_key: Option<String>,
     pub openai_api_key: Option<String>,
+    pub openrouter_api_key: Option<String>,
+    pub groq_api_key: Option<String>,
+    pub gemini_api_key: Option<String>,
     pub primary_provider: LLMProvider,
     pub max_retries: u32,
     pub timeout_seconds: u64,
+    /// User-selected models for each provider (model IDs)
+    #[serde(default)]
+    pub selected_models: Vec<String>,
 }
 
 /// Available LLM providers
@@ -28,6 +38,9 @@ pub struct LLMConfig {
 pub enum LLMProvider {
     Claude,
     OpenAI,
+    OpenRouter,
+    Groq,
+    Gemini,
     Qwen,
 }
 
@@ -111,9 +124,13 @@ impl Default for LLMConfig {
         Self {
             claude_api_key: None,
             openai_api_key: None,
+            openrouter_api_key: None,
+            groq_api_key: None,
+            gemini_api_key: None,
             primary_provider: LLMProvider::Claude,
             max_retries: 3,
             timeout_seconds: 30,
+            selected_models: Vec::new(),
         }
     }
 }
@@ -121,7 +138,11 @@ impl Default for LLMConfig {
 impl LLMConfig {
     /// Check if at least one API key is configured
     pub fn has_api_key(&self) -> bool {
-        self.claude_api_key.is_some() || self.openai_api_key.is_some()
+        self.claude_api_key.is_some() 
+            || self.openai_api_key.is_some()
+            || self.openrouter_api_key.is_some()
+            || self.groq_api_key.is_some()
+            || self.gemini_api_key.is_some()
     }
 }
 

@@ -22,8 +22,10 @@ mod git;
 mod documentation;
 mod bridge;
 mod terminal;
+mod architecture;
 
 use terminal::TerminalManager;
+use architecture::commands as arch_commands;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct FileEntry {
@@ -202,7 +204,10 @@ fn set_llm_provider(app_handle: tauri::AppHandle, provider: String) -> Result<()
     let provider_enum = match provider.to_lowercase().as_str() {
         "claude" => llm::LLMProvider::Claude,
         "openai" => llm::LLMProvider::OpenAI,
-        _ => return Err(format!("Invalid provider: {}. Use 'claude' or 'openai'", provider)),
+        "openrouter" => llm::LLMProvider::OpenRouter,
+        "groq" => llm::LLMProvider::Groq,
+        "gemini" => llm::LLMProvider::Gemini,
+        _ => return Err(format!("Invalid provider: {}. Use 'claude', 'openai', 'openrouter', 'groq', or 'gemini'", provider)),
     };
     
     manager.set_primary_provider(provider_enum)
@@ -230,6 +235,39 @@ fn set_openai_key(app_handle: tauri::AppHandle, api_key: String) -> Result<(), S
     manager.set_openai_key(api_key)
 }
 
+/// Set OpenRouter API key
+#[tauri::command]
+fn set_openrouter_key(app_handle: tauri::AppHandle, api_key: String) -> Result<(), String> {
+    let config_dir = app_handle.path_resolver()
+        .app_config_dir()
+        .ok_or_else(|| "Failed to get config directory".to_string())?;
+    
+    let mut manager = llm::config::LLMConfigManager::new(&config_dir)?;
+    manager.set_openrouter_key(api_key)
+}
+
+/// Set Groq API key
+#[tauri::command]
+fn set_groq_key(app_handle: tauri::AppHandle, api_key: String) -> Result<(), String> {
+    let config_dir = app_handle.path_resolver()
+        .app_config_dir()
+        .ok_or_else(|| "Failed to get config directory".to_string())?;
+    
+    let mut manager = llm::config::LLMConfigManager::new(&config_dir)?;
+    manager.set_groq_key(api_key)
+}
+
+/// Set Gemini API key
+#[tauri::command]
+fn set_gemini_key(app_handle: tauri::AppHandle, api_key: String) -> Result<(), String> {
+    let config_dir = app_handle.path_resolver()
+        .app_config_dir()
+        .ok_or_else(|| "Failed to get config directory".to_string())?;
+    
+    let mut manager = llm::config::LLMConfigManager::new(&config_dir)?;
+    manager.set_gemini_key(api_key)
+}
+
 /// Clear API key for a provider
 #[tauri::command]
 fn clear_llm_key(app_handle: tauri::AppHandle, provider: String) -> Result<(), String> {
@@ -242,10 +280,67 @@ fn clear_llm_key(app_handle: tauri::AppHandle, provider: String) -> Result<(), S
     let provider_enum = match provider.to_lowercase().as_str() {
         "claude" => llm::LLMProvider::Claude,
         "openai" => llm::LLMProvider::OpenAI,
-        _ => return Err(format!("Invalid provider: {}", provider)),
+        "openrouter" => llm::LLMProvider::OpenRouter,
+        "groq" => llm::LLMProvider::Groq,
+        "gemini" => llm::LLMProvider::Gemini,
+        _ => return Err(format!("Invalid provider: {}. Use 'claude', 'openai', 'openrouter', 'groq', or 'gemini'", provider)),
     };
     
     manager.clear_api_key(provider_enum)
+}
+
+/// Get available models for a specific provider
+#[tauri::command]
+fn get_available_models(provider: String) -> Result<Vec<llm::models::ModelInfo>, String> {
+    let provider_enum = match provider.to_lowercase().as_str() {
+        "claude" => llm::LLMProvider::Claude,
+        "openai" => llm::LLMProvider::OpenAI,
+        "openrouter" => llm::LLMProvider::OpenRouter,
+        "groq" => llm::LLMProvider::Groq,
+        "gemini" => llm::LLMProvider::Gemini,
+        "qwen" => llm::LLMProvider::Qwen,
+        _ => return Err(format!("Invalid provider: {}", provider)),
+    };
+    
+    Ok(llm::models::get_available_models(provider_enum))
+}
+
+/// Get default model for a specific provider
+#[tauri::command]
+fn get_default_model(provider: String) -> Result<String, String> {
+    let provider_enum = match provider.to_lowercase().as_str() {
+        "claude" => llm::LLMProvider::Claude,
+        "openai" => llm::LLMProvider::OpenAI,
+        "openrouter" => llm::LLMProvider::OpenRouter,
+        "groq" => llm::LLMProvider::Groq,
+        "gemini" => llm::LLMProvider::Gemini,
+        "qwen" => llm::LLMProvider::Qwen,
+        _ => return Err(format!("Invalid provider: {}", provider)),
+    };
+    
+    Ok(llm::models::get_default_model(provider_enum))
+}
+
+/// Set selected models for the user
+#[tauri::command]
+fn set_selected_models(app_handle: tauri::AppHandle, model_ids: Vec<String>) -> Result<(), String> {
+    let config_dir = app_handle.path_resolver()
+        .app_config_dir()
+        .ok_or_else(|| "Failed to get config directory".to_string())?;
+    
+    let mut manager = llm::config::LLMConfigManager::new(&config_dir)?;
+    manager.set_selected_models(model_ids)
+}
+
+/// Get selected models
+#[tauri::command]
+fn get_selected_models(app_handle: tauri::AppHandle) -> Result<Vec<String>, String> {
+    let config_dir = app_handle.path_resolver()
+        .app_config_dir()
+        .ok_or_else(|| "Failed to get config directory".to_string())?;
+    
+    let manager = llm::config::LLMConfigManager::new(&config_dir)?;
+    Ok(manager.get_selected_models())
 }
 
 /// Update retry configuration
@@ -378,6 +473,74 @@ async fn extract_features_from_chat(
     
     // Extract features using LLM
     documentation::extractor::extract_features_from_chat(request, llm_config).await
+}
+
+// Test Coverage commands
+
+/// Get test coverage metrics from GNN
+#[tauri::command]
+fn get_test_coverage(workspace_path: String) -> Result<agent::orchestrator::TestCoverageMetrics, String> {
+    use std::path::Path;
+    
+    // Create or load GNN engine
+    let workspace = Path::new(&workspace_path);
+    let db_path = workspace.join(".yantra").join("graph.db");
+    
+    if !db_path.exists() {
+        return Err("GNN database not found. Please build the project graph first.".to_string());
+    }
+    
+    let mut gnn = gnn::GNNEngine::new(&db_path)
+        .map_err(|e| format!("Failed to load GNN: {}", e))?;
+    
+    // Build graph if empty
+    let node_count = gnn.get_node_count();
+    if node_count == 0 {
+        gnn.build_graph(workspace)
+            .map_err(|e| format!("Failed to build graph: {}", e))?;
+    }
+    
+    // Create test edges if not already created
+    let _ = gnn.create_test_edges();
+    
+    // Calculate coverage
+    let metrics = agent::orchestrator::calculate_test_coverage(&gnn);
+    
+    Ok(metrics)
+}
+
+/// Get list of affected tests for changed files
+#[tauri::command]
+fn get_affected_tests(
+    workspace_path: String,
+    changed_files: Vec<String>,
+) -> Result<Vec<String>, String> {
+    use std::path::Path;
+    
+    let workspace = Path::new(&workspace_path);
+    let db_path = workspace.join(".yantra").join("graph.db");
+    
+    if !db_path.exists() {
+        return Err("GNN database not found. Please build the project graph first.".to_string());
+    }
+    
+    let mut gnn = gnn::GNNEngine::new(&db_path)
+        .map_err(|e| format!("Failed to load GNN: {}", e))?;
+    
+    // Build graph if empty
+    let node_count = gnn.get_node_count();
+    if node_count == 0 {
+        gnn.build_graph(workspace)
+            .map_err(|e| format!("Failed to build graph: {}", e))?;
+    }
+    
+    // Create test edges if not already created
+    let _ = gnn.create_test_edges();
+    
+    // Find affected tests
+    let affected = agent::orchestrator::find_affected_tests(&gnn, &changed_files);
+    
+    Ok(affected)
 }
 
 // LLM commands
@@ -877,6 +1040,109 @@ fn handle_menu_event(event: tauri::WindowMenuEvent) {
     }
 }
 
+// Task Queue Commands
+
+/// Get all tasks in the queue
+#[tauri::command]
+fn get_task_queue(app_handle: tauri::AppHandle) -> Result<Vec<agent::Task>, String> {
+    let tasks_path = app_handle.path_resolver()
+        .app_data_dir()
+        .ok_or_else(|| "Failed to get app data directory".to_string())?
+        .join("task_queue.json");
+    
+    let queue = agent::TaskQueue::new(tasks_path)?;
+    Ok(queue.get_all_tasks())
+}
+
+/// Get the current in-progress task
+#[tauri::command]
+fn get_current_task(app_handle: tauri::AppHandle) -> Result<Option<agent::Task>, String> {
+    let tasks_path = app_handle.path_resolver()
+        .app_data_dir()
+        .ok_or_else(|| "Failed to get app data directory".to_string())?
+        .join("task_queue.json");
+    
+    let queue = agent::TaskQueue::new(tasks_path)?;
+    Ok(queue.get_current_task())
+}
+
+/// Add a new task to the queue
+#[tauri::command]
+fn add_task(
+    app_handle: tauri::AppHandle,
+    id: String,
+    description: String,
+    priority: String,
+) -> Result<(), String> {
+    let tasks_path = app_handle.path_resolver()
+        .app_data_dir()
+        .ok_or_else(|| "Failed to get app data directory".to_string())?
+        .join("task_queue.json");
+    
+    let priority_enum = match priority.to_lowercase().as_str() {
+        "low" => agent::TaskPriority::Low,
+        "medium" => agent::TaskPriority::Medium,
+        "high" => agent::TaskPriority::High,
+        "critical" => agent::TaskPriority::Critical,
+        _ => return Err(format!("Invalid priority: {}", priority)),
+    };
+    
+    let task = agent::Task::new(id, description, priority_enum);
+    let queue = agent::TaskQueue::new(tasks_path)?;
+    queue.add_task(task)?;
+    Ok(())
+}
+
+/// Update task status
+#[tauri::command]
+fn update_task_status(
+    app_handle: tauri::AppHandle,
+    id: String,
+    status: String,
+) -> Result<(), String> {
+    let tasks_path = app_handle.path_resolver()
+        .app_data_dir()
+        .ok_or_else(|| "Failed to get app data directory".to_string())?
+        .join("task_queue.json");
+    
+    let status_enum = match status.to_lowercase().as_str() {
+        "pending" => agent::TaskStatus::Pending,
+        "inprogress" | "in-progress" => agent::TaskStatus::InProgress,
+        "completed" => agent::TaskStatus::Completed,
+        "failed" => agent::TaskStatus::Failed,
+        _ => return Err(format!("Invalid status: {}", status)),
+    };
+    
+    let queue = agent::TaskQueue::new(tasks_path)?;
+    queue.update_task_status(&id, status_enum)?;
+    Ok(())
+}
+
+/// Complete a task
+#[tauri::command]
+fn complete_task(app_handle: tauri::AppHandle, id: String) -> Result<(), String> {
+    let tasks_path = app_handle.path_resolver()
+        .app_data_dir()
+        .ok_or_else(|| "Failed to get app data directory".to_string())?
+        .join("task_queue.json");
+    
+    let queue = agent::TaskQueue::new(tasks_path)?;
+    queue.complete_task(&id)?;
+    Ok(())
+}
+
+/// Get task queue statistics
+#[tauri::command]
+fn get_task_stats(app_handle: tauri::AppHandle) -> Result<agent::TaskStats, String> {
+    let tasks_path = app_handle.path_resolver()
+        .app_data_dir()
+        .ok_or_else(|| "Failed to get app data directory".to_string())?
+        .join("task_queue.json");
+    
+    let queue = agent::TaskQueue::new(tasks_path)?;
+    Ok(queue.get_stats())
+}
+
 fn main() {
     // Build minimal custom menu
     let file_menu = Submenu::new(
@@ -936,10 +1202,39 @@ fn main() {
 
     // Initialize terminal manager
     let terminal_manager = Arc::new(TokioMutex::new(TerminalManager::new()));
+    
+    // Initialize architecture state with GNN and LLM
+    // Default database path in .yantra directory
+    let home_dir = dirs::home_dir().expect("Cannot determine home directory");
+    let yantra_dir = home_dir.join(".yantra");
+    std::fs::create_dir_all(&yantra_dir).expect("Failed to create .yantra directory");
+    
+    let db_path = yantra_dir.join("graph.db");
+    let gnn = Arc::new(tokio::sync::Mutex::new(
+        gnn::GNNEngine::new(&db_path).expect("Failed to initialize GNN engine")
+    ));
+    
+    // Initialize LLM with default config
+    let llm_config = llm::LLMConfig {
+        claude_api_key: None,
+        openai_api_key: None,
+        openrouter_api_key: None,
+        groq_api_key: None,
+        gemini_api_key: None,
+        primary_provider: llm::LLMProvider::Claude,
+        max_retries: 3,
+        timeout_seconds: 30,
+        selected_models: Vec::new(),
+    };
+    let llm = Arc::new(tokio::sync::Mutex::new(llm::orchestrator::LLMOrchestrator::new(llm_config)));
+    
+    let arch_state = arch_commands::ArchitectureState::new(gnn, llm)
+        .expect("Failed to initialize architecture state");
 
     tauri::Builder::default()
         .menu(menu)
         .manage(terminal_manager)
+        .manage(arch_state)
         .on_menu_event(|event| {
             handle_menu_event(event);
         })
@@ -957,7 +1252,14 @@ fn main() {
             set_llm_provider,
             set_claude_key,
             set_openai_key,
+            set_openrouter_key,
+            set_groq_key,
+            set_gemini_key,
             clear_llm_key,
+            get_available_models,
+            get_default_model,
+            set_selected_models,
+            get_selected_models,
             set_llm_retry_config,
             generate_code,
             generate_tests,
@@ -987,7 +1289,27 @@ fn main() {
             add_feature,
             add_decision,
             add_change,
-            extract_features_from_chat
+            extract_features_from_chat,
+            // Test Coverage commands
+            get_test_coverage,
+            get_affected_tests,
+            // Task Queue commands
+            get_task_queue,
+            get_current_task,
+            add_task,
+            update_task_status,
+            complete_task,
+            get_task_stats,
+            // Architecture View commands
+            arch_commands::generate_architecture_from_intent,
+            arch_commands::generate_architecture_from_code,
+            arch_commands::initialize_new_project,
+            arch_commands::initialize_existing_project,
+            arch_commands::review_existing_code,
+            arch_commands::analyze_requirement_impact,
+            arch_commands::is_project_initialized,
+            arch_commands::auto_correct_architecture_deviation,
+            arch_commands::analyze_architecture_impact
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -50,6 +50,23 @@ pub async fn extract_features_from_chat(
                 return Err("OpenAI API key not configured".to_string());
             }
         }
+        LLMProvider::OpenRouter => {
+            if let Some(ref api_key) = llm_config.openrouter_api_key {
+                call_openai_for_extraction(&prompt, api_key, llm_config.timeout_seconds).await?
+            } else {
+                return Err("OpenRouter API key not configured".to_string());
+            }
+        }
+        LLMProvider::Groq => {
+            if let Some(ref api_key) = llm_config.groq_api_key {
+                call_openai_for_extraction(&prompt, api_key, llm_config.timeout_seconds).await?
+            } else {
+                return Err("Groq API key not configured".to_string());
+            }
+        }
+        LLMProvider::Gemini => {
+            return Err("Gemini provider not yet supported for feature extraction".to_string());
+        }
         LLMProvider::Qwen => {
             return Err("Qwen provider not yet supported for feature extraction".to_string());
         }

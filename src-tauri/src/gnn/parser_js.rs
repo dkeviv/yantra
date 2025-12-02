@@ -13,8 +13,11 @@ pub fn parse_javascript_file(
     file_path: &Path,
 ) -> Result<(Vec<CodeNode>, Vec<CodeEdge>), String> {
     let mut parser = Parser::new();
+    // tree-sitter-javascript 0.23 uses LANGUAGE constant (LanguageFn)
+    let lang_fn: extern "C" fn() -> *const std::os::raw::c_void = unsafe { std::mem::transmute(tree_sitter_javascript::LANGUAGE) };
+    let language = unsafe { tree_sitter::Language::from_raw(lang_fn() as *const tree_sitter::ffi::TSLanguage) };
     parser
-        .set_language(tree_sitter_javascript::language())
+        .set_language(&language)
         .map_err(|e| format!("Failed to set JavaScript language: {}", e))?;
 
     let tree = parser
@@ -30,8 +33,11 @@ pub fn parse_typescript_file(
     file_path: &Path,
 ) -> Result<(Vec<CodeNode>, Vec<CodeEdge>), String> {
     let mut parser = Parser::new();
+    // tree-sitter-typescript 0.23 uses LANGUAGE_TYPESCRIPT constant (LanguageFn)
+    let lang_fn: extern "C" fn() -> *const std::os::raw::c_void = unsafe { std::mem::transmute(tree_sitter_typescript::LANGUAGE_TYPESCRIPT) };
+    let language = unsafe { tree_sitter::Language::from_raw(lang_fn() as *const tree_sitter::ffi::TSLanguage) };
     parser
-        .set_language(tree_sitter_typescript::language_typescript())
+        .set_language(&language)
         .map_err(|e| format!("Failed to set TypeScript language: {}", e))?;
 
     let tree = parser
@@ -47,8 +53,11 @@ pub fn parse_tsx_file(
     file_path: &Path,
 ) -> Result<(Vec<CodeNode>, Vec<CodeEdge>), String> {
     let mut parser = Parser::new();
+    // tree-sitter-typescript 0.23 uses LANGUAGE_TSX constant (LanguageFn)
+    let lang_fn: extern "C" fn() -> *const std::os::raw::c_void = unsafe { std::mem::transmute(tree_sitter_typescript::LANGUAGE_TSX) };
+    let language = unsafe { tree_sitter::Language::from_raw(lang_fn() as *const tree_sitter::ffi::TSLanguage) };
     parser
-        .set_language(tree_sitter_typescript::language_tsx())
+        .set_language(&language)
         .map_err(|e| format!("Failed to set TSX language: {}", e))?;
 
     let tree = parser
@@ -96,6 +105,9 @@ fn extract_nodes_and_edges(
                             file_path: file_path.to_string(),
                             line_start: start.row + 1,
                             line_end: end.row + 1,
+                            code_snippet: extract_code_snippet(node, code),
+                            docstring: extract_docstring(node, code),
+                            ..Default::default()
                         });
                     }
                 }
@@ -114,6 +126,9 @@ fn extract_nodes_and_edges(
                             file_path: file_path.to_string(),
                             line_start: start.row + 1,
                             line_end: end.row + 1,
+                            code_snippet: extract_code_snippet(node, code),
+                            docstring: extract_docstring(node, code),
+                            ..Default::default()
                         });
                     }
                 }
@@ -132,6 +147,9 @@ fn extract_nodes_and_edges(
                             file_path: file_path.to_string(),
                             line_start: start.row + 1,
                             line_end: start.row + 1,
+                            code_snippet: extract_code_snippet(node, code),
+                            docstring: None, // Imports don't have docstrings
+                            ..Default::default()
                         });
 
                         edges.push(CodeEdge {
@@ -161,6 +179,9 @@ fn extract_nodes_and_edges(
                                         file_path: file_path.to_string(),
                                         line_start: start.row + 1,
                                         line_end: start.row + 1,
+                                        code_snippet: extract_code_snippet(&child, code),
+                                        docstring: None, // Variables don't have docstrings
+                                        ..Default::default()
                                     });
                                 }
                             }
@@ -182,6 +203,64 @@ fn extract_nodes_and_edges(
 
     Ok((nodes, edges))
 }
+
+
+/// Extract code snippet from a node (with reasonable size limit)
+fn extract_code_snippet(node: &tree_sitter::Node, code: &str) -> Option<String> {
+    const MAX_SNIPPET_LENGTH: usize = 1000; // 1KB max per node
+    
+    let start_byte = node.start_byte();
+    let end_byte = node.end_byte();
+    
+    if start_byte >= code.len() || end_byte > code.len() || start_byte >= end_byte {
+        return None;
+    }
+    
+    let snippet = &code[start_byte..end_byte];
+    
+    // Truncate if too long
+    if snippet.len() > MAX_SNIPPET_LENGTH {
+        Some(format!("{}... [truncated]", &snippet[..900]))
+    } else if !snippet.is_empty() {
+        Some(snippet.to_string())
+    } else {
+        None
+    }
+}
+
+/// Extract docstring/comment from a node
+fn extract_docstring(node: &tree_sitter::Node, code: &str) -> Option<String> {
+    // Look for comment or documentation nodes
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        let kind = child.kind();
+        if kind.contains("comment") || kind.contains("doc") || kind.contains("string") {
+            let text = match child.utf8_text(code.as_bytes()) {
+                Ok(t) => t,
+                Err(_) => continue,
+            };
+            
+            // Clean up common doc patterns
+            let cleaned = text
+                .trim()
+                .trim_start_matches("/**")
+                .trim_start_matches("/*")
+                .trim_start_matches("//")
+                .trim_start_matches('#')
+                .trim_start_matches("\"\"\"")
+                .trim_end_matches("*/")
+                .trim_end_matches("\"\"\"")
+                .trim()
+                .to_string();
+            
+            if !cleaned.is_empty() {
+                return Some(cleaned);
+            }
+        }
+    }
+    None
+}
+
 
 #[cfg(test)]
 mod tests {

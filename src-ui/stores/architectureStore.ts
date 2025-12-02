@@ -110,10 +110,9 @@ export async function loadArchitecture(architectureId: string) {
  */
 export async function addComponent(
   name: string,
-  componentType: ComponentCategory,
-  position: Position,
-  description?: string,
-  files: string[] = []
+  description: string,
+  category: ComponentCategory,
+  position: Position
 ) {
   if (!architectureState.current) {
     throw new Error('No architecture loaded');
@@ -126,10 +125,9 @@ export async function addComponent(
     const component = await archAPI.createComponent(
       architectureState.current.id,
       name,
-      componentType,
-      position,
       description,
-      files
+      category,
+      position
     );
 
     // Update local state
@@ -147,17 +145,7 @@ export async function addComponent(
 /**
  * Update an existing component
  */
-export async function updateComponent(
-  componentId: string,
-  updates: {
-    name?: string;
-    componentType?: ComponentCategory;
-    status?: ComponentType;
-    position?: Position;
-    description?: string;
-    files?: string[];
-  }
-) {
+export async function updateComponent(componentId: string, updates: Partial<Component>) {
   if (!architectureState.current) {
     throw new Error('No architecture loaded');
   }
@@ -166,16 +154,16 @@ export async function updateComponent(
   pushUndo();
 
   try {
-    const updatedComponent = await archAPI.updateComponent(
-      architectureState.current.id,
-      componentId,
-      updates.name,
-      updates.componentType,
-      updates.status,
-      updates.position,
-      updates.description,
-      updates.files
-    );
+    // Find the current component
+    const currentComponent = architectureState.current.components.find(c => c.id === componentId);
+    if (!currentComponent) {
+      throw new Error('Component not found');
+    }
+
+    // Merge updates with current component
+    const updatedComponent = { ...currentComponent, ...updates };
+    
+    await archAPI.updateComponent(updatedComponent);
 
     // Update local state
     setArchitectureState(
@@ -205,7 +193,7 @@ export async function deleteComponent(componentId: string) {
   pushUndo();
 
   try {
-    await archAPI.deleteComponent(architectureState.current.id, componentId);
+    await archAPI.deleteComponent(componentId);
 
     // Update local state - remove component and associated connections
     setArchitectureState('current', 'components', (components) =>
@@ -245,7 +233,7 @@ export async function addConnection(
   sourceId: string,
   targetId: string,
   connectionType: ConnectionType,
-  label?: string
+  description: string = ''
 ) {
   if (!architectureState.current) {
     throw new Error('No architecture loaded');
@@ -260,7 +248,7 @@ export async function addConnection(
       sourceId,
       targetId,
       connectionType,
-      label
+      description
     );
 
     // Update local state
@@ -287,7 +275,7 @@ export async function deleteConnection(connectionId: string) {
   pushUndo();
 
   try {
-    await archAPI.deleteConnection(architectureState.current.id, connectionId);
+    await archAPI.deleteConnection(connectionId);
 
     // Update local state
     setArchitectureState('current', 'connections', (connections) =>
@@ -320,7 +308,7 @@ export function selectConnection(connectionId: string | null) {
 /**
  * Save current architecture as a new version
  */
-export async function saveVersion(description?: string) {
+export async function saveVersion(description: string) {
   if (!architectureState.current) {
     throw new Error('No architecture loaded');
   }
@@ -353,10 +341,7 @@ export async function restoreVersion(versionId: string) {
   pushUndo();
 
   try {
-    const architecture = await archAPI.restoreArchitectureVersion(
-      architectureState.current.id,
-      versionId
-    );
+    const architecture = await archAPI.restoreArchitectureVersion(versionId);
 
     setArchitectureState('current', architecture);
   } catch (error) {
@@ -475,7 +460,7 @@ export function getFilteredComponents(): Component[] {
     return architectureState.current.components;
   }
 
-  return architectureState.current.components.filter((comp) => comp.component_type === mode);
+  return architectureState.current.components.filter((comp) => comp.category === mode);
 }
 
 /**

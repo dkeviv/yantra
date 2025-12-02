@@ -134,6 +134,7 @@ impl Database {
                 file_path: row.get(3)?,
                 line_start: row.get(4)?,
                 line_end: row.get(5)?,
+                ..Default::default()
             })
         })?
         .collect::<SqlResult<Vec<_>>>()?;
@@ -220,6 +221,8 @@ fn edge_type_to_string(edge_type: &EdgeType) -> &str {
         EdgeType::Imports => "imports",
         EdgeType::Inherits => "inherits",
         EdgeType::Defines => "defines",
+        EdgeType::Tests => "tests",
+        EdgeType::TestDependency => "test_dependency",
     }
 }
 
@@ -230,6 +233,8 @@ fn string_to_edge_type(s: &str) -> EdgeType {
         "imports" => EdgeType::Imports,
         "inherits" => EdgeType::Inherits,
         "defines" => EdgeType::Defines,
+        "tests" => EdgeType::Tests,
+        "test_dependency" => EdgeType::TestDependency,
         _ => EdgeType::Calls, // Default fallback
     }
 }
@@ -262,6 +267,7 @@ mod tests {
             file_path: "test.py".to_string(),
             line_start: 1,
             line_end: 5,
+            ..Default::default()
         };
         
         graph.add_node(node);

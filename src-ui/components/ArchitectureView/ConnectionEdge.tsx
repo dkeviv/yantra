@@ -89,7 +89,7 @@ export default function ConnectionEdge({
           style={{
             position: 'absolute',
             transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-            pointerEvents: 'all',
+            'pointer-events': 'all',
           }}
           class="nodrag nopan"
         >
@@ -112,7 +112,7 @@ export default function ConnectionEdge({
 
             {/* Connection label or type name */}
             <span>
-              {connection.label || connection.connection_type}
+              {connection.description || connection.connection_type}
             </span>
 
             {/* Delete button (shown on hover or when selected) */}

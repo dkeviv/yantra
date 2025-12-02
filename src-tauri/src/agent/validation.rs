@@ -83,9 +83,12 @@ pub fn validate_dependencies(
 
     // Parse generated code
     let mut parser = Parser::new();
+    // tree-sitter-python 0.23 uses LANGUAGE constant (LanguageFn)
+    let lang_fn: extern "C" fn() -> *const std::os::raw::c_void = unsafe { std::mem::transmute(tree_sitter_python::LANGUAGE) };
+    let language = unsafe { tree_sitter::Language::from_raw(lang_fn() as *const tree_sitter::ffi::TSLanguage) };
     parser
-        .set_language(tree_sitter_python::language())
-        .map_err(|e| format!("Failed to set parser language: {}", e))?;
+        .set_language(&language)
+        .map_err(|e| format!("Failed to set Python language: {}", e))?;
 
     let tree = parser
         .parse(generated_code, None)
@@ -248,6 +251,7 @@ fn is_standard_library(module: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tree_sitter::Parser;
 
     #[test]
     fn test_validation_error_creation() {
@@ -274,7 +278,9 @@ def main():
 "#;
 
         let mut parser = Parser::new();
-        parser.set_language(tree_sitter_python::language()).unwrap();
+        let lang_fn: extern "C" fn() -> *const std::os::raw::c_void = unsafe { std::mem::transmute(tree_sitter_python::LANGUAGE) };
+        let language = unsafe { tree_sitter::Language::from_raw(lang_fn() as *const tree_sitter::ffi::TSLanguage) };
+        parser.set_language(&language).unwrap();
         let tree = parser.parse(code, None).unwrap();
 
         let calls = extract_function_calls(&tree.root_node(), code);
@@ -294,7 +300,9 @@ import json
 "#;
 
         let mut parser = Parser::new();
-        parser.set_language(tree_sitter_python::language()).unwrap();
+        let lang_fn: extern "C" fn() -> *const std::os::raw::c_void = unsafe { std::mem::transmute(tree_sitter_python::LANGUAGE) };
+        let language = unsafe { tree_sitter::Language::from_raw(lang_fn() as *const tree_sitter::ffi::TSLanguage) };
+        parser.set_language(&language).unwrap();
         let tree = parser.parse(code, None).unwrap();
 
         let imports = extract_imports(&tree.root_node(), code);

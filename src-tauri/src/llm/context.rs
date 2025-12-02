@@ -48,6 +48,100 @@ pub fn assemble_context(
     assemble_context_with_limit(engine, target_node, file_path, CLAUDE_MAX_CONTEXT_TOKENS)
 }
 
+/// Assemble semantic-enhanced context using intent and similarity
+/// 
+/// This function combines structural (BFS) and semantic (embedding similarity) approaches
+/// to gather the most relevant context for a given intent/task.
+/// 
+/// # Arguments
+/// * `engine` - The GNN engine containing the code graph
+/// * `intent` - Natural language description of what the user wants to do
+/// * `target_node` - Optional node name to start from
+/// * `file_path` - Optional file path context
+/// * `max_tokens` - Maximum tokens for context (defaults to Claude's 160K)
+/// 
+/// # Returns
+/// Hierarchical context with structural (L1) and semantic (L2) layers
+pub fn assemble_semantic_context(
+    engine: &GNNEngine,
+    intent: &str,
+    target_node: Option<&str>,
+    file_path: Option<&str>,
+    max_tokens: Option<usize>,
+) -> Result<Vec<String>, String> {
+    let max_tokens = max_tokens.unwrap_or(CLAUDE_MAX_CONTEXT_TOKENS);
+    
+    let mut context_items: Vec<ContextItem> = Vec::new();
+    let mut visited: HashSet<String> = HashSet::new();
+    
+    // L1 (40% of budget): Structural dependencies via BFS
+    let l1_budget = (max_tokens as f64 * 0.4) as usize;
+    
+    if let Some(node_name) = target_node {
+        if let Some(node) = engine.find_node(node_name, file_path) {
+            gather_context_from_node(engine, &node.id, &mut context_items, &mut visited, 0)?;
+            
+            // L2 (30% of budget): Semantic neighbors using intent
+            let l2_budget = (max_tokens as f64 * 0.3) as usize;
+            
+            // Generate embedding for intent using default embedder
+            let mut embedder = crate::gnn::embeddings::EmbeddingGenerator::default();
+            if let Ok(intent_embedding) = embedder.generate_text_embedding(intent) {
+                // Find semantically similar nodes within structural neighborhood
+                if let Ok(similar_nodes) = engine.get_graph().find_similar_in_neighborhood(
+                    &node.id,
+                    3, // max 3 hops from target
+                    0.70, // 70% similarity threshold
+                    50, // max 50 results
+                ) {
+                    // Add similar nodes with high priority (depth 1 for priority)
+                    for (similar_node, similarity) in similar_nodes {
+                        if !visited.contains(&similar_node.id) {
+                            visited.insert(similar_node.id.clone());
+                            
+                            // Priority based on similarity score
+                            let priority = 100 + (similarity * 50.0) as u32;
+                            context_items.push(ContextItem {
+                                content: format_node_context(&similar_node),
+                                priority,
+                                depth: 1, // Mark as L2 (semantic layer)
+                            });
+                        }
+                    }
+                }
+            }
+        } else {
+            return Err(format!("Node '{}' not found", node_name));
+        }
+    } else if let Some(path) = file_path {
+        gather_context_from_file(engine, path, &mut context_items)?;
+    } else {
+        gather_global_context(engine, &mut context_items)?;
+    }
+    
+    // Sort by priority and depth
+    context_items.sort_by(|a, b| {
+        b.priority.cmp(&a.priority)
+            .then(a.depth.cmp(&b.depth))
+    });
+    
+    // Token-aware selection
+    let mut selected_items = Vec::new();
+    let mut current_tokens = 0;
+    
+    for item in context_items {
+        let item_tokens = count_tokens(&item.content);
+        if current_tokens + item_tokens > max_tokens {
+            break;
+        }
+        current_tokens += item_tokens;
+        selected_items.push(item);
+    }
+    
+    Ok(selected_items.into_iter().map(|item| item.content).collect())
+}
+
+
 /// Assemble context with explicit token limit
 pub fn assemble_context_with_limit(
     engine: &GNNEngine,
@@ -681,7 +775,7 @@ mod tests {
             file_path: "test.py".to_string(),
             line_start: 10,
             line_end: 15,
-        };
+            ..Default::default()};
         
         let formatted = format_node_context(&node);
         assert!(formatted.contains("test_func"));
@@ -824,7 +918,7 @@ mod tests {
             file_path: "test.py".to_string(),
             line_start: 10,
             line_end: 20,
-        };
+            ..Default::default()};
         
         let signature = format_node_signature(&func_node);
         assert!(signature.contains("def test_function(...): ..."));
@@ -838,7 +932,7 @@ mod tests {
             file_path: "test.py".to_string(),
             line_start: 1,
             line_end: 5,
-        };
+            ..Default::default()};
         
         let signature = format_node_signature(&class_node);
         assert!(signature.contains("class TestClass: ..."));

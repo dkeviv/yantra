@@ -27,14 +27,15 @@ All documentation follows a strict Single Source of Truth (SSOT) policy to preve
 | **Specifications** | `.github/Specifications.md` | Product specifications, features, all phases (1-4), pair programming, Clean Code Mode | Nov 26, 2025 |
 | **Technical Guide** | `Technical_Guide.md` (root) | Implementation details, architecture decisions, 15 components with code references, Data Storage Architecture | Nov 27, 2025 |
 | **Implementation Status & Planning** | `IMPLEMENTATION_STATUS.md` (root) | **PRIMARY PLANNING DOCUMENT**: Feature tracking AND project planning. Tracks 111 features (35/70 MVP done). Replaces deprecated Project_Plan.md. Use this for all planning and status tracking. | Nov 27, 2025 |
-| **Features** | `Features.md` (root) | User-facing feature documentation | Nov 20, 2025 |
-| **UX Guide** | `UX.md` (root) | User flows from user perspective (admin + end-user) | Nov 20, 2025 |
-| **File Registry** | `File_Registry.md` (root) | File inventory, purposes, dependencies, deprecation tracking | Nov 27, 2025 |
-| **Decision Log** | `Decision_Log.md` (root) | Architecture and design decision history | - |
+| **Features** | `Features.md` (root) | User-facing feature documentation (25 features, 100% MVP complete) | Nov 29, 2025 |
+| **UX Guide** | `UX.md` (root) | User flows from user perspective (admin + end-user), New UI Features section | Nov 29, 2025 |
+| **File Registry** | `File_Registry.md` (root) | File inventory, purposes, dependencies, deprecation tracking | Nov 29, 2025 |
+| **Decision Log** | `Decision_Log.md` (root) | Architecture and design decision history | Nov 28, 2025 |
 | **Known Issues** | `Known_Issues.md` (root) | Bug tracking and fixes | - |
 
 **DEPRECATED FILES (Keep for historical reference, DO NOT UPDATE):**
 - ~~`Project_Plan.md`~~ - Replaced by `IMPLEMENTATION_STATUS.md` (Nov 27, 2025). Reason: Duplicate timelines, verbose (2,708 lines), hard to maintain. IMPLEMENTATION_STATUS.md provides superior table format (872 lines), easier updates, single source of truth for planning.
+- ~~`docs/Decision_Log.md`~~ - Archived to `docs/archive/Decision_Log_Nov20_2025.md` (Nov 29, 2025). Reason: Duplicate of root Decision_Log.md. Root file is SSOT (3,906 lines, updated Nov 28, 2025), contains all decisions. Docs version was outdated (1,547 lines, Nov 20, 2025).
 
 **IMPORTANT:** Before creating any documentation file, check the File_Registry.md to verify if it exists and confirm the SSOT location. Never create duplicates in different folders (e.g., root vs docs/ vs .github/).
 
@@ -45,10 +46,13 @@ All documentation follows a strict Single Source of Truth (SSOT) policy to preve
 3. **Features.md** - Document all implemented features from user perspective with use cases
 4. **UX.md** - Explain user flows (admin and end-user) from user perspective
 5. **/Technical_Guide.md** - Detailed technical information for developers:
+   - **CRITICAL**: Document ONLY current implementation - NO historical information
+   - Must always reflect code as currently implemented
    - How each component was implemented and why
    - Algorithm/methodology details (no code/pseudo-code)
-   - References to code files and scripts
+   - References to actual code files and scripts (verify they exist)
    - Workflows and use cases
+   - Remove any deprecated/historical sections immediately when code changes
 6. **File_Registry.md** - For all valid files:
    - Purpose of each file
    - What's implemented in it

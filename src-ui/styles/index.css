@@ -2,6 +2,79 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Theme System - CSS Variables */
+/* Dark Blue Theme (Default) */
+:root, [data-theme="dark-blue"] {
+  /* Primary Colors */
+  --bg-primary: #0B1437;
+  --bg-secondary: #151B3F;
+  --bg-tertiary: #1F2747;
+  --bg-elevated: #2A3150;
+  
+  /* Text Colors */
+  --text-primary: #E8EAED;
+  --text-secondary: #BDC1C6;
+  --text-tertiary: #9AA0A6;
+  --text-inverse: #0B1437;
+  
+  /* Accent Colors */
+  --accent-primary: #4A90E2;
+  --accent-secondary: #5BA3FF;
+  --accent-hover: #6BB3FF;
+  
+  /* Border Colors */
+  --border-primary: #2D3A5F;
+  --border-secondary: #3D4A6F;
+  --border-focus: #4A90E2;
+  
+  /* Status Colors */
+  --status-success: #34D399;
+  --status-warning: #FBBF24;
+  --status-error: #EF4444;
+  --status-info: #60A5FA;
+  
+  /* Scrollbar */
+  --scrollbar-track: #1F2747;
+  --scrollbar-thumb: #3D4A6F;
+  --scrollbar-thumb-hover: #4D5A7F;
+}
+
+/* Bright White Theme */
+[data-theme="bright-white"] {
+  /* Primary Colors */
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #F5F5F5;
+  --bg-tertiary: #EBEBEB;
+  --bg-elevated: #FFFFFF;
+  
+  /* Text Colors */
+  --text-primary: #1A1A1A;
+  --text-secondary: #4A4A4A;
+  --text-tertiary: #6A6A6A;
+  --text-inverse: #FFFFFF;
+  
+  /* Accent Colors */
+  --accent-primary: #2563EB;
+  --accent-secondary: #3B82F6;
+  --accent-hover: #1D4ED8;
+  
+  /* Border Colors */
+  --border-primary: #D1D5DB;
+  --border-secondary: #E5E7EB;
+  --border-focus: #2563EB;
+  
+  /* Status Colors */
+  --status-success: #10B981;
+  --status-warning: #F59E0B;
+  --status-error: #DC2626;
+  --status-info: #3B82F6;
+  
+  /* Scrollbar */
+  --scrollbar-track: #F5F5F5;
+  --scrollbar-thumb: #D1D5DB;
+  --scrollbar-thumb-hover: #9CA3AF;
+}
+
 /* Global styles */
 * {
   margin: 0;
@@ -16,6 +89,9 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow: hidden;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 #root {
@@ -30,22 +106,22 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #1e1e1e;
+  background: var(--scrollbar-track);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #424242;
+  background: var(--scrollbar-thumb);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: var(--scrollbar-thumb-hover);
 }
 
 /* Panel resize handle */
 .resize-handle {
   cursor: col-resize;
-  background: #2d2d2d;
+  background: var(--bg-tertiary);
   transition: background 0.2s;
 }
 
@@ -61,10 +137,10 @@ body.dragging-vertical * {
 /* Prevent text selection during drag */
 body.dragging-horizontal,
 body.dragging-vertical {
-  user-select: none !important;
   -webkit-user-select: none !important;
+  user-select: none !important;
 }
 
 .resize-handle:hover {
-  background: #3e3e3e;
+  background: var(--border-secondary);
 }

@@ -1,11 +1,11 @@
 // File: src-tauri/src/gnn/features.rs
-// Purpose: Extract 978-dimensional feature vectors from GNN nodes for GraphSAGE
+// Purpose: Extract 986-dimensional feature vectors from GNN nodes for GraphSAGE
 // Dependencies: tree-sitter, std
-// Last Updated: November 25, 2025
+// Last Updated: November 30, 2025
 //
-// Feature Vector Structure (978 dimensions):
+// Feature Vector Structure (986 dimensions):
 // - 974 base features (code properties, complexity, structure)
-// - 4 language encoding (one-hot: Python, JavaScript, TypeScript, Other)
+// - 12 language encoding (one-hot: Python, JavaScript, TypeScript, Rust, Go, Java, C, C++, Ruby, PHP, Swift, Kotlin)
 //
 // Target: <1ms extraction time per node
 
@@ -13,7 +13,7 @@ use super::{CodeNode, NodeType, EdgeType, graph::CodeGraph};
 use crate::bridge::pyo3_bridge::FeatureVector;
 use std::collections::HashMap;
 
-/// Feature extractor for converting GNN nodes to 978-dimensional vectors
+/// Feature extractor for converting GNN nodes to 986-dimensional vectors
 pub struct FeatureExtractor {
     /// Cache for file-level statistics (avoid re-parsing)
     file_stats_cache: HashMap<String, FileStats>,
@@ -35,14 +35,14 @@ impl FeatureExtractor {
         }
     }
 
-    /// Extract 978-dimensional feature vector from a code node
+    /// Extract 986-dimensional feature vector from a code node
     /// Returns FeatureVector ready for GraphSAGE model
     pub fn extract_features(
         &mut self,
         node: &CodeNode,
         graph: &CodeGraph,
     ) -> Result<FeatureVector, String> {
-        let mut features = Vec::with_capacity(978);
+        let mut features = Vec::with_capacity(986);
 
         // --- SECTION 1: Node Identity Features (50 dims) ---
         self.extract_node_identity(&node, &mut features);
@@ -71,14 +71,14 @@ impl FeatureExtractor {
         // --- SECTION 9: Statistical Features (124 dims) ---
         self.extract_statistical_features(&node, graph, &mut features);
 
-        // --- SECTION 10: Language Encoding (4 dims) ---
+        // --- SECTION 10: Language Encoding (12 dims) ---
         self.extract_language_encoding(&node, &mut features);
 
         // Validate total dimensions
         assert_eq!(
             features.len(),
-            978,
-            "Feature vector must have exactly 978 dimensions, got {}",
+            986,
+            "Feature vector must have exactly 986 dimensions, got {}",
             features.len()
         );
 
@@ -304,18 +304,27 @@ impl FeatureExtractor {
         features.extend(vec![0.0; 122]);
     }
 
-    /// Section 10: Language Encoding (4 dims)
-    /// One-hot encoding: [Python, JavaScript, TypeScript, Other]
+    /// Section 10: Language Encoding (12 dims)
+    /// One-hot encoding: [Python, JavaScript, TypeScript, Rust, Go, Java, C, C++, Ruby, PHP, Swift, Kotlin]
     fn extract_language_encoding(&self, node: &CodeNode, features: &mut Vec<f32>) {
         let path = std::path::Path::new(&node.file_path);
         let extension = path.extension().and_then(|s| s.to_str());
 
-        let mut lang_vec = vec![0.0; 4];
+        let mut lang_vec = vec![0.0; 12];
         match extension {
             Some("py") => lang_vec[0] = 1.0,
             Some("js") | Some("jsx") => lang_vec[1] = 1.0,
             Some("ts") | Some("tsx") => lang_vec[2] = 1.0,
-            _ => lang_vec[3] = 1.0, // Other
+            Some("rs") => lang_vec[3] = 1.0,
+            Some("go") => lang_vec[4] = 1.0,
+            Some("java") => lang_vec[5] = 1.0,
+            Some("c") | Some("h") => lang_vec[6] = 1.0,
+            Some("cpp") | Some("cc") | Some("cxx") | Some("hpp") | Some("hxx") => lang_vec[7] = 1.0,
+            Some("rb") => lang_vec[8] = 1.0,
+            Some("php") => lang_vec[9] = 1.0,
+            Some("swift") => lang_vec[10] = 1.0,
+            Some("kt") | Some("kts") => lang_vec[11] = 1.0,
+            _ => lang_vec[11] = 1.0, // Default to Kotlin slot for unknown
         }
         features.extend(lang_vec);
     }
@@ -380,18 +389,27 @@ mod tests {
             file_path: "test.py".to_string(),
             line_start: 10,
             line_end: 25,
+            ..Default::default()
         };
 
         let features = extractor.extract_features(&node, &graph).unwrap();
         
-        // Verify 978 dimensions
-        assert_eq!(features.features.len(), 978);
+        // Verify 986 dimensions
+        assert_eq!(features.features.len(), 986);
         
-        // Verify language encoding (Python should be [1,0,0,0])
+        // Verify language encoding (Python should be [1,0,0,0,0,0,0,0,0,0,0,0])
         assert_eq!(features.features[974], 1.0); // Python
         assert_eq!(features.features[975], 0.0); // JavaScript
         assert_eq!(features.features[976], 0.0); // TypeScript
-        assert_eq!(features.features[977], 0.0); // Other
+        assert_eq!(features.features[977], 0.0); // Rust
+        assert_eq!(features.features[978], 0.0); // Go
+        assert_eq!(features.features[979], 0.0); // Java
+        assert_eq!(features.features[980], 0.0); // C
+        assert_eq!(features.features[981], 0.0); // C++
+        assert_eq!(features.features[982], 0.0); // Ruby
+        assert_eq!(features.features[983], 0.0); // PHP
+        assert_eq!(features.features[984], 0.0); // Swift
+        assert_eq!(features.features[985], 0.0); // Kotlin
     }
 
     #[test]
@@ -406,15 +424,16 @@ mod tests {
             file_path: "test.js".to_string(),
             line_start: 5,
             line_end: 15,
+            ..Default::default()
         };
 
         let features = extractor.extract_features(&node, &graph).unwrap();
         
-        // Verify language encoding (JavaScript should be [0,1,0,0])
+        // Verify language encoding (JavaScript should be [0,1,0,0,0,0,0,0,0,0,0,0])
         assert_eq!(features.features[974], 0.0); // Python
         assert_eq!(features.features[975], 1.0); // JavaScript
         assert_eq!(features.features[976], 0.0); // TypeScript
-        assert_eq!(features.features[977], 0.0); // Other
+        assert_eq!(features.features[977], 0.0); // Rust
     }
 
     #[test]
@@ -450,6 +469,7 @@ mod tests {
                 file_path: "test.py".to_string(),
                 line_start: i * 10,
                 line_end: i * 10 + 8,
+                ..Default::default()
             };
             graph.add_node(node.clone());
         }
@@ -472,6 +492,7 @@ mod tests {
             file_path: "test.py".to_string(),
             line_start: 100,
             line_end: 125,
+            ..Default::default()
         };
         graph.add_node(test_node.clone());
         let _ = extractor.extract_features(&test_node, &graph);

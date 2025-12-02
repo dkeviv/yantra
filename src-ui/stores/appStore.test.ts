@@ -77,7 +77,7 @@ describe('appStore', () => {
 
   describe('panel widths', () => {
     it('should have initial widths', () => {
-      expect(appStore.chatWidth()).toBe(45);
+      expect(appStore.chatWidth()).toBe(60);
       expect(appStore.codeWidth()).toBe(25);
       expect(appStore.previewWidth()).toBe(15);
     });

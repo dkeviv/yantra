@@ -18,11 +18,11 @@ type TabMode = ComponentCategory | 'Complete';
 
 const tabs: { mode: TabMode; label: string; icon: string }[] = [
   { mode: 'Complete', label: 'Complete', icon: '🎯' },
-  { mode: 'Frontend', label: 'Frontend', icon: '🎨' },
-  { mode: 'Backend', label: 'Backend', icon: '⚙️' },
-  { mode: 'Database', label: 'Database', icon: '🗄️' },
-  { mode: 'External', label: 'External', icon: '🔌' },
-  { mode: 'Utility', label: 'Utility', icon: '🛠️' },
+  { mode: 'frontend', label: 'Frontend', icon: '🎨' },
+  { mode: 'backend', label: 'Backend', icon: '⚙️' },
+  { mode: 'database', label: 'Database', icon: '🗄️' },
+  { mode: 'external', label: 'External', icon: '🔌' },
+  { mode: 'utility', label: 'Utility', icon: '🛠️' },
 ];
 
 export default function HierarchicalTabs() {
