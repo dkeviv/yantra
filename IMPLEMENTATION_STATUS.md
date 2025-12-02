@@ -18,7 +18,8 @@
 | **✅ Agent Framework (Orchestration)**      | 13/13        | 🟢 100%      | 0/1 (Cross-Project)             | 🔴 0%             |
 | **🔴 Agentic Capabilities**                 | 1/10         | 🔴 10%       | -                               | -                 |
 | **🔴 Agent Execution Intelligence**         | 0/3          | 🔴 0%        | -                               | -                 |
-| **🟡 Project Initialization & Arch-First**  | 4/8          | 🟡 50%       | -                               | -                 |
+| **� Dependency Intelligence & Env Mgmt**    | 0/10         | 🔴 0%        | -                               | -                 |
+| **�🟡 Project Initialization & Arch-First** | 4/8          | 🟡 50%       | -                               | -                 |
 | **🔴 Interaction Modes (Guided/Auto)**      | 0/10         | 🔴 0%        | -                               | -                 |
 | **🔴 Cascading Failure Protection**         | 0/10         | 🔴 0%        | -                               | -                 |
 | **🔴 State Machine Refactoring**            | 0/4          | 🔴 0%        | 0/1 (Maintenance Machine)       | 🔴 0%             |
@@ -44,9 +45,9 @@
 | **⚡ Storage Tier 1 (In-Memory GNN)**       | -            | -            | 0/5 (Phase 3)                   | 🔴 0%             |
 | **🌐 Multi-Language Support**               | 10/10        | 🟢 100%      | -                               | -                 |
 | **🤝 Collaboration Features**               | -            | -            | 0/5                             | 🔴 0%             |
-| **TOTAL**                                   | **78/138**   | **57%**      | **0/105**                       | **0%**            |
+| **TOTAL**                                   | **78/148**   | **53%**      | **0/105**                       | **0%**            |
 
-**MVP Status:** 78/138 features complete (57%) - Core foundation solid, Agent Intelligence + Browser + HNSW pending! 🚀  
+**MVP Status:** 78/148 features complete (53%) - Core foundation solid, Agent Intelligence + Dependency Intelligence + Browser + HNSW pending! 🚀  
 **Post-MVP Status:** 0/105 features started (0%) - Optimization & scaling features for future phases
 
 **Key MVP Achievements:**
@@ -66,9 +67,11 @@
 - ✅ **Documentation System** - 100% complete (1 feature)
 - 🟡 **Browser Integration** - 25% complete (2/8 features, CDP is placeholder with critical gaps)
 
-**Remaining MVP Work (57 features):**
+**Remaining MVP Work (67 features):**
 
 - 🔴 **Agentic Capabilities** - 9/10 features (10%, only HTTP Client done, need Database, API Monitor, File Watcher, etc.)
+- 🔴 **Agent Execution Intelligence** - 3/3 features (0%, command classification, background execution, transparency)
+- 🔴 **Dependency Intelligence** - 10/10 features (0%, dry-run validation, .venv enforcement, GNN tech stack, conflict detection, rollback, multi-project isolation)
 - 🔴 **Browser Integration** - 6/8 features (25%, CDP placeholder needs full implementation)
 - 🔴 **Code Autocompletion** - 4/4 features (0%, hybrid static + GNN completions)
 - 🔴 **Multi-LLM Consultation Mode** - 5/5 features (0%, stretch goal - collaborative LLM consultation)
@@ -357,25 +360,26 @@
 
 **Solution:** Intelligent command classification + automatic background execution + polling + transparent communication.
 
-| Component | Status | Implementation | Priority |
-|-----------|--------|----------------|----------|
-| Command Classifier | 🔴 TODO | `agent/command_classifier.rs` (NEW, ~200 lines) | **P0** |
-| Intelligent Executor | 🔴 TODO | Update `agent/orchestrator.rs` (~300 lines) | **P0** |
-| Status Emitter | 🔴 TODO | Event system for UI updates (~100 lines) | **P0** |
+| Component            | Status  | Implementation                                  | Priority |
+| -------------------- | ------- | ----------------------------------------------- | -------- |
+| Command Classifier   | 🔴 TODO | `agent/command_classifier.rs` (NEW, ~200 lines) | **P0**   |
+| Intelligent Executor | 🔴 TODO | Update `agent/orchestrator.rs` (~300 lines)     | **P0**   |
+| Status Emitter       | 🔴 TODO | Event system for UI updates (~100 lines)        | **P0**   |
 
 **Command Classification Patterns:**
 
-| Pattern | Duration | Strategy | Example |
-|---------|----------|----------|---------|
-| Build commands | Long (10-60s) | Background + poll every 2-5s | `npm run build`, `cargo build` |
-| Test execution | Long (5-30s) | Background + poll + progress | `pytest`, `npm test` |
-| Dev servers | Infinite | Fire & forget + monitor | `npm start`, `python manage.py runserver` |
-| Package install | Medium (5-20s) | Background + poll | `npm install`, `pip install` |
-| Quick queries | Quick (<1s) | Synchronous | `git status`, `ls`, `cat` |
+| Pattern         | Duration       | Strategy                     | Example                                   |
+| --------------- | -------------- | ---------------------------- | ----------------------------------------- |
+| Build commands  | Long (10-60s)  | Background + poll every 2-5s | `npm run build`, `cargo build`            |
+| Test execution  | Long (5-30s)   | Background + poll + progress | `pytest`, `npm test`                      |
+| Dev servers     | Infinite       | Fire & forget + monitor      | `npm start`, `python manage.py runserver` |
+| Package install | Medium (5-20s) | Background + poll            | `npm install`, `pip install`              |
+| Quick queries   | Quick (<1s)    | Synchronous                  | `git status`, `ls`, `cat`                 |
 
 **Transparency Requirements (Must-Have):**
 
 Every long-running command MUST show:
+
 1. **Start:** "Detected long-running command (npm build), executing in background"
 2. **During:** Poll every 2-5s, show progress: "[12s] Still building... (47/150 files)"
 3. **Available:** Remind user: "💬 I'm still available! Ask me anything."
@@ -446,6 +450,7 @@ Every long-running command MUST show:
 6. **🎯 User Trust:** Transparency builds confidence in AI agent
 
 **Effort Estimate:** 6-8 hours
+
 - Command Classifier: 2 hours (pattern database + tests)
 - Intelligent Executor: 3 hours (orchestrator updates + polling)
 - Status Emitter: 1 hour (event system integration)
@@ -456,17 +461,253 @@ Every long-running command MUST show:
 **Priority:** ⚡ **P0 - MVP BLOCKER**  
 **Why Critical:** Agent that blocks for 30s on builds feels broken. This is the difference between "Ferrari MVP" and "frustrating MVP."
 
-**Dependencies:** 
+**Dependencies:**
+
 - ✅ Terminal infrastructure (complete)
 - ✅ Background execution support (complete)
 - ✅ Process detection (complete)
 
 **Next Steps:**
+
 1. Create `command_classifier.rs` with pattern database
 2. Update `orchestrator.rs` with intelligent execution logic
 3. Implement status polling with 2-5s intervals
 4. Add UI components for real-time status display
 5. Test with real-world scenarios (npm build, pytest, etc.)
+
+---
+
+#### 🆕 3.1C Dependency Intelligence & Environment Management (0/10 = 0%) 🔴 MVP CRITICAL + 🟡 P1 HIGH
+
+**Purpose:** Prevent broken installations, ensure 100% accurate GNN tech stack tracking, enforce .venv isolation, detect conflicts before they happen.
+
+**Problem:** Agent installs packages blindly without validation, pollutes system Python, breaks environments with conflicts, has no rollback mechanism, and doesn't track package→file→function dependencies in GNN.
+
+**Solution:** Comprehensive dependency intelligence with dry-run validation, mandatory .venv isolation, GNN integration for package tracking, conflict detection with AI resolution, automatic rollback, and transparent multi-project environment management.
+
+| #      | Component                 | Status  | Implementation                                                                            | Priority       | Effort |
+| ------ | ------------------------- | ------- | ----------------------------------------------------------------------------------------- | -------------- | ------ |
+| **1**  | Dry-Run Validator         | 🔴 TODO | `agent/dependency_validator.rs` (NEW, ~300 lines)                                         | **P0 BLOCKER** | 4h     |
+| **2**  | .venv Enforcer            | 🔴 TODO | `agent/python_environment.rs` (NEW, ~250 lines)                                           | **P0 BLOCKER** | 3h     |
+| **3**  | GNN Version-Level Tracker | 🔴 TODO | Update `gnn/mod.rs`, `gnn/graph.rs` (~200 lines) - Track EXACT versions as separate nodes | **P0 BLOCKER** | 3h     |
+| **4**  | Conflict Detector         | 🔴 TODO | `agent/conflict_resolver.rs` (NEW, ~200 lines)                                            | **P0 BLOCKER** | 2h     |
+| **5**  | Auto-Rollback             | 🔴 TODO | `agent/environment_snapshot.rs` (NEW, ~150 lines)                                         | **P1 HIGH**    | 2h     |
+| **6**  | Pre-Exec Validator        | 🔴 TODO | `agent/environment_validator.rs` (NEW, ~200 lines)                                        | **P1 HIGH**    | 2h     |
+| **7**  | Conflict Resolution AI    | 🔴 TODO | Already in `conflict_resolver.rs` (intelligent suggestions)                               | **P1 HIGH**    | -      |
+| **8**  | Multi-Project Isolation   | 🔴 TODO | `agent/project_environment_manager.rs` (NEW, ~250 lines)                                  | **P1 HIGH**    | 3h     |
+| **9**  | Usage Verification        | 🔴 TODO | Track unused packages, suggest cleanup                                                    | **P2 MEDIUM**  | 2h     |
+| **10** | Dependency Caching        | 🔴 TODO | Local cache for faster installs                                                           | **P2 MEDIUM**  | 2h     |
+
+**P0 Features (BLOCKERS - Must Have for MVP):**
+
+**1. Dry-Run Validation Pipeline**
+
+- NEVER install without validating first
+- Create temp isolated venv for dry-run testing
+- Parse pip resolution output (JSON format)
+- Detect version conflicts, requirement mismatches
+- Query GNN for impact analysis (which files/functions affected)
+- Calculate risk level (Low/Medium/High/Critical)
+- Generate ValidationReport with recommendations
+- Only proceed with real installation if safe
+
+**2. Mandatory .venv Isolation**
+
+- NEVER allow global Python pollution
+- Auto-create `.venv` if missing
+- Verify venv structure (bin/python, pyvenv.cfg)
+- Detect Python executable (cross-platform: Windows vs Unix)
+- Block all operations if venv not activated
+- Safety mechanism: "SAFETY BLOCK: Cannot execute - .venv not activated!"
+- Update terminal executor to always use `.venv/bin/python`
+
+**3. GNN Tech Stack Dependency Tracking (VERSION-LEVEL)**
+
+- **CRITICAL: Track EXACT versions, not just package names**
+  - ❌ WRONG: Single "numpy" node → cannot detect version conflicts
+  - ✅ CORRECT: Separate nodes for "numpy==1.24.0", "numpy==1.26.0", "numpy==2.0.0"
+- Extend GNN with `TechStackNode` type
+- Track: package_name, **exact_version** (1.26.0), language, installation_date
+- Add edges: File→Uses→Package@Version, Package@Version→Requires→Package@Version
+- Track which files import each **specific version**
+- Track which functions call package APIs (np.array, np.mean, etc.)
+- `get_files_using_package_version()` - Version-specific impact query
+- `get_files_using_package()` - Query across ALL versions
+- Track version history: upgraded from 1.24.0 → 1.26.0 with reason
+- Track **version requirements** with precision: "requires numpy>=1.26,<2.0"
+- Update GNN after every package installation/upgrade
+- Node ID format: `pkg:numpy:1.26.0` (package:name:exact_version)
+
+**4. Conflict Detection & Resolution**
+
+- Parse dependency resolution before installation
+- Detect version conflicts (existing vs requested)
+- Check requirement conflicts (package A needs X>=2.0 but package B needs X<2.0)
+- Assess conflict severity (Low/Medium/High/Critical)
+- Generate intelligent resolution suggestions:
+  - Option 1: Upgrade dependency (safest if backward compatible)
+  - Option 2: Downgrade new package (if compatible version exists)
+  - Option 3: Isolate in separate venv (zero risk but complex)
+- Risk assessment with impact analysis (files/functions affected)
+- Transparent recommendations with trade-offs explained
+
+**P1 Features (HIGH - Critical for Enterprise):**
+
+**5. Automatic Rollback on Failure**
+
+- Snapshot environment before installation (pip freeze)
+- Store: packages, versions, timestamp
+- On installation failure: restore snapshot
+- Uninstall failed packages, reinstall from snapshot
+- Verify integrity after rollback
+- Transparent status: "📸 Created snapshot → ❌ Failed → 🔄 Rolled back"
+
+**6. Pre-Execution Environment Validation**
+
+- Check if .venv is active before execution
+- Detect required packages from command/script
+- Verify all required packages are installed
+- Check environment variables (if needed)
+- Check ports available (if server command)
+- Generate EnvironmentValidation report
+- Suggest fixes: "pip install numpy" if missing
+
+**7. Conflict Resolution AI**
+
+- Integrated into ConflictResolver (P0 Feature 4)
+- Intelligent suggestions with risk assessment
+- Consider: version compatibility, usage patterns, impact
+- Sort options by safety (Low risk first)
+- Explain trade-offs clearly
+
+**8. Multi-Project Isolation (ENTERPRISE CRITICAL)**
+
+- Each project gets isolated `.venv`
+- Never share dependencies between projects
+- Auto-switch venv when changing active project
+- ProjectEnvironmentManager tracks all project venvs
+- Global cache for faster setup (~/.yantra/venv-cache)
+- Transparency: "🔄 Switching: project-a (47 packages) → project-b (89 packages)"
+- Zero cross-contamination between projects
+
+**P2 Features (MEDIUM - Performance Optimization):**
+
+**9. Package Usage Verification**
+
+- Track if installed packages are actually imported
+- Analyze code for imports after installation
+- Flag unused dependencies
+- Suggest cleanup: "numpy installed but never imported - safe to remove?"
+- Keep requirements.txt lean
+
+**10. Dependency Caching**
+
+- Local cache: `~/.yantra/cache/pip`
+- Store downloaded wheels for offline installs
+- Faster installs (no bandwidth needed)
+- Shared across all projects
+- Configurable cache size limit
+
+**Agent Transparency Examples:**
+
+**Dry-Run Validation:**
+
+```
+🔍 Validating package installation...
+   Package: numpy==1.26.0
+   Strategy: Dry-run in isolated temp venv first
+
+   ✅ Dry-run validation passed!
+   📊 Impact Analysis:
+      - Files affected: 5 (src/ml/*.py)
+      - Functions affected: 12 (np.array, np.mean, etc.)
+      - Conflicts: None
+      - Risk: LOW
+
+   💡 Safe to install. Proceeding with real installation in .venv
+```
+
+**Conflict Detection:**
+
+```
+❌ Validation failed: Dependency conflict detected
+
+   Package: pandas==2.1.0
+   Conflict: numpy version incompatibility
+
+   Current: numpy 1.24.0
+   Requested: numpy>=1.26.0 (required by pandas 2.1.0)
+
+   ⚠️ Risk: HIGH (numpy is used by 8 files, 25 functions)
+
+   💡 Recommendations:
+   1. [RECOMMENDED] Upgrade numpy to 1.26.0 (RISK: LOW)
+      - Backward compatible, patch release
+      - Command: pip install numpy==1.26.0
+
+   2. [ALTERNATIVE] Use pandas 2.0.x (RISK: MEDIUM)
+      - Compatible with current numpy
+      - May lose pandas 2.1 features
+      - Command: pip install pandas<2.1
+
+   3. [COMPLEX] Isolate in separate venv (RISK: LOW)
+      - Zero impact on existing code
+      - Requires code restructuring
+
+   What would you like to do? (1/2/3)
+```
+
+**Files to Create/Update:**
+
+**P0 Files (12 hours):**
+
+1. 🔴 **NEW:** `src-tauri/src/agent/dependency_validator.rs` (~300 lines, 4h)
+   - DependencyValidator struct with temp venv management
+   - `validate_before_install()` - Main validation pipeline
+   - Conflict detection and impact analysis
+
+2. 🔴 **NEW:** `src-tauri/src/agent/python_environment.rs` (~250 lines, 3h)
+   - PythonEnvironment struct with .venv enforcement
+   - Auto-create and verify venv structure
+   - Block operations if not isolated
+
+3. 🔴 **UPDATE:** `src-tauri/src/gnn/mod.rs` & `gnn/graph.rs` (~200 lines, 3h)
+   - TechStackNode type with **VERSION-LEVEL tracking** (each version = separate node)
+   - Node ID format: `pkg:numpy:1.26.0` (package:name:exact_version)
+   - Package@Version→File→Function mappings with version history
+   - Impact analysis queries: version-specific and cross-version
+   - Track version upgrades/downgrades with reasons
+
+4. 🔴 **NEW:** `src-tauri/src/agent/conflict_resolver.rs` (~200 lines, 2h)
+   - Intelligent resolution suggestions
+   - Risk assessment with GNN integration
+   - Multi-option recommendations
+
+**P1 Files (7 hours):** 5. 🔴 **NEW:** `src-tauri/src/agent/environment_snapshot.rs` (~150 lines, 2h) 6. 🔴 **NEW:** `src-tauri/src/agent/environment_validator.rs` (~200 lines, 2h) 7. 🔴 **NEW:** `src-tauri/src/agent/project_environment_manager.rs` (~250 lines, 3h)
+
+**Effort Estimate:**
+
+- **P0 (BLOCKERS):** 12 hours (Features 1-4)
+- **P1 (HIGH):** 7 hours (Features 5-8)
+- **Total Critical Path:** 19 hours
+
+**Status:** 🔴 **NOT STARTED**  
+**Priority:** ⚡ **P0 - MVP BLOCKER** (Features 1-4) + 🟡 **P1 HIGH** (Features 5-8)  
+**Why Critical:** Without dependency intelligence, agent breaks environments with bad installations. Ferrari MVP requires 100% validation before execution.
+
+**Dependencies:**
+
+- ✅ Terminal infrastructure (complete)
+- ✅ GNN dependency graph (complete, needs tech stack extension)
+- ✅ Python environment detection (partial, needs .venv enforcement)
+
+**Next Steps:**
+
+1. Create `dependency_validator.rs` with dry-run pipeline
+2. Create `python_environment.rs` with .venv enforcement
+3. Extend GNN with TechStackNode and package tracking
+4. Create `conflict_resolver.rs` with AI recommendations
+5. Test with real-world scenarios (numpy conflicts, pandas versions, etc.)
 
 ---
 

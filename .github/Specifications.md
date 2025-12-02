@@ -1466,14 +1466,14 @@ Yantra's agentic capabilities are organized into four fundamental pillars that m
 
 **Agent Intelligence:** Automatically detect command duration and choose optimal execution pattern.
 
-| Command Pattern | Duration | Strategy | Agent Behavior | Example |
-|----------------|----------|----------|----------------|---------|
-| **Build commands** | Long (10-60s) | Background + polling | Execute in background, poll every 2-5s, report progress | `npm run build`, `cargo build`, `make` |
-| **Test execution** | Long (5-30s) | Background + polling | Execute in background, show test progress, report results | `pytest`, `npm test`, `cargo test` |
-| **Dev servers** | Infinite | Background + monitor | Fire and forget, monitor for crashes, report when ready | `npm start`, `python manage.py runserver` |
-| **Package install** | Medium (5-20s) | Background + polling | Execute in background, report completion | `npm install`, `pip install -r requirements.txt` |
-| **Quick queries** | Quick (<1s) | Synchronous | Execute immediately, return result | `git status`, `ls`, `cat file.py` |
-| **File operations** | Quick (<1s) | Synchronous | Execute immediately, return result | `cp`, `mv`, `rm` (non-recursive) |
+| Command Pattern     | Duration       | Strategy             | Agent Behavior                                            | Example                                          |
+| ------------------- | -------------- | -------------------- | --------------------------------------------------------- | ------------------------------------------------ |
+| **Build commands**  | Long (10-60s)  | Background + polling | Execute in background, poll every 2-5s, report progress   | `npm run build`, `cargo build`, `make`           |
+| **Test execution**  | Long (5-30s)   | Background + polling | Execute in background, show test progress, report results | `pytest`, `npm test`, `cargo test`               |
+| **Dev servers**     | Infinite       | Background + monitor | Fire and forget, monitor for crashes, report when ready   | `npm start`, `python manage.py runserver`        |
+| **Package install** | Medium (5-20s) | Background + polling | Execute in background, report completion                  | `npm install`, `pip install -r requirements.txt` |
+| **Quick queries**   | Quick (<1s)    | Synchronous          | Execute immediately, return result                        | `git status`, `ls`, `cat file.py`                |
+| **File operations** | Quick (<1s)    | Synchronous          | Execute immediately, return result                        | `cp`, `mv`, `rm` (non-recursive)                 |
 
 #### Transparent Agent Communication
 
@@ -1486,7 +1486,7 @@ Yantra's agentic capabilities are organized into four fundamental pillars that m
    Strategy: Background execution (expected 30s)
    Reason: Build commands block for extended periods
    Status: You can ask me anything while I monitor this!
-   
+
    [2s] Still building... (checking every 2s)
    [4s] Still building...
    [6s] Build output: Compiling 47 files...
@@ -1538,13 +1538,13 @@ impl CommandClassifier {
         // "pytest" -> Long
         // "git *" -> Quick
     }
-    
+
     pub fn classify(&self, command: &str, args: &[String]) -> CommandDuration {
         // 1. Check exact matches
         // 2. Check pattern matches (regex)
         // 3. Default to Medium if unknown
     }
-    
+
     pub fn explain_classification(&self, cmd: &str) -> String {
         // Return human-readable explanation:
         // "npm run build is classified as Long (10-60s)"
@@ -1571,7 +1571,7 @@ impl IntelligentExecutor {
         // 1. Classify command
         let duration = self.classifier.classify(command, &args);
         let explanation = self.classifier.explain_classification(command);
-        
+
         // 2. Emit transparency message
         self.emit_status(&format!(
             "🔍 Detected: {} command\n📋 Strategy: {}\n💡 Reason: {}",
@@ -1579,7 +1579,7 @@ impl IntelligentExecutor {
             strategy_name(duration),
             explanation
         ));
-        
+
         // 3. Execute based on strategy
         match duration {
             CommandDuration::Quick => {
@@ -1593,7 +1593,7 @@ impl IntelligentExecutor {
             }
         }
     }
-    
+
     async fn execute_with_polling(
         &self,
         command: &str,
@@ -1602,20 +1602,20 @@ impl IntelligentExecutor {
     ) -> Result<ExecutionResult, String> {
         // 1. Start in background
         let handle = self.terminal.execute_background(command, args).await?;
-        
+
         self.emit_status(&format!(
             "▶️  Started in background: {} {}\n💬 I'm still available! Ask me anything.",
             command, args.join(" ")
         ));
-        
+
         // 2. Poll with status updates
         let mut elapsed = 0;
         let poll_interval = Duration::from_secs(2);
-        
+
         loop {
             tokio::time::sleep(poll_interval).await;
             elapsed += 2;
-            
+
             match handle.check_status().await? {
                 ProcessStatus::Running => {
                     // Show progress
@@ -1623,7 +1623,7 @@ impl IntelligentExecutor {
                         "⏳ [{}s] Still running...",
                         elapsed
                     ));
-                    
+
                     // Show recent output if available
                     if let Some(output) = handle.get_recent_output() {
                         self.emit_status(&format!("   📤 {}", output));
@@ -1683,13 +1683,13 @@ pub trait StatusEmitter {
 
 #### Performance Targets
 
-| Metric | Target | Rationale |
-|--------|--------|-----------|
-| Classification time | <5ms | Must not add latency |
-| Status poll interval | 2-5s | Balance responsiveness vs overhead |
-| Status message latency | <50ms | Real-time feel |
-| Agent response time (during background task) | <200ms | Must remain interactive |
-| Terminal pool utilization | >70% reuse rate | Efficient resource usage |
+| Metric                                       | Target          | Rationale                          |
+| -------------------------------------------- | --------------- | ---------------------------------- |
+| Classification time                          | <5ms            | Must not add latency               |
+| Status poll interval                         | 2-5s            | Balance responsiveness vs overhead |
+| Status message latency                       | <50ms           | Real-time feel                     |
+| Agent response time (during background task) | <200ms          | Must remain interactive            |
+| Terminal pool utilization                    | >70% reuse rate | Efficient resource usage           |
 
 #### Success Metrics
 
@@ -1733,6 +1733,1097 @@ pub trait StatusEmitter {
 
 **Status:** ✅ Git operations work via terminal (100% functional)
 **Future:** 🔴 AI-powered conflict resolution tool (Post-MVP)
+
+---
+
+### 🆕 Dependency Intelligence & Environment Management (MVP Critical - Phase 1)
+
+**Problem:** Agent installs packages blindly without validation, pollutes system Python, breaks environments with conflicts, has no rollback, and doesn't track package→file→function dependencies in GNN.
+
+**Solution:** Comprehensive dependency intelligence with dry-run validation, mandatory .venv isolation, GNN integration, conflict detection, automatic rollback, and transparent multi-project environment management.
+
+#### Critical Gaps & Solutions
+
+| #      | Gap                               | Current Behavior                     | New Behavior                                            | Priority      |
+| ------ | --------------------------------- | ------------------------------------ | ------------------------------------------------------- | ------------- |
+| **1**  | No dry-run validation             | Installs blindly, breaks production  | Validate in temp venv first, detect conflicts           | 🔴 P0 BLOCKER |
+| **2**  | No .venv enforcement              | Pollutes system Python               | Always use `.venv/bin/python`, block global access      | 🔴 P0 BLOCKER |
+| **3**  | No package→file→function tracking | Can't assess impact of changes       | GNN tracks which files/functions use each package       | 🔴 P0 BLOCKER |
+| **4**  | No conflict detection             | Silent breakage, mysterious failures | Detect conflicts before installation, suggest fixes     | 🔴 P0 BLOCKER |
+| **5**  | No rollback mechanism             | Broken state on failure              | Snapshot + restore on failure                           | 🟡 P1 HIGH    |
+| **6**  | No environment validation         | Commands fail with unclear errors    | Pre-execution checks (venv active? packages installed?) | 🟡 P1 HIGH    |
+| **7**  | No conflict resolution AI         | User must fix manually               | Agent suggests resolutions with risk assessment         | 🟡 P1 HIGH    |
+| **8**  | No multi-project isolation        | Cross-contamination between projects | Each project has isolated .venv, auto-switch            | 🟡 P1 HIGH    |
+| **9**  | No usage verification             | Unused dependencies pile up          | Track if package is actually used after install         | 🟢 P2 MEDIUM  |
+| **10** | No dependency caching             | Slow, wastes bandwidth               | Local cache for faster installs                         | 🟢 P2 MEDIUM  |
+
+---
+
+#### P0 Feature 1: Dry-Run Validation (BLOCKER)
+
+**Principle:** NEVER install without validating first. 100% accurate GNN dependency graph.
+
+**Implementation:** `agent/dependency_validator.rs` (NEW, ~300 lines)
+
+```rust
+pub struct DependencyValidator {
+    workspace: PathBuf,
+    gnn: Arc<Mutex<GNNEngine>>,
+    temp_venv_cache: PathBuf,
+}
+
+impl DependencyValidator {
+    pub async fn validate_before_install(
+        &self,
+        package: &str,
+        version: Option<&str>,
+    ) -> Result<ValidationReport, String> {
+        // 1. Check current environment
+        let current_deps = self.get_installed_packages().await?;
+
+        // 2. Query GNN for impact analysis
+        let gnn = self.gnn.lock().unwrap();
+        let affected_files = gnn.get_files_using_package(package)?;
+        let affected_functions = gnn.get_functions_calling_package(package)?;
+        drop(gnn);
+
+        // 3. Create isolated temp venv for dry-run
+        let temp_venv = self.create_temp_venv().await?;
+
+        // 4. Copy current packages to temp venv
+        self.clone_environment(&temp_venv, &current_deps).await?;
+
+        // 5. Dry-run installation in temp venv
+        let dry_run_result = self.terminal.execute_in_venv(
+            &temp_venv,
+            "pip",
+            vec!["install", "--dry-run", "--report", "-", package]
+        ).await?;
+
+        // 6. Parse dependency resolution (JSON output from pip)
+        let resolution = self.parse_pip_report(&dry_run_result)?;
+
+        // 7. Detect conflicts
+        let conflicts = self.detect_conflicts(&resolution, &current_deps)?;
+
+        // 8. Calculate impact
+        let impact = ImpactAnalysis {
+            files_affected: affected_files.len(),
+            functions_affected: affected_functions.len(),
+            risk_level: self.assess_risk(&conflicts, affected_files.len()),
+        };
+
+        // 9. Cleanup temp venv
+        self.cleanup_temp_venv(temp_venv).await?;
+
+        Ok(ValidationReport {
+            package: package.to_string(),
+            version: version.map(|s| s.to_string()),
+            safe_to_install: conflicts.is_empty(),
+            conflicts,
+            impact,
+            affected_files,
+            affected_functions,
+            recommendation: self.generate_recommendation(&conflicts, &impact),
+        })
+    }
+
+    fn detect_conflicts(
+        &self,
+        resolution: &PipResolution,
+        current: &[InstalledPackage],
+    ) -> Result<Vec<DependencyConflict>, String> {
+        let mut conflicts = Vec::new();
+
+        for new_pkg in &resolution.packages {
+            for existing_pkg in current {
+                // Check version conflicts
+                if new_pkg.name == existing_pkg.name
+                    && new_pkg.version != existing_pkg.version {
+                    conflicts.push(DependencyConflict {
+                        package: new_pkg.name.clone(),
+                        current_version: existing_pkg.version.clone(),
+                        requested_version: new_pkg.version.clone(),
+                        reason: format!(
+                            "{} requires {} {} but currently have {}",
+                            resolution.root_package,
+                            new_pkg.name,
+                            new_pkg.version,
+                            existing_pkg.version
+                        ),
+                        severity: ConflictSeverity::High,
+                    });
+                }
+
+                // Check dependency requirement conflicts
+                for req in &new_pkg.requires {
+                    if let Some(conflict) = self.check_requirement_conflict(req, current) {
+                        conflicts.push(conflict);
+                    }
+                }
+            }
+        }
+
+        Ok(conflicts)
+    }
+}
+
+pub struct ValidationReport {
+    pub package: String,
+    pub version: Option<String>,
+    pub safe_to_install: bool,
+    pub conflicts: Vec<DependencyConflict>,
+    pub impact: ImpactAnalysis,
+    pub affected_files: Vec<PathBuf>,
+    pub affected_functions: Vec<String>,
+    pub recommendation: String,
+}
+
+pub struct DependencyConflict {
+    pub package: String,
+    pub current_version: String,
+    pub requested_version: String,
+    pub reason: String,
+    pub severity: ConflictSeverity,
+}
+
+pub enum ConflictSeverity {
+    Low,      // Minor version bump
+    Medium,   // Major version change
+    High,     // Incompatible versions
+    Critical, // Will break existing code
+}
+```
+
+**Agent Transparency (Dry-Run):**
+
+```
+🔍 Validating package installation...
+   Package: numpy==1.26.0
+   Strategy: Dry-run in isolated temp venv first
+
+   ✅ Dry-run validation passed!
+   📊 Impact Analysis:
+      - Files affected: 5 (src/ml/*.py)
+      - Functions affected: 12 (np.array, np.mean, etc.)
+      - Conflicts: None
+      - Risk: LOW
+
+   💡 Safe to install. Proceeding with real installation in .venv
+```
+
+**Conflict Detection Example:**
+
+```
+❌ Validation failed: Dependency conflict detected
+
+   Package: pandas==2.1.0
+   Conflict: numpy version incompatibility
+
+   Current environment:
+   - numpy 1.24.0 (installed)
+
+   Requested installation:
+   - pandas 2.1.0 (requires numpy>=1.26.0)
+
+   ⚠️ Risk: HIGH (numpy is used by 8 files, 25 functions)
+
+   💡 Recommendations:
+   1. [SAFE] Upgrade numpy to 1.26.0 first
+      Command: pip install numpy==1.26.0
+      Risk: LOW (backward compatible)
+
+   2. [RISKY] Downgrade pandas to 2.0.x
+      Command: pip install pandas<2.1
+      Risk: MEDIUM (may lose features)
+
+   3. [COMPLEX] Create separate venv for this module
+      Risk: LOW but requires code isolation
+
+   What would you like to do?
+```
+
+---
+
+#### P0 Feature 2: Mandatory .venv Isolation (BLOCKER)
+
+**Principle:** NEVER pollute system Python. ALWAYS work in `.venv`.
+
+**Implementation:** `agent/python_environment.rs` (NEW, ~250 lines)
+
+```rust
+pub struct PythonEnvironment {
+    venv_path: PathBuf,              // Always workspace/.venv
+    python_executable: PathBuf,      // .venv/bin/python or .venv/Scripts/python.exe
+    pip_executable: PathBuf,         // .venv/bin/pip
+    is_activated: bool,
+    python_version: String,          // 3.11.5
+    created_at: SystemTime,
+    packages: Vec<InstalledPackage>,
+}
+
+impl PythonEnvironment {
+    /// Ensure .venv exists and is valid - NEVER allows global Python
+    pub async fn ensure_venv(workspace: &Path) -> Result<Self, String> {
+        let venv_path = workspace.join(".venv");
+
+        // Check if .venv exists
+        if !venv_path.exists() {
+            // Create .venv automatically
+            Self::create_venv(workspace, &venv_path).await?;
+        } else {
+            // Verify it's a valid venv
+            Self::verify_venv(&venv_path)?;
+        }
+
+        // Detect Python executable (cross-platform)
+        let python_executable = if cfg!(windows) {
+            venv_path.join("Scripts").join("python.exe")
+        } else {
+            venv_path.join("bin").join("python")
+        };
+
+        let pip_executable = if cfg!(windows) {
+            venv_path.join("Scripts").join("pip.exe")
+        } else {
+            venv_path.join("bin").join("pip")
+        };
+
+        // Verify executables exist
+        if !python_executable.exists() {
+            return Err(format!(
+                ".venv is invalid: {} not found",
+                python_executable.display()
+            ));
+        }
+
+        // Get Python version
+        let version = Self::detect_python_version(&python_executable).await?;
+
+        // Get installed packages
+        let packages = Self::list_installed_packages(&pip_executable).await?;
+
+        Ok(Self {
+            venv_path,
+            python_executable,
+            pip_executable,
+            is_activated: true,
+            python_version: version,
+            created_at: SystemTime::now(),
+            packages,
+        })
+    }
+
+    async fn create_venv(workspace: &Path, venv_path: &Path) -> Result<(), String> {
+        println!("🔧 Creating .venv in {}...", workspace.display());
+
+        // Use system Python to create venv
+        let result = Command::new("python3")
+            .args(&["-m", "venv", ".venv"])
+            .current_dir(workspace)
+            .output()
+            .await
+            .map_err(|e| format!("Failed to create .venv: {}", e))?;
+
+        if !result.status.success() {
+            return Err(format!(
+                "Failed to create .venv: {}",
+                String::from_utf8_lossy(&result.stderr)
+            ));
+        }
+
+        println!("✅ Created .venv successfully!");
+        Ok(())
+    }
+
+    fn verify_venv(venv_path: &Path) -> Result<(), String> {
+        // Check for required structure
+        let required_files = if cfg!(windows) {
+            vec!["Scripts/python.exe", "Scripts/pip.exe", "pyvenv.cfg"]
+        } else {
+            vec!["bin/python", "bin/pip", "pyvenv.cfg"]
+        };
+
+        for file in required_files {
+            if !venv_path.join(file).exists() {
+                return Err(format!(
+                    ".venv is corrupted: {} not found. Please delete .venv and I'll recreate it.",
+                    file
+                ));
+            }
+        }
+
+        Ok(())
+    }
+
+    /// BLOCK execution if not in venv - safety mechanism
+    pub fn ensure_isolated(&self) -> Result<(), String> {
+        if !self.is_activated {
+            return Err(
+                "❌ SAFETY BLOCK: Cannot execute - .venv not activated!\n\
+                 💡 This prevents pollution of system Python.\n\
+                 🔧 Please ensure .venv is properly activated.".to_string()
+            );
+        }
+        Ok(())
+    }
+
+    /// Get Python command with venv prefix
+    pub fn python_command(&self) -> &Path {
+        &self.python_executable
+    }
+
+    /// Get pip command with venv prefix
+    pub fn pip_command(&self) -> &Path {
+        &self.pip_executable
+    }
+}
+```
+
+**Update Terminal Executor for Venv Enforcement:**
+
+```rust
+// Update: src-tauri/src/agent/terminal.rs
+impl TerminalExecutor {
+    /// Execute Python script - ALWAYS uses .venv
+    pub async fn execute_python(
+        &self,
+        script_or_command: &str,
+    ) -> Result<ExecutionResult, String> {
+        // 1. Ensure .venv exists and is valid
+        let venv = PythonEnvironment::ensure_venv(&self.workspace_path).await?;
+
+        // 2. SAFETY: Block if not isolated
+        venv.ensure_isolated()?;
+
+        // 3. Execute using .venv Python (never global)
+        self.execute(
+            venv.python_command().to_str().unwrap(),
+            vec!["-c".to_string(), script_or_command.to_string()]
+        ).await
+    }
+
+    /// Install package - ALWAYS in .venv
+    pub async fn pip_install(
+        &self,
+        packages: Vec<String>,
+    ) -> Result<ExecutionResult, String> {
+        // 1. Ensure .venv
+        let venv = PythonEnvironment::ensure_venv(&self.workspace_path).await?;
+        venv.ensure_isolated()?;
+
+        // 2. Execute pip in .venv
+        let mut args = vec!["install".to_string()];
+        args.extend(packages);
+
+        self.execute(
+            venv.pip_command().to_str().unwrap(),
+            args
+        ).await
+    }
+}
+```
+
+**Agent Transparency (.venv):**
+
+```
+🔧 Ensuring Python environment is isolated...
+
+   ✅ Found .venv at: /workspace/.venv
+   🐍 Python version: 3.11.5
+   📦 Installed packages: 47
+   ⏱️  Created: 2 days ago
+
+   💡 All Python commands will use .venv (never system Python)
+   🛡️  Your system Python is protected!
+```
+
+**Auto-Creation:**
+
+```
+🔍 .venv not found in workspace
+🔧 Creating isolated Python environment...
+
+   ▶️  Running: python3 -m venv .venv
+   ⏳ [2s] Creating virtual environment...
+   ⏳ [4s] Installing pip, setuptools...
+   ✅ Created .venv successfully!
+
+   🐍 Python version: 3.11.5
+   📦 Ready to install packages
+
+   💡 All future Python commands will use this isolated environment
+```
+
+---
+
+#### P0 Feature 3: GNN Tech Stack Dependency Tracking (BLOCKER)
+
+**Principle:** GNN must track **version-level dependencies** (not just package names) for accurate impact analysis and conflict detection. Each version is a separate node.
+
+**Critical: Version-Level Tracking**
+
+- ❌ **WRONG:** Track "numpy" as single node → cannot detect version conflicts
+- ✅ **CORRECT:** Track "numpy==1.24.0" and "numpy==1.26.0" as separate nodes → detect incompatibilities
+- Track **EXACT versions** for all packages (numpy==1.26.0, pandas==2.1.0, not just "numpy", "pandas")
+- Track **version requirements** for dependencies (requires: "numpy>=1.26,<2.0")
+- Track **version history** (upgraded from 1.24.0 → 1.26.0 on date X)
+- Enable queries: "Which files depend on numpy 1.24 specifically?" vs "Which files use any numpy?"
+
+**Implementation:** Update `gnn/mod.rs` and `gnn/graph.rs`
+
+```rust
+// Add to GNN node types
+pub struct TechStackNode {
+    pub package_name: String,        // "numpy"
+    pub version: String,             // "1.26.0" - EXACT version, not range
+    pub language: Language,          // Python, JavaScript, Rust
+    pub installation_date: SystemTime,
+    pub used_by_files: Vec<PathBuf>,
+    pub used_functions: Vec<String>, // np.array, np.mean, etc.
+    pub conflicts_with: Vec<(String, String)>, // [(package, version)] that conflict
+    pub requires: Vec<PackageRequirement>, // Version-specific requirements
+    pub version_history: Vec<VersionChange>, // Track upgrades/downgrades
+}
+
+pub struct PackageRequirement {
+    pub package: String,
+    pub version_spec: String,  // ">=1.24,<2.0" - PRECISE requirement
+    pub optional: bool,
+}
+
+pub struct VersionChange {
+    pub from_version: String,  // "1.24.0"
+    pub to_version: String,    // "1.26.0"
+    pub changed_at: SystemTime,
+    pub reason: String,        // "Dependency conflict resolution"
+}
+
+// Add edges for package dependencies
+pub enum EdgeType {
+    // Existing
+    Import,
+    Call,
+    Inherit,
+    // NEW for tech stack
+    Uses,              // File uses Package
+    Requires,          // Package requires Package
+    ConflictsWith,     // Package conflicts with Package
+}
+
+impl GNNEngine {
+    /// Track which files use which packages - VERSION-SPECIFIC
+    /// Node ID format: "pkg:numpy:1.26.0" (package:name:exact_version)
+    pub fn add_package_usage(
+        &mut self,
+        package: &str,
+        version: &str,  // MUST be exact version: "1.26.0", not ">=1.26"
+        file: &Path,
+        functions_used: Vec<String>,
+    ) -> Result<(), String> {
+        // 1. Create VERSION-SPECIFIC node (each version is separate node)
+        let pkg_node_id = format!("pkg:{}:{}", package, version);
+
+        if !self.graph.has_node(&pkg_node_id) {
+            self.graph.add_node(CodeNode {
+                id: pkg_node_id.clone(),
+                name: format!("{}=={}", package, version), // e.g., "numpy==1.26.0"
+                node_type: NodeType::TechStack(TechStackNode {
+                    package_name: package.to_string(),
+                    version: version.to_string(), // Exact version
+                    language: Language::Python,
+                    installation_date: SystemTime::now(),
+                    used_by_files: vec![],
+                    used_functions: functions_used.clone(),
+                    conflicts_with: vec![],
+                    requires: vec![],
+                    version_history: vec![],
+                }),
+                file_path: None,
+                location: None,
+            });
+        }
+
+        // 2. Add edge: File → Uses → Package@Version
+        let file_node_id = self.graph.get_file_node_id(file)?;
+        self.graph.add_edge(
+            &file_node_id,
+            &pkg_node_id,
+            EdgeType::Uses
+        )?;
+
+        // 3. For each function used, add edge: Function → Uses → PackageFunction
+        for func_name in functions_used {
+            let func_node_id = format!("{}::{}", pkg_node_id, func_name);
+            // Track specific function calls (np.array, np.mean, etc.)
+        }
+
+        Ok(())
+    }
+
+    /// Query which files use a SPECIFIC VERSION of a package
+    pub fn get_files_using_package_version(
+        &self,
+        package: &str,
+        version: &str
+    ) -> Result<Vec<PathBuf>, String> {
+        let pkg_node_id = format!("pkg:{}:{}", package, version);
+        // Return files that use THIS SPECIFIC VERSION
+    }
+
+    /// Query which files use ANY VERSION of a package
+    pub fn get_files_using_package(&self, package: &str) -> Result<Vec<PathBuf>, String> {
+        let pkg_nodes: Vec<_> = self.graph.nodes()
+            .filter(|n| {
+                if let NodeType::TechStack(ts) = &n.node_type {
+                    ts.package_name == package  // Match ANY version
+                } else {
+                    false
+                }
+            })
+            .collect();
+
+        let mut files = Vec::new();
+        for pkg_node in pkg_nodes {
+            // Find all files that have "Uses" edge to ANY version of this package
+            let incoming_edges = self.graph.get_incoming_edges(&pkg_node.id)?;
+            for edge in incoming_edges {
+                if edge.edge_type == EdgeType::Uses {
+                    if let Some(file_path) = self.graph.get_node(&edge.source)?.file_path {
+                        files.push(file_path);
+                    }
+                }
+            }
+        }
+
+        Ok(files)
+    }
+
+    /// Track version upgrade/downgrade with reason
+    pub fn update_package_version(
+        &mut self,
+        package: &str,
+        from_version: &str,
+        to_version: &str,
+        reason: &str,
+    ) -> Result<(), String> {
+        let old_node_id = format!("pkg:{}:{}", package, from_version);
+        let new_node_id = format!("pkg:{}:{}", package, to_version);
+
+        // Add version change history to new node
+        if let Some(new_node) = self.graph.get_node_mut(&new_node_id) {
+            if let NodeType::TechStack(ts) = &mut new_node.node_type {
+                ts.version_history.push(VersionChange {
+                    from_version: from_version.to_string(),
+                    to_version: to_version.to_string(),
+                    changed_at: SystemTime::now(),
+                    reason: reason.to_string(),
+                });
+            }
+        }
+
+        // Migrate edges from old version to new version
+        self.migrate_package_edges(&old_node_id, &new_node_id)?;
+
+        Ok(())
+    }    /// Query which functions from package are used
+    pub fn get_functions_calling_package(&self, package: &str) -> Result<Vec<String>, String> {
+        // Return list of functions like: "np.array", "np.mean", etc.
+        // By analyzing Call edges to package functions
+    }
+
+    /// Update GNN after package installation
+    pub async fn update_after_package_install(
+        &mut self,
+        package: &str,
+        version: &str,
+        installation_result: &InstallationResult,
+    ) -> Result<(), String> {
+        // 1. Parse installed package metadata
+        let metadata = self.parse_package_metadata(package)?;
+
+        // 2. Add package node with dependencies
+        for dep in metadata.requires {
+            self.add_package_dependency(package, &dep)?;
+        }
+
+        // 3. Scan workspace for usage
+        self.scan_for_package_usage(package).await?;
+
+        // 4. Update package version info
+        self.update_package_version(package, version)?;
+
+        Ok(())
+    }
+}
+```
+
+**Agent Transparency (GNN Integration):**
+
+````
+📊 Updating dependency graph after numpy==1.26.0 installation...
+
+   🔍 Scanning workspace for numpy usage...
+   ✅ Found 5 files using numpy==1.26.0:
+      - src/ml/model.py (np.array, np.mean, np.std)
+      - src/ml/preprocessor.py (np.zeros, np.ones)
+      - src/data/loader.py (np.loadtxt)
+      - src/utils/math_utils.py (np.dot, np.transpose)
+      - tests/test_model.py (np.testing.assert_array_equal)
+
+   📦 Detected 12 function calls to numpy APIs
+   🔗 Updated dependency graph with package→file→function mappings
+
+   🎯 Version-Level Tracking Active:
+      - Node created: pkg:numpy:1.26.0 (exact version)
+      - Can now detect conflicts with numpy 1.24.0, 2.0.0, etc.
+      - Version history: Upgraded from 1.24.0 → 1.26.0 (dependency resolution)
+
+   💡 GNN now has 100% accurate version-level tech stack dependency information
+```---
+
+#### P0 Feature 4: Conflict Detection & Resolution (BLOCKER)
+
+**Principle:** Detect conflicts BEFORE installation. Suggest intelligent fixes with risk assessment.
+
+**Implementation:** `agent/conflict_resolver.rs` (NEW, ~200 lines)
+
+```rust
+pub struct ConflictResolver {
+    gnn: Arc<Mutex<GNNEngine>>,
+}
+
+impl ConflictResolver {
+    pub fn suggest_resolutions(
+        &self,
+        conflict: &DependencyConflict,
+        impact: &ImpactAnalysis,
+    ) -> Vec<ResolutionOption> {
+        let mut options = Vec::new();
+
+        // Option 1: Upgrade the dependency
+        if self.is_upgrade_safe(&conflict) {
+            options.push(ResolutionOption {
+                strategy: format!("Upgrade {} to {}", conflict.package, conflict.requested_version),
+                commands: vec![format!("pip install {}=={}", conflict.package, conflict.requested_version)],
+                risk: self.assess_upgrade_risk(&conflict, impact),
+                explanation: format!(
+                    "Upgrade {} from {} to {}. {}",
+                    conflict.package,
+                    conflict.current_version,
+                    conflict.requested_version,
+                    self.get_upgrade_notes(&conflict)
+                ),
+                estimated_time: Duration::from_secs(10),
+            });
+        }
+
+        // Option 2: Downgrade the requesting package
+        if let Some(compatible_version) = self.find_compatible_version(&conflict) {
+            options.push(ResolutionOption {
+                strategy: "Use older version of new package".to_string(),
+                commands: vec![format!("pip install {}<{}", conflict.package, compatible_version)],
+                risk: Risk::Medium,
+                explanation: format!(
+                    "Install older version that's compatible with current environment"
+                ),
+                estimated_time: Duration::from_secs(15),
+            });
+        }
+
+        // Option 3: Create isolated environment
+        options.push(ResolutionOption {
+            strategy: "Isolate conflicting code in separate venv".to_string(),
+            commands: vec![
+                "Create separate .venv for this module".to_string(),
+                "Requires code restructuring".to_string(),
+            ],
+            risk: Risk::Low,
+            explanation: format!(
+                "Keep existing code unchanged, isolate new code in separate environment"
+            ),
+            estimated_time: Duration::from_secs(300),
+        });
+
+        // Sort by risk (lowest first)
+        options.sort_by_key(|o| o.risk as u8);
+        options
+    }
+
+    fn assess_upgrade_risk(
+        &self,
+        conflict: &DependencyConflict,
+        impact: &ImpactAnalysis,
+    ) -> Risk {
+        // Parse versions
+        let current = Version::parse(&conflict.current_version).ok();
+        let requested = Version::parse(&conflict.requested_version).ok();
+
+        if let (Some(cur), Some(req)) = (current, requested) {
+            // Major version change = HIGH risk
+            if req.major > cur.major {
+                return if impact.files_affected > 10 {
+                    Risk::Critical
+                } else {
+                    Risk::High
+                };
+            }
+
+            // Minor version change = MEDIUM risk
+            if req.minor > cur.minor {
+                return if impact.functions_affected > 20 {
+                    Risk::Medium
+                } else {
+                    Risk::Low
+                };
+            }
+
+            // Patch version change = LOW risk
+            Risk::Low
+        } else {
+            Risk::High  // Can't parse version = be careful
+        }
+    }
+}
+
+pub struct ResolutionOption {
+    pub strategy: String,
+    pub commands: Vec<String>,
+    pub risk: Risk,
+    pub explanation: String,
+    pub estimated_time: Duration,
+}
+
+pub enum Risk {
+    Low,      // Backward compatible, patch updates
+    Medium,   // Minor version changes, limited impact
+    High,     // Major version changes, significant impact
+    Critical, // Breaking changes, many files affected
+}
+````
+
+**Agent Transparency (Conflict Resolution):**
+
+```
+❌ Dependency conflict detected! Let me suggest solutions...
+
+   Conflict: pandas 2.1.0 requires numpy>=1.26.0
+   Current: numpy 1.24.0
+   Impact: 8 files, 25 functions affected
+
+   💡 Resolution Options (sorted by safety):
+
+   1. [RECOMMENDED] Upgrade numpy (RISK: LOW)
+      Command: pip install numpy==1.26.0
+      Reason: Backward compatible, patch release
+      Impact: Minimal - numpy 1.26 is stable
+      Time: ~10 seconds
+      ✅ I recommend this option
+
+   2. Use pandas 2.0.x instead (RISK: MEDIUM)
+      Command: pip install pandas<2.1
+      Reason: Compatible with current numpy
+      Impact: You may lose pandas 2.1 features
+      Time: ~15 seconds
+      ⚠️  You'll miss out on newest pandas features
+
+   3. Isolate in separate venv (RISK: LOW)
+      Commands: Create workspace/module-venv/.venv
+      Reason: Zero impact on existing code
+      Impact: Requires code restructuring
+      Time: ~5 minutes
+      💡 Best for complex conflicts
+
+   Which option would you like? (1/2/3)
+```
+
+---
+
+#### P1 Feature 5: Automatic Rollback on Failure (HIGH)
+
+**Implementation:** `agent/environment_snapshot.rs` (NEW, ~150 lines)
+
+```rust
+pub struct EnvironmentSnapshot {
+    venv_path: PathBuf,
+    snapshot_id: String,
+    timestamp: SystemTime,
+    packages: Vec<InstalledPackage>,
+    pip_freeze_output: String,
+}
+
+impl EnvironmentSnapshot {
+    pub async fn create(venv_path: &Path) -> Result<Self, String> {
+        let snapshot_id = format!("snapshot-{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs());
+
+        // Get current packages
+        let pip_freeze = Command::new(venv_path.join("bin/pip"))
+            .args(&["freeze"])
+            .output()
+            .await?;
+
+        let freeze_output = String::from_utf8_lossy(&pip_freeze.stdout).to_string();
+        let packages = Self::parse_freeze_output(&freeze_output)?;
+
+        Ok(Self {
+            venv_path: venv_path.to_path_buf(),
+            snapshot_id,
+            timestamp: SystemTime::now(),
+            packages,
+            pip_freeze_output: freeze_output,
+        })
+    }
+
+    pub async fn restore(&self) -> Result<(), String> {
+        println!("🔄 Rolling back to snapshot {}...", self.snapshot_id);
+
+        // Uninstall all current packages
+        // Reinstall from snapshot
+        // Verify integrity
+
+        Ok(())
+    }
+}
+
+// Update DependencyInstaller
+impl DependencyInstaller {
+    pub async fn install_with_rollback(
+        &self,
+        packages: Vec<String>,
+    ) -> Result<InstallationResult, String> {
+        // 1. Create snapshot
+        let venv = PythonEnvironment::ensure_venv(&self.workspace_path).await?;
+        let snapshot = EnvironmentSnapshot::create(&venv.venv_path).await?;
+
+        println!("📸 Created environment snapshot: {}", snapshot.snapshot_id);
+
+        // 2. Try installation
+        match self.install_packages(packages).await {
+            Ok(result) => {
+                println!("✅ Installation successful!");
+                Ok(result)
+            }
+            Err(e) => {
+                println!("❌ Installation failed: {}", e);
+                println!("🔄 Rolling back environment...");
+
+                // 3. Rollback on failure
+                snapshot.restore().await?;
+
+                println!("✅ Environment restored to pre-installation state");
+                Err(format!("Installation failed and rolled back: {}", e))
+            }
+        }
+    }
+}
+```
+
+---
+
+#### P1 Feature 6: Pre-Execution Environment Validation (HIGH)
+
+**Implementation:** `agent/environment_validator.rs` (NEW, ~200 lines)
+
+```rust
+pub struct EnvironmentValidator {
+    workspace: PathBuf,
+    gnn: Arc<Mutex<GNNEngine>>,
+}
+
+pub struct EnvironmentValidation {
+    pub is_valid: bool,
+    pub checks: Vec<ValidationCheck>,
+    pub missing_requirements: Vec<String>,
+    pub suggestions: Vec<String>,
+}
+
+pub struct ValidationCheck {
+    pub name: String,
+    pub passed: bool,
+    pub message: String,
+}
+
+impl EnvironmentValidator {
+    pub async fn validate_before_execution(
+        &self,
+        command: &str,
+    ) -> Result<EnvironmentValidation, String> {
+        let mut checks = Vec::new();
+        let mut missing = Vec::new();
+        let mut suggestions = Vec::new();
+
+        // Check 1: Is .venv active?
+        let venv_check = self.check_venv_active().await;
+        checks.push(venv_check.clone());
+        if !venv_check.passed {
+            missing.push(".venv activation".to_string());
+            suggestions.push("Run: source .venv/bin/activate".to_string());
+        }
+
+        // Check 2: Are required packages installed?
+        let required_packages = self.detect_required_packages(command).await?;
+        for package in &required_packages {
+            let installed = self.is_package_installed(package).await?;
+            checks.push(ValidationCheck {
+                name: format!("Package: {}", package),
+                passed: installed,
+                message: if installed {
+                    format!("✅ {} is installed", package)
+                } else {
+                    format!("❌ {} is NOT installed", package)
+                },
+            });
+
+            if !installed {
+                missing.push(package.clone());
+                suggestions.push(format!("pip install {}", package));
+            }
+        }
+
+        // Check 3: Are environment variables set?
+        // Check 4: Is Docker running (if needed)?
+        // Check 5: Are ports available (if server)?
+
+        Ok(EnvironmentValidation {
+            is_valid: missing.is_empty(),
+            checks,
+            missing_requirements: missing,
+            suggestions,
+        })
+    }
+}
+```
+
+---
+
+#### P1 Feature 7: Conflict Resolution AI (HIGH)
+
+Already covered in P0 Feature 4 - `ConflictResolver` with intelligent suggestions.
+
+---
+
+#### P1 Feature 8: Multi-Project Isolation (HIGH - Enterprise Critical)
+
+**Principle:** Each project has isolated .venv. Never share dependencies. Auto-switch based on active project.
+
+**Implementation:** `agent/project_environment_manager.rs` (NEW, ~250 lines)
+
+```rust
+pub struct ProjectEnvironmentManager {
+    projects: HashMap<ProjectId, ProjectEnvironment>,
+    active_project: Option<ProjectId>,
+    global_cache: PathBuf,  // ~/.yantra/venv-cache
+}
+
+pub struct ProjectEnvironment {
+    pub id: ProjectId,
+    pub workspace: PathBuf,
+    pub venv: PythonEnvironment,
+    pub last_active: SystemTime,
+    pub package_cache: Vec<CachedPackage>,
+}
+
+impl ProjectEnvironmentManager {
+    pub async fn ensure_project_isolation(
+        &mut self,
+        project_id: &ProjectId,
+        workspace: &Path,
+    ) -> Result<&ProjectEnvironment, String> {
+        // Check if project already has environment
+        if !self.projects.contains_key(project_id) {
+            // Create new isolated environment
+            let venv = PythonEnvironment::ensure_venv(workspace).await?;
+
+            self.projects.insert(project_id.clone(), ProjectEnvironment {
+                id: project_id.clone(),
+                workspace: workspace.to_path_buf(),
+                venv,
+                last_active: SystemTime::now(),
+                package_cache: Vec::new(),
+            });
+
+            println!("🆕 Created isolated environment for project: {}", project_id);
+        }
+
+        Ok(self.projects.get(project_id).unwrap())
+    }
+
+    pub async fn switch_project(
+        &mut self,
+        from_project: &ProjectId,
+        to_project: &ProjectId,
+    ) -> Result<(), String> {
+        println!("🔄 Switching environment: {} → {}", from_project, to_project);
+
+        // Deactivate current
+        if let Some(current) = self.projects.get_mut(from_project) {
+            current.last_active = SystemTime::now();
+        }
+
+        // Activate new
+        let new_env = self.ensure_project_isolation(to_project, &Path::new(".")).await?;
+        self.active_project = Some(to_project.clone());
+
+        println!("✅ Switched to project: {}", to_project);
+        println!("🐍 Python: {}", new_env.venv.python_version);
+        println!("📦 Packages: {}", new_env.venv.packages.len());
+
+        Ok(())
+    }
+
+    pub fn get_active_environment(&self) -> Result<&ProjectEnvironment, String> {
+        self.active_project
+            .as_ref()
+            .and_then(|id| self.projects.get(id))
+            .ok_or_else(|| "No active project environment".to_string())
+    }
+}
+```
+
+**Agent Transparency (Multi-Project):**
+
+```
+🔄 Switching projects...
+
+   From: project-a (AI chatbot)
+   └─ .venv: 47 packages, Python 3.11.5
+
+   To: project-b (ML model)
+   └─ .venv: 89 packages, Python 3.10.8
+
+   ✅ Environment switched successfully!
+   💡 Each project has isolated dependencies
+   🛡️  No cross-contamination between projects
+```
+
+---
+
+#### P2 Features (9-10) - Brief Overview
+
+**9. Usage Verification:** Track if installed packages are actually imported/used. Suggest cleanup for unused deps.
+
+**10. Dependency Caching:** Local cache (`~/.yantra/cache/pip`) for faster installs, less bandwidth.
+
+---
+
+#### Implementation Summary
+
+| Component             | File                                   | Lines           | Priority  | Effort  |
+| --------------------- | -------------------------------------- | --------------- | --------- | ------- |
+| Dependency Validator  | `agent/dependency_validator.rs`        | ~300            | P0        | 4h      |
+| Python Environment    | `agent/python_environment.rs`          | ~250            | P0        | 3h      |
+| GNN Tech Stack        | Update `gnn/mod.rs`, `gnn/graph.rs`    | ~200            | P0        | 3h      |
+| Conflict Resolver     | `agent/conflict_resolver.rs`           | ~200            | P0        | 2h      |
+| Environment Snapshot  | `agent/environment_snapshot.rs`        | ~150            | P1        | 2h      |
+| Environment Validator | `agent/environment_validator.rs`       | ~200            | P1        | 2h      |
+| Project Env Manager   | `agent/project_environment_manager.rs` | ~250            | P1        | 3h      |
+| **TOTAL**             | **7 files**                            | **~1550 lines** | **P0+P1** | **19h** |
+
+**Status:** 🔴 **NOT YET IMPLEMENTED** - Critical MVP features (P0+P1)  
+**Priority:** ⚡ **P0 BLOCKERS + P1 HIGH** - Enterprise-grade dependency management  
+**Dependencies:** Existing GNN infrastructure, terminal executor
+
+---
 
 #### 3.3 Code Generation & Modification
 
