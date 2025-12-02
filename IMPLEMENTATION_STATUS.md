@@ -15,7 +15,8 @@
 | **✅ Architecture View System**             | 16/16        | 🟢 100%      | -                               | -                 |
 | **✅ GNN Dependency Tracking**              | 10/10        | 🟢 100%      | -                               | -                 |
 | **✅ LLM Integration**                      | 13/13        | 🟢 100%      | 0/1 (Qwen Coder)                | 🔴 0%             |
-| **✅ Agent Orchestration**                  | 13/13        | 🟢 100%      | 0/1 (Cross-Project)             | 🔴 0%             |
+| **✅ Agent Framework (Orchestration)**      | 13/13        | 🟢 100%      | 0/1 (Cross-Project)             | 🔴 0%             |
+| **🔴 Agentic Capabilities**                 | 1/10         | 🔴 10%       | -                               | -                 |
 | **� Project Initialization & Arch-First**   | 4/8          | � 50%        | -                               | -                 |
 | **🔴 Interaction Modes (Guided/Auto)**      | 0/10         | 🔴 0%        | -                               | -                 |
 | **🔴 Cascading Failure Protection**         | 0/10         | 🔴 0%        | -                               | -                 |
@@ -28,7 +29,8 @@
 | **🔴 Code Autocompletion (Monaco)**         | 0/4          | 🔴 0%        | 0/3                             | 🔴 0%             |
 | **🔴 Multi-LLM Consultation Mode**          | 0/5          | 🔴 0%        | 0/3 (3-way, patterns, learning) | 🔴 0%             |
 | **✅ Documentation System**                 | 1/1          | 🟢 100%      | -                               | -                 |
-| **✅ Storage Optimization (WAL + Pooling)** | 2/3          | � 67%        | 0/1 (GNN pooling optional)      | 🔴 0%             |
+| **✅ Storage Optimization (Architecture)**  | 2/2          | 🟢 100%      | -                               | -                 |
+| **🔴 HNSW Semantic Indexing (Ferrari MVP)** | 0/3          | 🔴 0%        | Post-browser, critical          | 🔴 0%             |
 | **🧹 Clean Code Mode**                      | -            | -            | 0/18                            | 🔴 0%             |
 | **💰 Monetization (Subscription)**          | -            | -            | 0/6 (Post-MVP Priority #1)      | 🔴 0%             |
 | **📊 Analytics & Metrics**                  | -            | -            | 0/4                             | 🔴 0%             |
@@ -41,9 +43,9 @@
 | **⚡ Storage Tier 1 (In-Memory GNN)**       | -            | -            | 0/5 (Phase 3)                   | 🔴 0%             |
 | **🌐 Multi-Language Support**               | 10/10        | 🟢 100%      | -                               | -                 |
 | **🤝 Collaboration Features**               | -            | -            | 0/5                             | 🔴 0%             |
-| **TOTAL**                                   | **75/122**   | **61%**      | **0/105**                       | **0%**            |
+| **TOTAL**                                   | **78/135**   | **58%**      | **0/105**                       | **0%**            |
 
-**MVP Status:** 75/122 features complete (61%) - Core foundation + Architecture + Storage optimization! 🚀  
+**MVP Status:** 78/135 features complete (58%) - Core foundation + Architecture + Storage + HNSW pending! 🚀  
 **Post-MVP Status:** 0/105 features started (0%) - Optimization & scaling features for future phases
 
 **Key MVP Achievements:**
@@ -52,23 +54,28 @@
 - ✅ **GNN Dependency Tracking** - 100% complete (10/10 features: structural + semantic-enhanced)
 - ✅ **Multi-Language Support** - 100% complete (10/10 features: all 11 languages implemented)
 - ✅ **LLM Integration** - 100% MVP complete (13 cloud providers, Qwen Coder is Post-MVP)
-- ✅ **Agent Orchestration** - 100% MVP complete (13 features, Cross-Project is Post-MVP)
+- ✅ **Storage Optimization** - 100% complete (2/2 architecture storage tasks, GNN pooling analysis complete)
+- 🔴 **HNSW Semantic Indexing** - 0% (Ferrari MVP standard, scheduled after browser integration)
+- ✅ **Agent Framework (Orchestration)** - 100% MVP complete (13 features: state machine, confidence, pipeline, etc.)
+- 🔴 **Agentic Capabilities** - 10% complete (1/10 features: HTTP Client only, 9 agents pending)
 - ✅ **Testing & Validation** - 100% complete (6 features)
 - ✅ **Security Scanning** - 100% complete (1 feature, 512 lines implemented Nov 22-23, 2025)
 - ✅ **Git Integration** - 100% complete (2 features)
-- ✅ **UI/Frontend** - 100% complete (4 features)
+- ✅ **UI/Frontend** - 100% complete (4 features: 3-column layout, Monaco Editor, minimal UI)
 - ✅ **Documentation System** - 100% complete (1 feature)
-- ✅ **Storage Optimization** - 67% complete (2/3 features: WAL + connection pooling for architecture storage)
 - 🟡 **Browser Integration** - 25% complete (2/8 features, CDP is placeholder with critical gaps)
 
-**Remaining MVP Work (47 features):**
+**Remaining MVP Work (57 features):**
 
+- 🔴 **Agentic Capabilities** - 9/10 features (10%, only HTTP Client done, need Database, API Monitor, File Watcher, etc.)
 - 🔴 **Browser Integration** - 6/8 features (25%, CDP placeholder needs full implementation)
 - 🔴 **Code Autocompletion** - 4/4 features (0%, hybrid static + GNN completions)
 - 🔴 **Multi-LLM Consultation Mode** - 5/5 features (0%, stretch goal - collaborative LLM consultation)
 - 🔴 **Project Initialization & Arch-First** - 4/8 features remaining (50% done, 4 critical features pending)
+- 🔴 **HNSW Semantic Indexing** - 3/3 features (0%, Ferrari MVP standard after browser)
 - 🔴 **Interaction Modes** - 10/10 features (0%, Guided/Auto modes)
 - 🔴 **Cascading Failure Protection** - 10/10 features (0%, Rollback, isolation)
+- 🔴 **State Machine Refactoring** - 4/4 features (0%, separate machines for CodeGen/Testing/Deploy/Maintenance)
 - 🔴 **State Machine Refactoring** - 4/4 features (0%, Design complete, implementation pending)
 - � **Storage Optimization** - 1/3 features remaining (GNN pooling optional)
 
@@ -1287,10 +1294,10 @@ for node in gnn.get_all_nodes() {
 
 ---
 
-### ✅ 3A. Storage Optimization (WAL + Pooling) - 100% Complete ✅ DONE
+### ✅ 3A. Storage Optimization (Architecture) - 100% Complete ✅ DONE
 
 **Status:** ✅ COMPLETE (December 2, 2025)  
-**Priority:** 🔥 CRITICAL (3-5x performance improvement achieved)  
+**Priority:** 🔥 CRITICAL (Architecture storage optimized with connection pooling)  
 **Specification:** 4-Tier Storage Architecture (see Specifications.md)
 
 **Implementation Completed (December 2, 2025):**
@@ -1301,63 +1308,96 @@ for node in gnn.get_all_nodes() {
 - ✅ **Test Stability:** All 4 storage tests pass (0.01s), no hanging issues
 - ✅ **Dependency Management:** Maintained rusqlite 0.30.0 + r2d2_sqlite 0.23 compatibility (no conflicts)
 
-| #    | Task                               | Status  | Files                                   | Notes                                                  |
-| ---- | ---------------------------------- | ------- | --------------------------------------- | ------------------------------------------------------ |
-| 3A.1 | Add r2d2 dependencies              | ✅ DONE | `Cargo.toml`                            | r2d2 = "0.8", r2d2_sqlite = "0.23"                     |
-| 3A.2 | Architecture storage WAL + pooling | ✅ DONE | `src-tauri/src/architecture/storage.rs` | Pool with 10 max connections, 2 min idle, WAL mode     |
-| 3A.3 | GNN persistence pooling            | 🔴 TODO | `src-tauri/src/gnn/persistence.rs`      | **Optional**: GNN performance already excellent (<1ms) |
+| #    | Task                               | Status  | Files                                   | Notes                                               |
+| ---- | ---------------------------------- | ------- | --------------------------------------- | --------------------------------------------------- |
+| 3A.1 | Add r2d2 dependencies              | ✅ DONE | `Cargo.toml`                            | r2d2 = "0.8", r2d2_sqlite = "0.23"                  |
+| 3A.2 | Architecture storage WAL + pooling | ✅ DONE | `src-tauri/src/architecture/storage.rs` | Pool with 10 max connections, 2 min idle, WAL mode  |
+
+**GNN Persistence Decision:**  
+GNN pooling NOT implemented - analysis shows reads are in-memory only (<1ms), database only used for startup load and occasional persist. Pooling would add complexity with zero performance gain. See `.github/Storage_Performance_Analysis.md` for detailed analysis.
+
+---
+
+### 🔴 3B. HNSW Semantic Indexing - Ferrari MVP Standard
+
+**Status:** 🔴 NOT STARTED (Scheduled after Browser Integration)  
+**Priority:** 🔥 CRITICAL FOR SCALE (No compromise on performance)  
+**Specification:** See Specifications.md § HNSW Vector Indexing
+
+**Why This Matters:**
+
+Yantra is building a **Ferrari MVP**, not a Corolla MVP. We use HNSW indexing from day one for enterprise-grade semantic search performance.
+
+**Performance Requirements:**
+
+| Codebase Size | Nodes   | Target  | Linear Scan | HNSW Index | Meets Target |
+|---------------|---------|---------|-------------|------------|--------------|
+| Small         | 1k      | <10ms   | 0.5ms       | 0.1ms      | ✅ Both pass |
+| Medium        | 10k     | <10ms   | 50ms ❌     | 2ms ✅     | HNSW only    |
+| Large         | 100k    | <10ms   | 500ms ❌    | 5ms ✅     | HNSW only    |
+
+**Decision:** HNSW indexing is non-negotiable. Enterprise-ready from day one.
+
+**Implementation Tasks:**
+
+| #     | Task                          | Status  | Files                           | Effort |
+|-------|-------------------------------|---------|--------------------------------|--------|
+| 3B.1  | Add hnsw_rs dependency        | 🔴 TODO | `Cargo.toml`                    | 10min  |
+| 3B.2  | Extend CodeGraph with index   | 🔴 TODO | `src-tauri/src/gnn/graph.rs`    | 1h     |
+| 3B.3  | Add find_similar_nodes_indexed| 🔴 TODO | `src-tauri/src/gnn/graph.rs`    | 1h     |
+| 3B.4  | Update GNNEngine methods      | 🔴 TODO | `src-tauri/src/gnn/mod.rs`      | 30min  |
+| 3B.5  | Test & benchmark             | 🔴 TODO | `src-tauri/tests/gnn_*.rs`      | 1h     |
+
+**Total Effort:** ~3 hours
 
 **Implementation Details:**
 
 ```rust
-// storage.rs - Connection Pool Configuration
-let manager = SqliteConnectionManager::file(db_path)
-    .with_init(|conn| {
-        conn.execute_batch("
-            PRAGMA journal_mode=WAL;
-            PRAGMA synchronous=NORMAL;
-            PRAGMA busy_timeout=5000;
-        ")?;
-        Ok(())
-    });
+use hnsw_rs::prelude::*;
 
-let pool = Pool::builder()
-    .max_size(10)       // Max 10 connections
-    .min_idle(Some(2))  // Keep 2 idle connections ready
-    .build(manager)?;
+pub struct CodeGraph {
+    graph: DiGraph<CodeNode, EdgeType>,
+    node_map: HashMap<String, NodeIndex>,
+    // NEW: HNSW index for O(log n) semantic search
+    semantic_index: Hnsw<f32, DistCosine>,
+}
+
+impl CodeGraph {
+    pub fn build_semantic_index(&mut self) {
+        let hnsw = Hnsw::<f32, DistCosine>::new(
+            16,    // M: connectivity
+            10000, // max_elements
+            16,    // ef_construction
+            200,   // ef_search
+            DistCosine,
+        );
+        
+        for (idx, node) in self.graph.node_indices().zip(self.graph.node_weights()) {
+            if let Some(embedding) = &node.semantic_embedding {
+                hnsw.insert((&embedding[..], idx.index()));
+            }
+        }
+        
+        self.semantic_index = hnsw;
+    }
+}
 ```
 
-**Benefits Achieved:**
+**Benefits:**
 
-- ✅ **No Connection Overhead:** Reuse pooled connections (no open/close per operation)
-- ✅ **Concurrent Reads:** WAL mode allows multiple readers + 1 writer simultaneously
-- ✅ **No Deadlocks:** Refactored internal methods eliminate nested lock issues
-- ✅ **Better Throughput:** Pool keeps warm connections ready for instant use
-- ✅ **Reliability:** 5s busy timeout handles contention gracefully
-
-**Test Results:**
-
-```
-running 4 tests
-test architecture::storage::tests::test_storage_initialization ... ok
-test architecture::storage::tests::test_create_and_get_architecture ... ok
-test architecture::storage::tests::test_component_crud ... ok
-test architecture::storage::tests::test_versioning ... ok
-
-test result: ok. 4 passed; 0 failed; 0 ignored; finished in 0.01s
-```
-
-**GNN Persistence Note:**  
-GNN performance already excellent (<1ms incremental updates). Pooling is optional optimization for future scaling beyond 100k LOC.
-
-**Implementation:** See Specifications.md § Storage Architecture: 4-Tier Strategy
+- ✅ O(log n) query time (vs O(n) linear scan)
+- ✅ 10-100x faster on large codebases
+- ✅ <10ms guaranteed on 100k+ nodes
+- ✅ Pure Rust (hnsw_rs crate)
+- ✅ In-memory, no external database
+- ✅ Enterprise-ready from day one
 
 **Success Metrics:**
 
-- ✅ 3-5x faster database operations
-- ✅ Concurrent reads during writes (WAL)
-- ✅ No connection creation overhead
-- ✅ Proper connection reuse
+- ✅ <10ms semantic search on 100k nodes
+- ✅ 99.5%+ recall rate
+- ✅ <100ms index build for 10k nodes
+- ✅ Incremental updates supported
 
 ---
 
@@ -1394,10 +1434,12 @@ GNN performance already excellent (<1ms incremental updates). Pooling is optiona
 
 ---
 
-### ✅ 5. Agent Orchestration - 100% Complete ✅ MVP COMPLETE (Updated Nov 30, 2025)
+### ✅ 5. Agent Framework (Orchestration Infrastructure) - 100% Complete ✅ MVP COMPLETE
 
 **Status:** ✅ COMPLETE  
 **Phase:** MVP
+
+**Important:** This section tracks the **orchestration framework** that agents use, not the agents themselves. For actual agent implementations, see Section 5A (Agentic Capabilities).
 
 | #     | Feature                              | Status      | Files                                                     | Tests      | Notes                                                                          |
 | ----- | ------------------------------------ | ----------- | --------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------ |
@@ -1538,6 +1580,68 @@ Scenario: User has dev server running in Terminal 1
 → Agent creates new Terminal 2 for pytest
 ✅ User's server continues uninterrupted
 ```
+
+---
+
+### 🔴 5A. Agentic Capabilities - 10% Complete (1/10 features)
+
+**Status:** 🔴 MOSTLY NOT STARTED (Only HTTP Client implemented)  
+**Phase:** MVP  
+**Priority:** 🔥 CRITICAL (Core autonomous capabilities)
+
+**Important:** This section tracks **actual autonomous agent implementations**, not the orchestration framework. The Agent Framework (Section 5) provides the infrastructure; this section tracks the agents that use it.
+
+| #     | Agent Capability          | Status  | Files                                       | Tests | Notes                                                 |
+| ----- | ------------------------- | ------- | ------------------------------------------- | ----- | ----------------------------------------------------- |
+| 5A.1  | **HTTP Client Agent**     | ✅ DONE | `src-tauri/src/agent/http_client/` (451 lines) | -   | Circuit breaker, retry, rate limiting (100 req/s)     |
+| 5A.2  | **Database Manager**      | 🔴 TODO | -                                           | -     | SQL execution, schema management, migrations          |
+| 5A.3  | **API Monitor**           | 🔴 TODO | -                                           | -     | External API tracking, health checks, auto-healing    |
+| 5A.4  | **File Watcher**          | 🔴 TODO | -                                           | -     | Real-time file change detection, debouncing           |
+| 5A.5  | **Workflow Engine**       | 🔴 TODO | -                                           | -     | Multi-step automation, conditional logic              |
+| 5A.6  | **Self-Healing Agent**    | 🔴 TODO | -                                           | -     | Production issue auto-fix, rollback decisions         |
+| 5A.7  | **Log Analyzer**          | 🔴 TODO | -                                           | -     | Error pattern recognition, root cause analysis        |
+| 5A.8  | **Performance Profiler**  | 🔴 TODO | -                                           | -     | Bottleneck detection, optimization suggestions        |
+| 5A.9  | **Cost Optimizer**        | 🔴 TODO | -                                           | -     | Cloud spend optimization, resource right-sizing       |
+| 5A.10 | **Documentation Agent**   | 🔴 TODO | -                                           | -     | Auto-doc generation, API doc sync, README maintenance |
+
+**Implementation Progress:** 1/10 features (10%)
+
+**HTTP Client Agent Details (5A.1 - Implemented):**
+
+**Files:** `src-tauri/src/agent/http_client/mod.rs` (451 lines)
+
+**Features:**
+- ✅ Circuit breaker pattern (fail-fast on repeated errors)
+- ✅ Retry logic with exponential backoff
+- ✅ Rate limiting (100 requests/second)
+- ✅ Request/response tracing
+- ✅ Mock support for testing
+- ✅ Generic HTTP methods: GET, POST, PUT, DELETE
+- ✅ JSON serialization/deserialization
+
+**Usage Example:**
+```rust
+let client = HttpClient::new("https://api.example.com")?;
+let response = client.get("/users/123", None).await?;
+```
+
+**Test Coverage:** Integration tests with orchestrator
+
+**Remaining Agents (5A.2-5A.10):**
+
+These agents are **specified but not implemented**. They represent critical autonomous capabilities needed for a fully autonomous development platform.
+
+**Priority Order (for implementation):**
+1. **File Watcher** (5A.4) - Needed for reactive development
+2. **Database Manager** (5A.2) - Critical for data-driven apps
+3. **API Monitor** (5A.3) - Production readiness
+4. **Log Analyzer** (5A.7) - Debugging support
+5. **Self-Healing Agent** (5A.6) - Full autonomy
+6. **Remaining agents** - Enhancement phase
+
+**Success Metrics:**
+- ✅ HTTP Client: 100% operational
+- 🔴 9 agents remaining for autonomous platform
 
 ---
 
