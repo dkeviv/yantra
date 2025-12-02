@@ -27,8 +27,12 @@ fn test_llm_config_has_required_fields() {
         primary_provider: LLMProvider::Claude,
         claude_api_key: Some("test-key".to_string()),
         openai_api_key: None,
+        openrouter_api_key: None,
+        groq_api_key: None,
+        gemini_api_key: None,
         timeout_seconds: 30,
         max_retries: 3,
+        selected_models: Vec::new(),
     };
     
     assert_eq!(config.primary_provider, LLMProvider::Claude);

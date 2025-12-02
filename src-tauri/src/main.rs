@@ -1308,8 +1308,6 @@ fn main() {
             arch_commands::review_existing_code,
             arch_commands::analyze_requirement_impact,
             arch_commands::is_project_initialized,
-            arch_commands::auto_correct_architecture_deviation,
-            arch_commands::analyze_architecture_impact
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

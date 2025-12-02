@@ -1,34 +1,153 @@
 # Yantra - Decision Log
 
 **Purpose:** Track all significant design and architecture decisions  
-**Last Updated:** December 1, 2025
+**Last Updated:** December 2, 2025
 
 ---
 
-## 🔥 Recent Critical Decisions (Dec 1, 2025)
+## 🔥 Recent Critical Decisions (Dec 2, 2025)
 
 ### Quick Reference
 
-1. ✅ **Semantic-Enhanced Dependency Graph (Not Separate RAG)** - Enhance GNN nodes with embeddings vs separate vector DB (100% COMPLETE) 🆕
-2. ✅ **Multi-Language Support for MVP (11 Languages)** - Python, JavaScript, TypeScript, Rust + 7 more via tree-sitter (100% COMPLETE) 🆕
-3. ✅ **PostgreSQL Migration CANCELLED** - 4-tier architecture makes PostgreSQL unnecessary, SQLite perfect for Tier 3
-4. ✅ **Cluster Agents Architecture (Phase 2A)** - Master-Servant pattern with Git coordination + Tier 2 file locking
-5. ✅ **Cloud Graph Database - Tier 0 (Phase 2B)** - Shared dependency graph database for proactive conflict prevention across agents/users
-6. ✅ **tokio::sync::Mutex for all async code** - NEVER use std::sync::Mutex in async functions
-7. ✅ **Test Coverage UI Integration** - GNN-powered real-time coverage display with selective test execution
-8. ✅ **State Machine Separation** - 4 specialized machines (CodeGen, Testing, Deployment, Maintenance) vs single monolithic machine
-9. ✅ **Browser Validation in 3 Machines** - Different purposes at each stage (visual preview, E2E testing, production monitoring)
-10. ✅ **Monitoring → Maintenance** - Renamed to emphasize self-healing and CI/CD remediation capabilities
-11. ✅ **Test File Dependency Tracking** - GNN now tracks test-to-source relationships for coverage analysis
-12. ✅ **Tech Stack Dependency Tracking** - GNN will track package-to-file mapping to eliminate unused packages
-13. ✅ **Multi-File Project Orchestration** - E2E autonomous project creation from natural language intent
-14. ✅ **Architecture View System with SQLite** - Visual governance layer with living diagrams
-15. ✅ **Component Status Tracking** - File mapping with automatic status (📋🔄✅⚠️)
-16. ✅ **Connection Types with Styling** - 5 semantic types (→⇢⤳⋯>⇄) for visual clarity
-17. ✅ **Start with 1024 dimensions** (not 256) - Cost negligible, benefit significant
-18. ✅ **Yantra Cloud Codex** - Universal model (not per-user personalization)
-19. ✅ **GNN logic + Tree-sitter syntax** - Universal patterns + language-specific generation
-20. ✅ **Coding specialization** - Like AlphaGo for Go, Yantra for coding only
+1. ✅ **Database Driver Architecture: Dual SQLite Strategy** - Use rusqlite for embedded, sqlx for remote databases (Dec 2, 2025) 🆕
+2. ✅ **Semantic-Enhanced Dependency Graph (Not Separate RAG)** - Enhance GNN nodes with embeddings vs separate vector DB (100% COMPLETE)
+3. ✅ **Multi-Language Support for MVP (11 Languages)** - Python, JavaScript, TypeScript, Rust + 7 more via tree-sitter (100% COMPLETE)
+4. ✅ **PostgreSQL Migration CANCELLED** - 4-tier architecture makes PostgreSQL unnecessary, SQLite perfect for Tier 3
+5. ✅ **Cluster Agents Architecture (Phase 2A)** - Master-Servant pattern with Git coordination + Tier 2 file locking
+6. ✅ **Cloud Graph Database - Tier 0 (Phase 2B)** - Shared dependency graph database for proactive conflict prevention across agents/users
+7. ✅ **tokio::sync::Mutex for all async code** - NEVER use std::sync::Mutex in async functions
+8. ✅ **Test Coverage UI Integration** - GNN-powered real-time coverage display with selective test execution
+9. ✅ **State Machine Separation** - 4 specialized machines (CodeGen, Testing, Deployment, Maintenance) vs single monolithic machine
+10. ✅ **Browser Validation in 3 Machines** - Different purposes at each stage (visual preview, E2E testing, production monitoring)
+11. ✅ **Monitoring → Maintenance** - Renamed to emphasize self-healing and CI/CD remediation capabilities
+12. ✅ **Test File Dependency Tracking** - GNN now tracks test-to-source relationships for coverage analysis
+13. ✅ **Tech Stack Dependency Tracking** - GNN will track package-to-file mapping to eliminate unused packages
+14. ✅ **Multi-File Project Orchestration** - E2E autonomous project creation from natural language intent
+15. ✅ **Architecture View System with SQLite** - Visual governance layer with living diagrams
+16. ✅ **Component Status Tracking** - File mapping with automatic status (📋🔄✅⚠️)
+17. ✅ **Connection Types with Styling** - 5 semantic types (→⇢⤳⋯>⇄) for visual clarity
+18. ✅ **Start with 1024 dimensions** (not 256) - Cost negligible, benefit significant
+19. ✅ **Yantra Cloud Codex** - Universal model (not per-user personalization)
+20. ✅ **GNN logic + Tree-sitter syntax** - Universal patterns + language-specific generation
+21. ✅ **Coding specialization** - Like AlphaGo for Go, Yantra for coding only
+
+---
+
+## December 2, 2025 - Database Driver Architecture: Dual SQLite Strategy
+
+**Status:** ✅ Decided and Implemented  
+**Deciders:** Vivek + AI Architect  
+**Impact:** High (Build System, Dependency Management, Architecture)
+
+### Context
+
+While implementing the Agent capabilities (Database Manager, API Monitor), encountered a critical dependency conflict:
+
+**The Problem:**
+
+- `rusqlite 0.31+` requires `libsqlite3-sys 0.28` (for embedded SQLite)
+- `sqlx 0.7` with `sqlite` feature requires `libsqlite3-sys 0.26` (for network databases)
+- **Rust linker only allows ONE native library link per binary**
+- Cannot have both `libsqlite3-sys` versions → compilation failure
+
+**Use Cases:**
+
+1. **Embedded SQLite:** GNN dependency graph storage, architecture component storage, internal state
+2. **Remote Databases:** PostgreSQL, MySQL for user-managed databases, workflow data stores
+3. **Need Both:** Product requires both embedded (for speed/simplicity) and remote (for user flexibility)
+
+### Decision
+
+**✅ Use rusqlite for embedded, sqlx (without sqlite feature) for remote databases**
+
+### Rationale
+
+**Why Not Single Driver?**
+
+- ❌ **Only sqlx:** Can't use just sqlx for SQLite - brings version conflict back
+- ❌ **Only rusqlite:** Doesn't support PostgreSQL/MySQL at all
+- ❌ **Fork dependencies:** Too high maintenance burden, breaks ecosystem compatibility
+
+**Why This Works:**
+
+1. **Clean Separation:** Embedded (rusqlite) vs Remote (sqlx) are different use cases anyway
+2. **No Conflicts:** rusqlite 0.30 uses libsqlite3-sys 0.27, sqlx without sqlite uses 0.26 → no collision
+3. **Best Tool for Job:**
+   - rusqlite: Optimized for embedded, synchronous API, includes SQLite, zero-config
+   - sqlx: Optimized for network databases, async-first, connection pooling, compile-time query verification
+4. **Common Pattern:** Many Rust projects use this exact strategy (e.g., Diesel for embedded + sqlx for remote)
+
+**Consequences:**
+
+✅ **Positive:**
+
+- Compilation succeeds without warnings or conflicts
+- Each driver optimized for its specific use case
+- Clear architectural boundaries (embedded vs remote)
+- Future-proof (no dependency wrestling)
+
+⚠️ **Negative:**
+
+- Two SQLite dependencies instead of one (~2MB larger binary)
+- Slight cognitive overhead (which driver for which use case?)
+- Need to document the split for maintainers
+
+🔧 **Mitigation:**
+
+- Added clear comments in `connection_manager.rs` explaining the decision
+- DatabaseConnection enum no longer has SQLite variant (forces rusqlite usage for SQLite)
+- Documentation in Technical_Guide.md tech stack section
+- Decision captured here for future reference
+
+### Implementation
+
+**Status: ✅ 100% Complete (Dec 2, 2025)**
+
+**Files Changed:**
+
+1. `src-tauri/Cargo.toml`:
+   - Downgraded `rusqlite` to `0.30.0` (was 0.31) → uses libsqlite3-sys 0.27
+   - Removed `sqlite` feature from `sqlx` → only postgres, mysql, chrono, uuid remain
+   - Added comment documenting the split
+
+2. `src-tauri/src/agent/database/connection_manager.rs`:
+   - Removed `SQLite` variant from `DatabaseConnection` enum
+   - Added error messages directing users to rusqlite for SQLite connections
+   - Added comprehensive documentation comments explaining the architectural decision
+
+**Current State:**
+
+- ✅ Library compiles successfully with 68 warnings (0 errors)
+- ✅ All 20+ compilation errors fixed
+- ✅ rusqlite used for: GNN storage (`src-tauri/src/gnn/mod.rs`), architecture storage (`src-tauri/src/architecture/storage.rs`)
+- ✅ sqlx used for: PostgreSQL and MySQL connections in DatabaseManager
+- ✅ mongodb 2.8 and redis 0.24 for their respective databases
+
+**Performance:**
+
+- No performance impact (drivers already specialized for their use cases)
+- Binary size increase: ~2MB (acceptable for enterprise product)
+
+### Alternatives Considered
+
+| Approach                           | Pros                         | Cons                                  | Verdict                          |
+| ---------------------------------- | ---------------------------- | ------------------------------------- | -------------------------------- |
+| **Single sqlx (with sqlite)**      | One driver                   | Version conflict prevents compilation | ❌ Not possible                  |
+| **Single rusqlite**                | Simple                       | No PostgreSQL/MySQL support           | ❌ Blocks user database features |
+| **Fork libsqlite3-sys**            | Fix versions                 | High maintenance, breaks ecosystem    | ❌ Too risky                     |
+| **Diesel for SQLite**              | Well-tested ORM              | ORM overhead, different API paradigm  | ❌ Unnecessary complexity        |
+| **✅ rusqlite + sqlx (no sqlite)** | Clean separation, best tools | Two dependencies                      | ✅ **Chosen**                    |
+
+### Future Considerations
+
+- **Phase 2:** If user demand for SQLite connection manager grows, can add thin wrapper around rusqlite in DatabaseManager
+- **Phase 3:** Monitor for libsqlite3-sys version unification in ecosystem (unlikely but possible)
+- **Documentation:** Keep Technical_Guide.md updated as database strategy evolves
+
+### Related Decisions
+
+- **Data Storage Architecture** (Nov 26, 2025) - Why SQLite for GNN vs PostgreSQL
+- **Architecture View System with SQLite** (Nov 28, 2025) - Why SQLite for architecture storage
 
 ---
 

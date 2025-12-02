@@ -1,13 +1,12 @@
 // Intelligent HTTP Client
 // Provides HTTP client with circuit breaker, retry logic, rate limiting, and mock support
 
-use reqwest::{Client, Method, Request, Response, StatusCode};
+use reqwest::{Client, Method, Response, Url};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
-use tower::Service;
 use governor::{Quota, RateLimiter};
 use governor::clock::DefaultClock;
 use governor::state::{InMemoryState, NotKeyed};
@@ -350,7 +349,7 @@ impl IntelligentHttpClient {
 
     /// Extract host from URL
     fn extract_host(&self, url: &str) -> Result<String, String> {
-        let parsed = url::Url::parse(url)
+        let parsed = Url::parse(url)
             .map_err(|e| format!("Invalid URL: {}", e))?;
         parsed.host_str()
             .map(|h| h.to_string())

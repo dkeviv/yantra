@@ -98,6 +98,35 @@ Yantra has two distinct systems that must not be confused:
 - fastembed-rs 5.3+ for semantic embeddings (optional, 384-dim)
 - Chosen for: Memory safety, fearless concurrency, zero-cost abstractions
 
+**Database Drivers Architecture:**
+
+Yantra uses a dual-driver strategy for database connectivity, separating embedded from remote database access:
+
+1. **Embedded SQLite:** `rusqlite 0.30.0` with `bundled` and `backup` features
+   - **Purpose:** Internal state storage (GNN graph, architecture storage, local databases)
+   - **Benefits:** Synchronous API, lightweight, zero-configuration, includes SQLite 3.44+
+   - **Use Cases:** Dependency graph persistence, architecture component storage, local file-based databases
+   - **Files:** `src-tauri/src/gnn/mod.rs`, `src-tauri/src/architecture/storage.rs`
+
+2. **Remote Databases:** `sqlx 0.7` with `runtime-tokio-rustls`, `mysql`, `postgres`, `chrono`, `uuid` features (SQLite feature explicitly excluded)
+   - **Purpose:** Network database connections (PostgreSQL, MySQL)
+   - **Benefits:** Async-first, connection pooling, compile-time query verification
+   - **Use Cases:** User-managed databases, workflow data stores, external database integration
+   - **Files:** `src-tauri/src/agent/database/connection_manager.rs`
+
+3. **Other Databases:**
+   - **MongoDB:** `mongodb 2.8` - Native async driver for document databases
+   - **Redis:** `redis 0.24` with connection manager - Key-value store, caching, pub/sub
+   - **Connection Pooling:** `tokio-postgres 0.7`, `r2d2 0.8`, `r2d2_postgres 0.18`
+
+**Why Two SQLite Drivers?**
+
+- **Technical Constraint:** Rust linker only allows ONE native library link per binary
+- **Version Conflict:** `rusqlite 0.31+` requires `libsqlite3-sys 0.28`, while `sqlx 0.7` sqlite feature requires `libsqlite3-sys 0.26`
+- **Resolution:** Use rusqlite for embedded (best tool for local SQLite), sqlx for remote databases (best tool for network databases)
+- **Decision Date:** December 2, 2025 (see Decision_Log.md)
+- **Tradeoff:** Slightly larger dependency footprint vs. clean separation of concerns and no version conflicts
+
 **AI/ML (Python - Yantra Codex):**
 
 - PyTorch for GraphSAGE neural network training

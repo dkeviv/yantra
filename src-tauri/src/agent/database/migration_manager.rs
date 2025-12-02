@@ -77,6 +77,8 @@ impl MigrationManager {
             down_sql.push_str(";\n");
         }
 
+        let checksum = self.calculate_checksum(&up_sql);
+
         let migration = Migration {
             id: uuid::Uuid::new_v4().to_string(),
             name: name.to_string(),
@@ -85,7 +87,7 @@ impl MigrationManager {
             up_sql,
             down_sql,
             dependencies: vec![],
-            checksum: self.calculate_checksum(&up_sql),
+            checksum,
             applied: false,
             applied_at: None,
         };

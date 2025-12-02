@@ -5,10 +5,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use sqlx::{Pool, Postgres, MySql, Sqlite, Any};
+use sqlx::{Pool, Postgres, MySql, Any};
 use mongodb::Client as MongoClient;
 use redis::aio::ConnectionManager as RedisConnectionManager;
-use ring::aead::{Aad, LessSafeKey, Nonce, UnboundKey, AES_256_GCM};
+use ring::aead::{LessSafeKey, UnboundKey, AES_256_GCM};
 use ring::rand::{SecureRandom, SystemRandom};
 
 /// Database connection types
@@ -37,7 +37,8 @@ pub struct ConnectionConfig {
 pub enum DatabaseConnection {
     PostgreSQL(Pool<Postgres>),
     MySQL(Pool<MySql>),
-    SQLite(Pool<Sqlite>),
+    // SQLite uses rusqlite directly, not sqlx (to avoid dependency conflicts)
+    // Use rusqlite::Connection for SQLite connections
     MongoDB(MongoClient),
     Redis(RedisConnectionManager),
 }
@@ -66,7 +67,7 @@ pub struct TableInfo {
     pub foreign_keys: Vec<ForeignKeyInfo>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ColumnInfo {
     pub name: String,
     pub data_type: String,
@@ -126,10 +127,9 @@ impl DatabaseManager {
                 DatabaseConnection::MySQL(pool)
             }
             DatabaseType::SQLite => {
-                let pool = Pool::<Sqlite>::connect(&config.connection_string)
-                    .await
-                    .map_err(|e| format!("SQLite connection failed: {}", e))?;
-                DatabaseConnection::SQLite(pool)
+                // Note: SQLite connections should use rusqlite directly
+                // to avoid libsqlite3-sys version conflicts with sqlx
+                return Err("SQLite connections should use rusqlite directly, not this connection manager".to_string());
             }
             DatabaseType::MongoDB => {
                 let client = MongoClient::with_uri_str(&config.connection_string)
@@ -192,13 +192,7 @@ impl DatabaseManager {
                     .map_err(|e| format!("MySQL query failed: {}", e))?;
                 vec![] // Simplified
             }
-            DatabaseConnection::SQLite(pool) => {
-                let rows = sqlx::query(query)
-                    .fetch_all(pool)
-                    .await
-                    .map_err(|e| format!("SQLite query failed: {}", e))?;
-                vec![] // Simplified
-            }
+            // SQLite case removed - use rusqlite directly
             _ => return Err("Query not supported for this database type".to_string()),
         };
 
@@ -240,13 +234,7 @@ impl DatabaseManager {
                     .map_err(|e| format!("MySQL execute failed: {}", e))?;
                 result.rows_affected()
             }
-            DatabaseConnection::SQLite(pool) => {
-                let result = sqlx::query(query)
-                    .execute(pool)
-                    .await
-                    .map_err(|e| format!("SQLite execute failed: {}", e))?;
-                result.rows_affected()
-            }
+            // SQLite case removed - use rusqlite directly
             _ => return Err("Execute not supported for this database type".to_string()),
         };
 
@@ -303,10 +291,7 @@ impl DatabaseManager {
                 // Query information_schema for MySQL
                 vec![]
             }
-            DatabaseConnection::SQLite(pool) => {
-                // Query sqlite_master for SQLite
-                vec![]
-            }
+            // SQLite case removed - use rusqlite directly
             _ => return Err("Schema introspection not supported for this database type".to_string()),
         };
 
@@ -373,8 +358,8 @@ impl DatabaseManager {
                 Ok(result.is_ok())
             }
             DatabaseType::SQLite => {
-                let result = Pool::<Sqlite>::connect(&config.connection_string).await;
-                Ok(result.is_ok())
+                // Use rusqlite for SQLite testing
+                Err("SQLite validation not implemented - use rusqlite directly".to_string())
             }
             DatabaseType::MongoDB => {
                 let result = MongoClient::with_uri_str(&config.connection_string).await;

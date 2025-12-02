@@ -952,6 +952,11 @@ def main():
             category: "Service".to_string(),
             files: vec![],
             description: String::new(),
+            component_type: crate::architecture::types::ComponentType::Planned,
+            position: crate::architecture::types::Position { x: 0.0, y: 0.0 },
+            metadata: std::collections::HashMap::new(),
+            created_at: chrono::Utc::now().timestamp(),
+            updated_at: chrono::Utc::now().timestamp(),
         };
         
         // Low risk: no dependents
@@ -970,7 +975,11 @@ def main():
 
     fn create_test_detector() -> DeviationDetector {
         use std::path::PathBuf;
-        let gnn = Arc::new(Mutex::new(GNNEngine::new(PathBuf::from("/tmp")).unwrap()));
+        use tempfile::tempdir;
+        
+        let tmp_dir = tempdir().unwrap();
+        let db_path = tmp_dir.path().join("test_gnn.db");
+        let gnn = Arc::new(Mutex::new(GNNEngine::new(&db_path).unwrap()));
         let arch_manager = ArchitectureManager::default();
         DeviationDetector::new(gnn, arch_manager)
     }

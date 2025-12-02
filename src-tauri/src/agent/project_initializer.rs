@@ -1383,6 +1383,9 @@ mod tests {
         // Create architecture.json
         std::fs::write(project_path.join("architecture.json"), "{}").unwrap();
 
+        // Create .yantra directory for database
+        std::fs::create_dir_all(project_path.join(".yantra")).unwrap();
+        
         let gnn = Arc::new(Mutex::new(GNNEngine::new(&project_path.join(".yantra/graph.db")).unwrap()));
         let config = LLMConfig {
             claude_api_key: Some("test".to_string()),
@@ -1408,6 +1411,9 @@ mod tests {
         let dir = tempdir().unwrap();
         let project_path = dir.path();
 
+        // Create .yantra directory for database
+        std::fs::create_dir_all(project_path.join(".yantra")).unwrap();
+        
         let gnn = Arc::new(Mutex::new(GNNEngine::new(&project_path.join(".yantra/graph.db")).unwrap()));
         let config = LLMConfig {
             claude_api_key: Some("test".to_string()),
@@ -1440,6 +1446,9 @@ mod tests {
         let dir = tempdir().unwrap();
         let project_path = dir.path();
 
+        // Create .yantra directory for database
+        std::fs::create_dir_all(project_path.join(".yantra")).unwrap();
+        
         let gnn = Arc::new(Mutex::new(GNNEngine::new(&project_path.join(".yantra/graph.db")).unwrap()));
         let config = LLMConfig {
             claude_api_key: Some("test".to_string()),
@@ -1476,6 +1485,9 @@ mod tests {
         let dir = tempdir().unwrap();
         let project_path = dir.path();
 
+        // Create .yantra directory for database
+        std::fs::create_dir_all(project_path.join(".yantra")).unwrap();
+        
         let gnn = Arc::new(Mutex::new(GNNEngine::new(&project_path.join(".yantra/graph.db")).unwrap()));
         let config = LLMConfig {
             claude_api_key: Some("test".to_string()),

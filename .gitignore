@@ -26,6 +26,10 @@ dist-ssr
 # Tauri
 src-tauri/target
 
+# Fastembed cache (AI embedding models)
+src-tauri/.fastembed_cache/
+.fastembed_cache/
+
 # Database
 *.db
 *.sqlite

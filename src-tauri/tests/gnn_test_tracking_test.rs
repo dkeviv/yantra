@@ -99,9 +99,9 @@ fn test_create_test_edges() {
     println!("\n✅ Created {} test edges", edge_count);
     assert!(edge_count > 0, "Should create at least some test edges");
     
-    // Verify test edges exist in graph
-    // We should have TestDependency edges from test files to source files
-    let all_nodes = engine.graph.get_all_nodes().cloned().collect::<Vec<_>>();
+    // Verify test edges exist in graph using public API
+    let graph = engine.get_graph();
+    let all_nodes = graph.get_all_nodes().cloned().collect::<Vec<_>>();
     
     let test_nodes: Vec<_> = all_nodes.iter()
         .filter(|n| GNNEngine::is_test_file(Path::new(&n.file_path)))
@@ -135,8 +135,9 @@ fn test_find_untested_code() {
     engine.build_graph(&test_project).unwrap();
     engine.create_test_edges().unwrap();
     
-    // Find all source files
-    let all_nodes = engine.graph.get_all_nodes().cloned().collect::<Vec<_>>();
+    // Find all source files using public API
+    let graph = engine.get_graph();
+    let all_nodes = graph.get_all_nodes().cloned().collect::<Vec<_>>();
     let source_files: Vec<String> = all_nodes.iter()
         .filter(|n| !GNNEngine::is_test_file(Path::new(&n.file_path)))
         .map(|n| n.file_path.clone())
@@ -207,8 +208,9 @@ fn test_impact_analysis_find_affected_tests() {
     let calculator_path = test_project.join("calculator.py");
     let calculator_str = calculator_path.to_str().unwrap();
     
-    // Find all test files that test calculator.py
-    let all_nodes = engine.graph.get_all_nodes().cloned().collect::<Vec<_>>();
+    // Find all test files that test calculator.py using public API
+    let graph = engine.get_graph();
+    let all_nodes = graph.get_all_nodes().cloned().collect::<Vec<_>>();
     
     let affected_tests: Vec<_> = all_nodes.iter()
         .filter(|n| GNNEngine::is_test_file(Path::new(&n.file_path)))
@@ -243,7 +245,9 @@ fn test_test_coverage_metrics() {
     engine.build_graph(&test_project).unwrap();
     engine.create_test_edges().unwrap();
     
-    let all_nodes = engine.graph.get_all_nodes().cloned().collect::<Vec<_>>();
+    // Get nodes using public API
+    let graph = engine.get_graph();
+    let all_nodes = graph.get_all_nodes().cloned().collect::<Vec<_>>();
     
     // Count source files
     let source_files_count = all_nodes.iter()

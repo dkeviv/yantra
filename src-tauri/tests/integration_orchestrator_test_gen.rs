@@ -35,8 +35,12 @@ async fn test_orchestrator_generates_tests_for_code() {
         primary_provider: LLMProvider::Claude,
         claude_api_key: claude_key,
         openai_api_key: None,
+        openrouter_api_key: None,
+        groq_api_key: None,
+        gemini_api_key: None,
         timeout_seconds: 30,
         max_retries: 3,
+        selected_models: Vec::new(),
     };
     let llm = LLMOrchestrator::new(llm_config);
     
@@ -109,8 +113,12 @@ async fn test_orchestrator_runs_generated_tests() {
         primary_provider: LLMProvider::Claude,
         claude_api_key: claude_key,
         openai_api_key: None,
+        openrouter_api_key: None,
+        groq_api_key: None,
+        gemini_api_key: None,
         timeout_seconds: 30,
         max_retries: 3,
+        selected_models: Vec::new(),
     };
     let llm = LLMOrchestrator::new(llm_config);
     

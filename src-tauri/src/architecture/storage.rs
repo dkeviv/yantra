@@ -1,42 +1,63 @@
-// Architecture View System - SQLite Storage
+// Architecture View System - SQLite Storage with Connection Pooling
 // Purpose: Persistent storage for architecture components, connections, and versions
 // Created: November 27, 2025
+// Updated: December 2, 2025 - Added r2d2 connection pooling
 
 use crate::architecture::types::{
     Architecture, Component, ComponentType, Connection, ConnectionType, 
     ArchitectureVersion, Position
 };
 use rusqlite::{Connection as SqliteConnection, Result as SqliteResult, params};
+use r2d2::{Pool, PooledConnection};
+use r2d2_sqlite::SqliteConnectionManager;
+use std::collections::HashMap;
 use std::path::Path;
-use std::sync::{Arc, Mutex};
 
-/// Architecture storage manager with SQLite backend
+/// Architecture storage manager with SQLite backend and connection pooling
 pub struct ArchitectureStorage {
-    conn: Arc<Mutex<SqliteConnection>>,
+    pool: Pool<SqliteConnectionManager>,
 }
 
 impl ArchitectureStorage {
-    /// Create new storage and initialize database schema
-    pub fn new<P: AsRef<Path>>(db_path: P) -> SqliteResult<Self> {
-        let conn = SqliteConnection::open(db_path)?;
+    /// Create new storage with connection pooling and initialize database schema
+    pub fn new<P: AsRef<Path>>(db_path: P) -> Result<Self, String> {
+        let manager = SqliteConnectionManager::file(db_path)
+            .with_init(|conn| {
+                // Enable WAL mode for better concurrency
+                conn.execute_batch("
+                    PRAGMA journal_mode=WAL;
+                    PRAGMA synchronous=NORMAL;
+                    PRAGMA busy_timeout=5000;
+                ")?;
+                Ok(())
+            });
         
-        // Enable WAL mode for better concurrency using execute_batch
-        conn.execute_batch("
-            PRAGMA journal_mode=WAL;
-            PRAGMA synchronous=NORMAL;
-        ")?;
+        let pool = Pool::builder()
+            .max_size(10)  // Max 10 connections
+            .min_idle(Some(2))  // Keep at least 2 idle connections
+            .build(manager)
+            .map_err(|e| format!("Failed to create connection pool: {}", e))?;
         
-        let storage = Self {
-            conn: Arc::new(Mutex::new(conn)),
-        };
+        let storage = Self { pool };
         
-        storage.initialize_schema()?;
+        storage.initialize_schema()
+            .map_err(|e| format!("Failed to initialize schema: {}", e))?;
+        
         Ok(storage)
+    }
+    
+    /// Get a connection from the pool
+    fn get_conn(&self) -> Result<PooledConnection<SqliteConnectionManager>, String> {
+        self.pool.get()
+            .map_err(|e| format!("Failed to get connection from pool: {}", e))
     }
 
     /// Initialize database schema
     fn initialize_schema(&self) -> SqliteResult<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.get_conn()
+            .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other, e
+            ))))?;
         
         // Use batch_execute for all schema creation to avoid ExecuteReturnedResults error
         conn.execute_batch("
@@ -117,7 +138,7 @@ impl ArchitectureStorage {
 
     /// Create a new architecture
     pub fn create_architecture(&self, architecture: &Architecture) -> SqliteResult<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.get_conn().map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))))?;
         let metadata_json = serde_json::to_string(&architecture.metadata).unwrap_or_default();
         
         conn.execute(
@@ -138,7 +159,7 @@ impl ArchitectureStorage {
 
     /// Get architecture by ID
     pub fn get_architecture(&self, id: &str) -> SqliteResult<Option<Architecture>> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.get_conn().map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))))?;
         
         // Get base architecture
         let mut stmt = conn.prepare(
@@ -168,18 +189,18 @@ impl ArchitectureStorage {
         
         let mut architecture = arch?;
         
-        // Get components
-        architecture.components = self.get_components_for_architecture(&architecture.id)?;
+        // Get components (pass connection to avoid deadlock)
+        architecture.components = Self::get_components_for_architecture_internal(&conn, &architecture.id)?;
         
-        // Get connections
-        architecture.connections = self.get_connections_for_architecture(&architecture.id)?;
+        // Get connections (pass connection to avoid deadlock)
+        architecture.connections = Self::get_connections_for_architecture_internal(&conn, &architecture.id)?;
         
         Ok(Some(architecture))
     }
 
     /// Create a component
     pub fn create_component(&self, architecture_id: &str, component: &Component) -> SqliteResult<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.get_conn().map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))))?;
         let component_type_json = serde_json::to_string(&component.component_type).unwrap_or_default();
         let metadata_json = serde_json::to_string(&component.metadata).unwrap_or_default();
         
@@ -213,7 +234,7 @@ impl ArchitectureStorage {
 
     /// Update a component
     pub fn update_component(&self, component: &Component) -> SqliteResult<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.get_conn().map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))))?;
         let component_type_json = serde_json::to_string(&component.component_type).unwrap_or_default();
         let metadata_json = serde_json::to_string(&component.metadata).unwrap_or_default();
         
@@ -246,15 +267,14 @@ impl ArchitectureStorage {
 
     /// Delete a component
     pub fn delete_component(&self, component_id: &str) -> SqliteResult<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.get_conn().map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))))?;
         conn.execute("DELETE FROM components WHERE id = ?1", params![component_id])?;
         Ok(())
     }
 
     /// Get all components for an architecture
-    fn get_components_for_architecture(&self, architecture_id: &str) -> SqliteResult<Vec<Component>> {
-        let conn = self.conn.lock().unwrap();
-        
+    // Internal method that takes connection as parameter to avoid deadlock
+    fn get_components_for_architecture_internal(conn: &SqliteConnection, architecture_id: &str) -> SqliteResult<Vec<Component>> {
         // First, get all components
         let mut stmt = conn.prepare(
             "SELECT id, name, description, component_type, category, 
@@ -281,8 +301,11 @@ impl ArchitectureStorage {
         // Then get files for each component
         let mut components = Vec::new();
         for (id, name, description, component_type_json, category, pos_x, pos_y, metadata_json, created_at, updated_at) in component_rows {
-            let component_type = serde_json::from_str(&component_type_json).unwrap_or(ComponentType::Planned);
-            let metadata = serde_json::from_str(&metadata_json).unwrap_or_default();
+            let component_type: ComponentType = serde_json::from_str(&component_type_json).unwrap_or(ComponentType::Planned);
+            
+            // Parse metadata - try as HashMap first, fall back to empty map
+            let metadata: HashMap<String, String> = serde_json::from_str(&metadata_json)
+                .unwrap_or_else(|_| HashMap::new());
             
             // Get files for this component
             let mut file_stmt = conn.prepare("SELECT file_path FROM component_files WHERE component_id = ?1")?;
@@ -306,9 +329,15 @@ impl ArchitectureStorage {
         Ok(components)
     }
 
+    // Public wrapper that locks connection
+    fn get_components_for_architecture(&self, architecture_id: &str) -> SqliteResult<Vec<Component>> {
+        let conn = self.get_conn().map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))))?;
+        Self::get_components_for_architecture_internal(&conn, architecture_id)
+    }
+
     /// Create a connection
     pub fn create_connection(&self, architecture_id: &str, connection: &Connection) -> SqliteResult<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.get_conn().map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))))?;
         let connection_type_json = serde_json::to_string(&connection.connection_type).unwrap_or_default();
         let metadata_json = serde_json::to_string(&connection.metadata).unwrap_or_default();
         
@@ -335,14 +364,14 @@ impl ArchitectureStorage {
 
     /// Delete a connection
     pub fn delete_connection(&self, connection_id: &str) -> SqliteResult<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.get_conn().map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))))?;
         conn.execute("DELETE FROM connections WHERE id = ?1", params![connection_id])?;
         Ok(())
     }
 
     /// Get all connections for an architecture
-    fn get_connections_for_architecture(&self, architecture_id: &str) -> SqliteResult<Vec<Connection>> {
-        let conn = self.conn.lock().unwrap();
+    // Internal method that takes connection as parameter to avoid deadlock
+    fn get_connections_for_architecture_internal(conn: &SqliteConnection, architecture_id: &str) -> SqliteResult<Vec<Connection>> {
         let mut stmt = conn.prepare(
             "SELECT id, source_id, target_id, connection_type, description, 
                     metadata, created_at, updated_at
@@ -372,9 +401,15 @@ impl ArchitectureStorage {
         Ok(connections)
     }
 
+    // Public wrapper that locks connection
+    fn get_connections_for_architecture(&self, architecture_id: &str) -> SqliteResult<Vec<Connection>> {
+        let conn = self.get_conn().map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))))?;
+        Self::get_connections_for_architecture_internal(&conn, architecture_id)
+    }
+
     /// Add a file to a component
     fn add_component_file(&self, component_id: &str, file_path: &str, role: &str) -> SqliteResult<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.get_conn().map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))))?;
         conn.execute(
             "INSERT OR IGNORE INTO component_files (component_id, file_path, role)
              VALUES (?1, ?2, ?3)",
@@ -385,7 +420,7 @@ impl ArchitectureStorage {
 
     /// Get all files for a component
     fn get_component_files(&self, component_id: &str) -> SqliteResult<Vec<String>> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.get_conn().map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))))?;
         let mut stmt = conn.prepare(
             "SELECT file_path FROM component_files WHERE component_id = ?1"
         )?;
@@ -398,7 +433,7 @@ impl ArchitectureStorage {
 
     /// Save architecture version
     pub fn save_version(&self, version: &ArchitectureVersion) -> SqliteResult<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.get_conn().map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))))?;
         let snapshot_json = serde_json::to_string(&version.snapshot).unwrap_or_default();
         
         conn.execute(
@@ -420,7 +455,7 @@ impl ArchitectureStorage {
 
     /// Get all versions for an architecture
     pub fn list_versions(&self, architecture_id: &str) -> SqliteResult<Vec<ArchitectureVersion>> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.get_conn().map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))))?;
         let mut stmt = conn.prepare(
             "SELECT id, architecture_id, version, commit_message, snapshot, created_at
              FROM architecture_versions 
@@ -450,7 +485,7 @@ impl ArchitectureStorage {
 
     /// Get specific version
     pub fn get_version(&self, version_id: &str) -> SqliteResult<Option<ArchitectureVersion>> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.get_conn().map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))))?;
         let mut stmt = conn.prepare(
             "SELECT id, architecture_id, version, commit_message, snapshot, created_at
              FROM architecture_versions WHERE id = ?1"
@@ -481,7 +516,7 @@ impl ArchitectureStorage {
 
     /// Verify database integrity
     pub fn verify_integrity(&self) -> SqliteResult<bool> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.get_conn().map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))))?;
         let mut stmt = conn.prepare("PRAGMA integrity_check")?;
         let result: String = stmt.query_row([], |row| row.get(0))?;
         Ok(result == "ok")
@@ -489,7 +524,7 @@ impl ArchitectureStorage {
 
     /// Create backup
     pub fn create_backup<P: AsRef<Path>>(&self, backup_path: P) -> SqliteResult<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.get_conn().map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))))?;
         let mut backup_conn = SqliteConnection::open(backup_path)?;
         
         let backup = rusqlite::backup::Backup::new(&*conn, &mut backup_conn)?;

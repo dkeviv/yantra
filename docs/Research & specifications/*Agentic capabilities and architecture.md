@@ -246,4 +246,56 @@ Here's the comprehensive tool architecture for a full agentic IDE:
 
 ---
 
-**Usage:** This was a **high-usage response** (~1500 tokens). Want me to dive deeper into interface schemas for any specific tier/category?
+# Agentic Tools Architecture
+
+---
+
+## Key Insight: Two Protocols, Different Purposes
+
+| Protocol                          | Purpose                                                  | Who Uses It                 |
+| --------------------------------- | -------------------------------------------------------- | --------------------------- |
+| **LSP**(Language Server Protocol) | Code intelligence (autocomplete, diagnostics, go-to-def) | Editors ↔ Language Servers |
+| **MCP**(Model Context Protocol)   | AI agent tool access (file ops, terminal, APIs)          | AI Agents ↔ Tool Servers   |
+
+**For Yantra, you need both.**
+
+---
+
+## Can Tauri Use VS Code Extensions?
+
+**Short answer: No, not directly.**
+
+VS Code extensions can't run directly in Tauri or Electron. However, if you have access from your client/front-end directly to the file-system (like in VS Code desktop version), you can directly use the underlying vscode-languageclient.
+
+**What you CAN do:**
+
+| Layer                     | VS Code Uses                    | Yantra Can Use                                                 |
+| ------------------------- | ------------------------------- | -------------------------------------------------------------- |
+| **Language Intelligence** | Extensions wrapping LSP servers | Spawn same LSP servers directly (Pylance, rust-analyzer, etc.) |
+| **AI Tools**              | MCP servers                     | Same MCP servers                                               |
+| **Editor**                | Monaco                          | Monaco (via `monaco-editor`npm package)                        |
+
+Any LSP-compliant language toolings can integrate with multiple LSP-compliant code editors, and any LSP-compliant code editor can easily pick up multiple LSP-compliant language toolings.
+
+---
+
+## Recommended Architecture for Each Tool Category
+
+| Category                   | Approach                                        | Maintainer           | Notes                                        |
+| -------------------------- | ----------------------------------------------- | -------------------- | -------------------------------------------- |
+| **File System**            | Built-in (Rust/Tauri)                           | You                  | Core capability, no external dependency      |
+| **Terminal**               | Built-in (Rust PTY)                             | You                  | Core capability                              |
+| **Git**                    | MCP Server (`@modelcontextprotocol/server-git`) | Community            | Well-maintained, standard                    |
+| **Code Intelligence**      | LSP Servers                                     | Language communities | Spawn Pylance, rust-analyzer, tsserver, etc. |
+| **Tree-sitter Parsing**    | Built-in (Rust bindings)                        | You                  | Core differentiator                          |
+| **Dependency Graph (GNN)** | Built-in                                        | You                  | Core differentiator                          |
+| **Database**               | MCP Server or Built-in                          | Hybrid               | See below                                    |
+| **Testing**                | Shell exec + output parsing                     | You                  | Run `npm test`, parse results                |
+| **Build**                  | Shell exec                                      | You                  | Run build commands                           |
+| **Package Mgmt**           | Shell exec                                      | You                  | Run `npm install`,`pip install`              |
+| **Debugging**              | DAP (Debug Adapter Protocol)                    | Language communities | Like LSP but for debuggers                   |
+| **Deployment**             | MCP Servers (Railway, Vercel)                   | Community/You        | Or direct API                                |
+| **Browser Automation**     | Built-in (CDP)                                  | You                  | You already have this                        |
+| **HTTP/API**               | Built-in                                        | You                  | Simple to implement                          |
+
+---
