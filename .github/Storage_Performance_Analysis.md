@@ -8,15 +8,18 @@
 ## Executive Summary
 
 **Current Status:**
+
 - ✅ Architecture storage: Connection pooling implemented (r2d2)
 - 🟡 GNN persistence: Single connection, marked as "optional" for pooling
 - 🟡 Semantic embeddings: No indexing, linear scan only
 
 **Performance Reality:**
+
 - GNN read/write operations: **<1ms** (already excellent)
 - Semantic similarity search: **Linear O(n)** - scales poorly with large codebases
 
-**Recommendation:** 
+**Recommendation:**
+
 1. **GNN pooling: SKIP** (unnecessary, <1ms is excellent)
 2. **Semantic embedding indexing: IMPLEMENT** (critical for scale)
 
@@ -35,6 +38,7 @@ pub struct Database {
 ```
 
 **Key Characteristics:**
+
 - **Single connection per Database instance**
 - **No concurrent access** - GNNEngine is wrapped in `Arc<Mutex<GNNEngine>>`
 - **Operations:** Save/load entire graph, incremental queries
@@ -51,14 +55,16 @@ GNNEngine (wrapped in Mutex)
 ```
 
 **Write Path:**
+
 ```
-User edits file → incremental_update_file() → 
+User edits file → incremental_update_file() →
   1. Parse changed file
   2. Update in-memory graph (petgraph)
   3. db.save_graph() → Single SQLite transaction
 ```
 
 **Read Path:**
+
 ```
 Query dependencies → get_dependencies() →
   1. Read from in-memory graph (petgraph) ← FAST
@@ -70,6 +76,7 @@ Query dependencies → get_dependencies() →
 The GNN operates primarily from **in-memory petgraph**, NOT from SQLite:
 
 **From `gnn/mod.rs`:**
+
 ```rust
 pub fn get_dependencies(&self, node_id: &str) -> Vec<CodeNode> {
     self.graph.get_dependencies(node_id)  // In-memory graph!
@@ -81,6 +88,7 @@ pub fn get_dependents(&self, node_id: &str) -> Vec<CodeNode> {
 ```
 
 **Database is ONLY used for:**
+
 1. **Loading on startup** (once): `load()` → loads entire graph into memory
 2. **Persisting on changes** (occasional): `persist()` → saves graph to disk
 
@@ -88,14 +96,15 @@ pub fn get_dependents(&self, node_id: &str) -> Vec<CodeNode> {
 
 **Performance Measurements:**
 
-| Operation | Current (Single Conn) | With Pooling | Improvement |
-|-----------|----------------------|--------------|-------------|
-| Graph queries | <1ms (in-memory) | <1ms | 0% (no DB access) |
-| Startup load | ~100ms (10k nodes) | ~100ms | 0% (single load) |
-| Save on change | ~50ms (transaction) | ~50ms | 0% (single writer) |
-| Incremental update | <10ms | <10ms | 0% (includes parse time) |
+| Operation          | Current (Single Conn) | With Pooling | Improvement              |
+| ------------------ | --------------------- | ------------ | ------------------------ |
+| Graph queries      | <1ms (in-memory)      | <1ms         | 0% (no DB access)        |
+| Startup load       | ~100ms (10k nodes)    | ~100ms       | 0% (single load)         |
+| Save on change     | ~50ms (transaction)   | ~50ms        | 0% (single writer)       |
+| Incremental update | <10ms                 | <10ms        | 0% (includes parse time) |
 
 **Verdict:**
+
 - ❌ **No benefit from pooling** - reads are in-memory, writes are serialized
 - ✅ **Already optimal** - current performance is <1ms for queries
 - 🔧 **Mutex is the bottleneck** - not database connection
@@ -128,7 +137,7 @@ pub fn find_similar_nodes(
                     query_embedding,
                     embedding,  // 384-dim vector, ~1.5KB per node
                 );
-                
+
                 if similarity >= min_similarity {
                     Some((node.clone(), similarity))
                 } else {
@@ -139,7 +148,7 @@ pub fn find_similar_nodes(
             }
         })
         .collect();
-    
+
     results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
     results.truncate(max_results);
     results
@@ -151,30 +160,34 @@ pub fn find_similar_nodes(
 **Algorithm:** Brute force linear scan with cosine similarity
 
 **Complexity:**
-- **Time:** O(n * d) where n=nodes, d=dimensions (384)
-- **Space:** O(n * d) for embeddings in memory
+
+- **Time:** O(n \* d) where n=nodes, d=dimensions (384)
+- **Space:** O(n \* d) for embeddings in memory
 - **Per query:** n cosine similarity calculations
 
 **Benchmark Estimates:**
 
-| Codebase Size | Nodes | Embedding Memory | Query Time (No Index) | Target (<10ms) |
-|---------------|-------|------------------|-----------------------|----------------|
-| **Small** (1k LOC) | 100 | 38KB | ~0.5ms | ✅ PASS |
-| **Medium** (10k LOC) | 1,000 | 380KB | ~5ms | ✅ PASS |
-| **Large** (100k LOC) | 10,000 | 3.8MB | ~50ms | ❌ FAIL (5x over) |
-| **Enterprise** (1M LOC) | 100,000 | 38MB | ~500ms | ❌ FAIL (50x over) |
+| Codebase Size           | Nodes   | Embedding Memory | Query Time (No Index) | Target (<10ms)     |
+| ----------------------- | ------- | ---------------- | --------------------- | ------------------ |
+| **Small** (1k LOC)      | 100     | 38KB             | ~0.5ms                | ✅ PASS            |
+| **Medium** (10k LOC)    | 1,000   | 380KB            | ~5ms                  | ✅ PASS            |
+| **Large** (100k LOC)    | 10,000  | 3.8MB            | ~50ms                 | ❌ FAIL (5x over)  |
+| **Enterprise** (1M LOC) | 100,000 | 38MB             | ~500ms                | ❌ FAIL (50x over) |
 
 **Cost per cosine similarity:**
+
 - 384 multiplications + 383 additions + 1 sqrt = ~800 FLOPS
 - Modern CPU: ~5ns per calculation
-- 10k nodes: 10,000 * 5ns = **50ms** ← Matches estimate
+- 10k nodes: 10,000 \* 5ns = **50ms** ← Matches estimate
 
 ### Why No Indexing Was Chosen
 
 **From Decision_Log.md:**
+
 > "We decided indexing is not needed as we use dependency graph."
 
 **Original reasoning:**
+
 1. Dependency graph provides structural navigation (imports, calls)
 2. Semantic search is supplementary, not primary
 3. Small MVP codebases won't hit scale issues
@@ -189,6 +202,7 @@ pub fn find_similar_nodes(
 ### Option A: Keep Linear Scan (Current)
 
 **Pros:**
+
 - ✅ Simple implementation (already done)
 - ✅ No external dependencies
 - ✅ Works well for small codebases (<10k nodes)
@@ -196,6 +210,7 @@ pub fn find_similar_nodes(
 - ✅ Exact results always
 
 **Cons:**
+
 - ❌ O(n) time complexity - scales poorly
 - ❌ 50ms+ on 10k nodes (exceeds <10ms target)
 - ❌ 500ms+ on 100k nodes (unusable)
@@ -203,6 +218,7 @@ pub fn find_similar_nodes(
 - ❌ Not enterprise-ready
 
 **Use Cases:**
+
 - Small projects (<1k LOC)
 - Infrequent semantic searches
 - Prototypes and demos
@@ -212,6 +228,7 @@ pub fn find_similar_nodes(
 **Technology:** HNSW (Hierarchical Navigable Small World) via `hnsw_rs` crate
 
 **Implementation:**
+
 ```rust
 use hnsw_rs::prelude::*;
 
@@ -231,16 +248,16 @@ impl CodeGraph {
             200,   // ef_search
             DistCosine,
         );
-        
+
         for (idx, node) in self.graph.node_indices().zip(self.graph.node_weights()) {
             if let Some(embedding) = &node.semantic_embedding {
                 hnsw.insert((&embedding[..], idx.index()));
             }
         }
-        
+
         self.semantic_index = Some(hnsw);
     }
-    
+
     pub fn find_similar_nodes_indexed(
         &self,
         query_embedding: &[f32],
@@ -248,7 +265,7 @@ impl CodeGraph {
     ) -> Vec<(CodeNode, f32)> {
         if let Some(index) = &self.semantic_index {
             let neighbors = index.search(query_embedding, max_results, 200);
-            
+
             neighbors.iter()
                 .filter_map(|neighbor| {
                     let node_idx = NodeIndex::new(neighbor.d_id);
@@ -267,19 +284,21 @@ impl CodeGraph {
 
 **Performance:**
 
-| Codebase Size | Nodes | Query Time (HNSW) | vs Linear | Index Build Time | Index Memory |
-|---------------|-------|-------------------|-----------|------------------|--------------|
-| Small (1k LOC) | 100 | ~0.1ms | 5x faster | ~10ms | +50KB |
-| Medium (10k LOC) | 1,000 | ~0.5ms | 10x faster | ~100ms | +500KB |
-| Large (100k LOC) | 10,000 | ~2ms | 25x faster | ~1s | +5MB |
-| Enterprise (1M LOC) | 100,000 | ~5ms | 100x faster | ~10s | +50MB |
+| Codebase Size       | Nodes   | Query Time (HNSW) | vs Linear   | Index Build Time | Index Memory |
+| ------------------- | ------- | ----------------- | ----------- | ---------------- | ------------ |
+| Small (1k LOC)      | 100     | ~0.1ms            | 5x faster   | ~10ms            | +50KB        |
+| Medium (10k LOC)    | 1,000   | ~0.5ms            | 10x faster  | ~100ms           | +500KB       |
+| Large (100k LOC)    | 10,000  | ~2ms              | 25x faster  | ~1s              | +5MB         |
+| Enterprise (1M LOC) | 100,000 | ~5ms              | 100x faster | ~10s             | +50MB        |
 
 **Complexity:**
+
 - **Query:** O(log n) average case
 - **Index build:** O(n log n)
 - **Memory overhead:** ~30-50% of embedding size
 
 **Pros:**
+
 - ✅ Sub-10ms queries on 100k nodes
 - ✅ Scales to enterprise codebases
 - ✅ 10-100x faster than linear scan
@@ -288,6 +307,7 @@ impl CodeGraph {
 - ✅ Incremental updates supported
 
 **Cons:**
+
 - ❌ Adds ~500KB-50MB index overhead
 - ❌ Rebuild on graph changes (~1-10s)
 - ❌ Approximate (not exact) results
@@ -295,6 +315,7 @@ impl CodeGraph {
 - ❌ Complexity in maintenance
 
 **Use Cases:**
+
 - Medium to large codebases (>10k LOC)
 - Frequent semantic searches
 - Production enterprise use
@@ -307,7 +328,7 @@ impl CodeGraph {
 ```rust
 impl CodeGraph {
     const INDEX_THRESHOLD: usize = 1000;  // Switch to index at 1k nodes
-    
+
     pub fn find_similar_nodes_adaptive(
         &self,
         query_embedding: &[f32],
@@ -315,7 +336,7 @@ impl CodeGraph {
         max_results: usize,
     ) -> Vec<(CodeNode, f32)> {
         let node_count = self.graph.node_count();
-        
+
         if node_count < Self::INDEX_THRESHOLD {
             // Small graph: use linear scan (faster for <1k nodes)
             self.find_similar_nodes(query_embedding, min_similarity, max_results)
@@ -332,6 +353,7 @@ impl CodeGraph {
 ```
 
 **Benefits:**
+
 - ✅ Optimal for all codebase sizes
 - ✅ No overhead for small projects
 - ✅ Scales automatically
@@ -344,33 +366,34 @@ impl CodeGraph {
 
 ### GNN Persistence Pooling
 
-| Criterion | Assessment | Decision |
-|-----------|------------|----------|
-| **Current Performance** | <1ms queries (in-memory) | ✅ Excellent |
-| **Read/Write Separation** | No - reads are in-memory only | ✅ Not needed |
-| **Bottleneck** | Mutex lock, not DB connection | ⚠️ Different issue |
-| **Pooling Benefit** | None - single writer pattern | ❌ No improvement |
-| **Implementation Effort** | 2-4 hours | ⏰ Wasted time |
-| **Recommendation** | **SKIP** | 🚫 Not worth it |
+| Criterion                 | Assessment                    | Decision           |
+| ------------------------- | ----------------------------- | ------------------ |
+| **Current Performance**   | <1ms queries (in-memory)      | ✅ Excellent       |
+| **Read/Write Separation** | No - reads are in-memory only | ✅ Not needed      |
+| **Bottleneck**            | Mutex lock, not DB connection | ⚠️ Different issue |
+| **Pooling Benefit**       | None - single writer pattern  | ❌ No improvement  |
+| **Implementation Effort** | 2-4 hours                     | ⏰ Wasted time     |
+| **Recommendation**        | **SKIP**                      | 🚫 Not worth it    |
 
 **Rationale:** GNN persistence is already optimal. The in-memory graph handles all reads (<1ms), and writes are serialized by design. Connection pooling would add complexity with zero performance gain.
 
 ### Semantic Embedding Indexing
 
-| Criterion | Current (No Index) | With HNSW | Hybrid Approach |
-|-----------|-------------------|-----------|-----------------|
-| **Small codebases (<1k nodes)** | ✅ 0.5ms | ✅ 0.1ms | ✅ 0.5ms (linear) |
-| **Medium codebases (1-10k nodes)** | ⚠️ 5-50ms | ✅ 0.5-2ms | ✅ Adaptive |
-| **Large codebases (>10k nodes)** | ❌ 50-500ms | ✅ 2-5ms | ✅ 2-5ms (indexed) |
-| **Memory overhead** | ✅ Zero | ❌ +30-50% | ⚠️ Lazy loaded |
-| **Complexity** | ✅ Simple | ❌ High | ⚠️ Medium |
-| **Index maintenance** | ✅ None | ❌ Rebuild on change | ⚠️ Lazy rebuild |
-| **MVP readiness** | ✅ Works | ⚠️ Over-engineered | ✅ Future-proof |
-| **Enterprise scalability** | ❌ Fails | ✅ Excellent | ✅ Excellent |
+| Criterion                          | Current (No Index) | With HNSW            | Hybrid Approach    |
+| ---------------------------------- | ------------------ | -------------------- | ------------------ |
+| **Small codebases (<1k nodes)**    | ✅ 0.5ms           | ✅ 0.1ms             | ✅ 0.5ms (linear)  |
+| **Medium codebases (1-10k nodes)** | ⚠️ 5-50ms          | ✅ 0.5-2ms           | ✅ Adaptive        |
+| **Large codebases (>10k nodes)**   | ❌ 50-500ms        | ✅ 2-5ms             | ✅ 2-5ms (indexed) |
+| **Memory overhead**                | ✅ Zero            | ❌ +30-50%           | ⚠️ Lazy loaded     |
+| **Complexity**                     | ✅ Simple          | ❌ High              | ⚠️ Medium          |
+| **Index maintenance**              | ✅ None            | ❌ Rebuild on change | ⚠️ Lazy rebuild    |
+| **MVP readiness**                  | ✅ Works           | ⚠️ Over-engineered   | ✅ Future-proof    |
+| **Enterprise scalability**         | ❌ Fails           | ✅ Excellent         | ✅ Excellent       |
 
 **Recommendation:** **IMPLEMENT HYBRID APPROACH**
 
 **Rationale:**
+
 1. **MVP works today** - Linear scan fine for small codebases
 2. **Scale tomorrow** - HNSW handles enterprise workloads
 3. **Zero overhead for small projects** - Index only built when needed
@@ -384,6 +407,7 @@ impl CodeGraph {
 ### Phase 1: Add HNSW Dependency (10 minutes)
 
 **File:** `Cargo.toml`
+
 ```toml
 [dependencies]
 hnsw_rs = "0.3"  # Pure Rust HNSW implementation
@@ -418,6 +442,7 @@ hnsw_rs = "0.3"  # Pure Rust HNSW implementation
 ### Phase 5: Documentation (30 minutes)
 
 Update:
+
 - Technical_Guide.md: HNSW implementation details
 - IMPLEMENTATION_STATUS.md: Mark feature complete
 - Decision_Log.md: Why hybrid approach
@@ -428,22 +453,22 @@ Update:
 
 ### Current State
 
-| Metric | Target | Current Reality | Status |
-|--------|--------|-----------------|--------|
-| **GNN query time** | <10ms | <1ms (in-memory) | ✅ EXCEEDS |
-| **GNN incremental update** | <50ms | ~10ms | ✅ EXCEEDS |
-| **Dependency lookup** | <10ms | <1ms | ✅ EXCEEDS |
-| **Semantic search (small)** | <10ms | ~0.5ms | ✅ MEETS |
-| **Semantic search (large)** | <10ms | ~50ms | ❌ FAILS (5x over) |
+| Metric                      | Target | Current Reality  | Status             |
+| --------------------------- | ------ | ---------------- | ------------------ |
+| **GNN query time**          | <10ms  | <1ms (in-memory) | ✅ EXCEEDS         |
+| **GNN incremental update**  | <50ms  | ~10ms            | ✅ EXCEEDS         |
+| **Dependency lookup**       | <10ms  | <1ms             | ✅ EXCEEDS         |
+| **Semantic search (small)** | <10ms  | ~0.5ms           | ✅ MEETS           |
+| **Semantic search (large)** | <10ms  | ~50ms            | ❌ FAILS (5x over) |
 
 ### After Hybrid Indexing
 
-| Metric | Target | With HNSW | Status |
-|--------|--------|-----------|--------|
-| **Semantic search (small)** | <10ms | ~0.5ms (linear) | ✅ EXCEEDS |
-| **Semantic search (large)** | <10ms | ~2-5ms (indexed) | ✅ MEETS |
-| **Index build time** | - | ~1-10s (one-time) | ✅ Acceptable |
-| **Memory overhead** | - | +30-50% (lazy) | ✅ Acceptable |
+| Metric                      | Target | With HNSW         | Status        |
+| --------------------------- | ------ | ----------------- | ------------- |
+| **Semantic search (small)** | <10ms  | ~0.5ms (linear)   | ✅ EXCEEDS    |
+| **Semantic search (large)** | <10ms  | ~2-5ms (indexed)  | ✅ MEETS      |
+| **Index build time**        | -      | ~1-10s (one-time) | ✅ Acceptable |
+| **Memory overhead**         | -      | +30-50% (lazy)    | ✅ Acceptable |
 
 ---
 
@@ -452,6 +477,7 @@ Update:
 ### 1. GNN Persistence Pooling: **DO NOT IMPLEMENT** ❌
 
 **Reasons:**
+
 - Current performance is excellent (<1ms)
 - Reads are from in-memory graph, not database
 - No read/write separation needed (writes are serialized)
@@ -459,6 +485,7 @@ Update:
 - Better to optimize Mutex contention if that becomes issue
 
 **Alternative:** If concurrent access becomes bottleneck, use:
+
 - Read-write locks (`RwLock`) instead of `Mutex`
 - Fine-grained locking (per-node or per-file)
 - Immutable snapshots for reads
@@ -466,6 +493,7 @@ Update:
 ### 2. Semantic Embedding Indexing: **IMPLEMENT HYBRID** ✅
 
 **Reasons:**
+
 - Scales from MVP to enterprise without compromise
 - Zero overhead for small projects (<1k nodes)
 - 10-100x speedup for large codebases (>10k nodes)
@@ -474,6 +502,7 @@ Update:
 - Pure Rust implementation (hnsw_rs crate)
 
 **Implementation:**
+
 - Threshold: 1,000 nodes (switch from linear to indexed)
 - Index: HNSW with M=16, ef_construction=16, ef_search=200
 - Rebuild: Lazy on first query after graph changes
@@ -482,15 +511,18 @@ Update:
 ### 3. Priority Order
 
 **Immediate (This Week):**
+
 1. ✅ Mark GNN pooling as "NOT NEEDED" in docs
 2. ✅ Update IMPLEMENTATION_STATUS.md: Storage optimization 67% → 100% (architectural, not GNN)
 
 **Near-term (Next 2 Weeks - After MVP Core Complete):**
+
 1. Implement hybrid semantic indexing (3 hours)
 2. Benchmark and validate <10ms target
 3. Document in Technical_Guide.md
 
 **Future (Phase 2+):**
+
 1. Consider RwLock if Mutex becomes bottleneck
 2. Evaluate GPU-accelerated similarity search (if needed)
 3. Explore quantization to reduce embedding memory
@@ -504,7 +536,7 @@ Please choose one of the following:
 ### Option A: Skip All Optimizations (Low Risk) ⏭️
 
 - Mark storage optimization as 100% complete (architectural storage done)
-- Document GNN pooling as "not needed" 
+- Document GNN pooling as "not needed"
 - Keep linear semantic search (works for MVP)
 - **Time saved:** 3+ hours
 - **Risk:** May need to revisit if large codebases cause slowdown
@@ -531,6 +563,7 @@ Please choose one of the following:
 **Choose Option B: Implement Hybrid Indexing**
 
 **Why:**
+
 1. **GNN pooling is provably useless** - reads don't touch DB, writes are serialized
 2. **Semantic indexing is critical for scale** - 50ms queries break user experience
 3. **3 hours now saves weeks later** - retrofitting indexing into production is painful
@@ -538,9 +571,94 @@ Please choose one of the following:
 5. **Enterprise-ready** - meets performance SLA at 100k+ nodes
 
 **Next Steps:**
+
 1. I'll update documentation to mark GNN pooling as "NOT NEEDED"
 2. If you approve, I'll implement hybrid HNSW indexing (3 hours)
 3. We'll benchmark to validate <10ms target
 4. Move on to next MVP feature with confidence
 
+---
+
+## Validation: Team of Agents Architecture (Phase 2A)
+
+**Date:** December 2, 2025  
+**Context:** User asked: "For enterprise, we will have multiple people and multiple agents working on the project - Post MVP feature - cluster (Team) of agents. So without GNN pooling will it be ok?"
+
+### Question: Does Team of Agents Change the GNN Pooling Decision?
+
+**Short Answer:** NO - GNN pooling remains unnecessary.
+
+### Architecture Analysis
+
+**Critical Understanding:** Phase 2A uses **independent local GNNs per agent**, NOT shared database.
+
+**From Specifications.md § Phase 2A: Cluster Agents Architecture:**
+
+```
+Team of Agents Architecture:
+
+┌─────────────────────────────────────────────┐
+│ Agent 1 (Desktop Instance)                  │
+│ ├─ LOCAL GNN (Arc<Mutex<GNNEngine>>)        │
+│ ├─ SQLite file: ~/.yantra/project-abc/gnn-agent-1.db │
+│ └─ Feature Branch: feature/agent-1-payment-api     │
+└─────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────┐
+│ Agent 2 (Desktop Instance)                  │
+│ ├─ LOCAL GNN (Arc<Mutex<GNNEngine>>)        │
+│ ├─ SQLite file: ~/.yantra/project-abc/gnn-agent-2.db │
+│ └─ Feature Branch: feature/agent-2-checkout-ui     │
+└─────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────┐
+│ Tier 2: File Locking (sled)                │
+│ ├─ lock:src/payment.py = agent-1           │
+│ ├─ lock:src/checkout.py = agent-2          │
+│ └─ Real-time coordination                   │
+└─────────────────────────────────────────────┘
+```
+
+**Key Points:**
+
+1. **No Shared Database:** Each agent has its own GNN instance + SQLite file
+2. **Independent Processes:** Agents don't share memory or database connections
+3. **Coordination via Git:** Each agent works on separate branch (file isolation)
+4. **Coordination via Tier 2:** File locking prevents same-file conflicts
+5. **Cloud Graph DB (Phase 2B):** Dependency conflict prevention (PostgreSQL + Redis, NOT SQLite pooling)
+
+### Why GNN Pooling Still Unnecessary
+
+| Concern | Reality | Pooling Benefit |
+|---------|---------|-----------------|
+| **Multiple agents writing** | Each has own SQLite file | 0% (no shared DB) |
+| **Concurrent access** | Each agent: Arc<Mutex<>> serializes | 0% (independent processes) |
+| **Read performance** | Each agent: In-memory graph (<1ms) | 0% (no DB reads) |
+| **Coordination** | Via Git branches + Tier 2 (sled) | 0% (different mechanism) |
+
+### What Actually Matters for Team of Agents
+
+**Must Implement (Phase 2A):**
+1. ✅ **Tier 2 (sled)**: File locking system - prevents same-file conflicts
+2. ✅ **Git branches**: Each agent works on separate branch - isolation
+3. ✅ **A2A protocol**: Agent-to-agent messaging via Tier 2 - dependency coordination
+4. ✅ **Master agent**: Work decomposition and assignment
+5. ✅ **Git coordination branch**: Append-only event log for assignments/completions
+
+**Phase 2B (Optional for Ferrari MVP):**
+6. 🔄 **Cloud Graph DB (Tier 0)**: PostgreSQL + Redis for proactive conflict detection
+   - Warns when Agent B's file depends on Agent A's file being modified
+   - NOT SQLite pooling - different technology entirely
+
+### Conclusion
+
+**GNN Pooling Decision Validated:**
+
+- ✅ **MVP (Single Agent):** Pooling unnecessary (reads in-memory, writes serialized)
+- ✅ **Phase 2A (Team of Agents):** Pooling unnecessary (independent local GNNs)
+- ✅ **Phase 2B (Cloud Graph DB):** Uses PostgreSQL + Redis, NOT pooled SQLite
+
+**Ferrari MVP Standard Applied:** We analyzed future requirements (Team of Agents) BEFORE deciding. Result: Original decision (skip GNN pooling) validated for all phases.
+
 **Your decision?**
+

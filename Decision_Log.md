@@ -54,11 +54,11 @@ During storage optimization analysis, evaluated whether semantic search should u
 
 **Performance Reality:**
 
-| Codebase | Nodes | Linear Scan | HNSW | Target (<10ms) |
-|----------|-------|-------------|------|----------------|
-| Small    | 1k    | 0.5ms ✅    | 0.1ms| Both pass      |
-| Medium   | 10k   | 50ms ❌     | 2ms  | HNSW only      |
-| Large    | 100k  | 500ms ❌    | 5ms  | HNSW only      |
+| Codebase | Nodes | Linear Scan | HNSW  | Target (<10ms) |
+| -------- | ----- | ----------- | ----- | -------------- |
+| Small    | 1k    | 0.5ms ✅    | 0.1ms | Both pass      |
+| Medium   | 10k   | 50ms ❌     | 2ms   | HNSW only      |
+| Large    | 100k  | 500ms ❌    | 5ms   | HNSW only      |
 
 **"Ferrari MVP" Philosophy:**
 
@@ -100,16 +100,19 @@ pub struct CodeGraph {
 ### Alternatives Considered
 
 **Option A: Linear Scan (Rejected)**
+
 - ✅ Simple, no dependencies
 - ❌ Breaks at 10k+ nodes (50ms+)
 - ❌ Technical debt from day one
 
 **Option B: Hybrid (Linear <1k, HNSW >1k) (Rejected)**
+
 - ✅ Optimal for all sizes
 - ❌ Added complexity (two code paths)
 - ❌ Threshold tuning overhead
 
 **Option C: HNSW Always (CHOSEN)**
+
 - ✅ Single code path
 - ✅ Enterprise-ready everywhere
 - ✅ No threshold decisions
@@ -146,6 +149,7 @@ pub struct CodeGraph {
 ### Context
 
 Storage optimization had 3 tasks:
+
 1. ✅ Add r2d2 dependencies
 2. ✅ Architecture storage pooling
 3. ❓ GNN persistence pooling (marked as "optional")
@@ -161,6 +165,7 @@ Needed to decide: Implement GNN pooling or skip it?
 **Critical Insight:** GNN reads DON'T touch the database!
 
 **Data Flow:**
+
 ```
 GNNEngine
 ├── graph: CodeGraph (in-memory petgraph) ← Reads happen here (<1ms)
@@ -168,20 +173,22 @@ GNNEngine
 ```
 
 **Database Usage:**
+
 - **Startup:** Load entire graph into memory (once, ~100ms for 10k nodes)
 - **Queries:** Read from in-memory graph (0 database access)
 - **Updates:** Persist changes to disk (occasional, single writer)
 
 **Why Pooling Adds Nothing:**
 
-| Aspect | Reality | Pooling Benefit |
-|--------|---------|-----------------|
-| **Reads** | In-memory graph | 0% (no DB access) |
-| **Startup load** | Once per session | 0% (single load) |
-| **Writes** | Serialized by Mutex | 0% (single writer) |
-| **Concurrency** | Not needed | 0% (Mutex serializes) |
+| Aspect           | Reality             | Pooling Benefit       |
+| ---------------- | ------------------- | --------------------- |
+| **Reads**        | In-memory graph     | 0% (no DB access)     |
+| **Startup load** | Once per session    | 0% (single load)      |
+| **Writes**       | Serialized by Mutex | 0% (single writer)    |
+| **Concurrency**  | Not needed          | 0% (Mutex serializes) |
 
 **Performance:**
+
 - Current: <1ms queries (in-memory)
 - With pooling: <1ms queries (still in-memory)
 - **Improvement: 0%**
@@ -189,12 +196,14 @@ GNNEngine
 ### Alternatives Considered
 
 **Option A: Implement Pooling (Rejected)**
+
 - ✅ "Feels like optimization"
 - ❌ Zero performance gain
 - ❌ Added complexity
 - ❌ Wasted 2-4 hours
 
 **Option B: Skip Pooling (CHOSEN)**
+
 - ✅ No wasted effort
 - ✅ Simpler codebase
 - ✅ Focus on features that matter
@@ -205,6 +214,7 @@ GNNEngine
 **Real bottleneck:** Mutex contention (not DB connection)
 
 **Better solutions:**
+
 1. Use `RwLock` instead of `Mutex` (allow concurrent reads)
 2. Fine-grained locking (per-file or per-node)
 3. Immutable snapshots for reads
@@ -212,16 +222,54 @@ GNNEngine
 
 **NOT:** Connection pooling (wrong problem)
 
+### Validation Against Team of Agents (Phase 2A)
+
+**Question:** Does Team of Agents (multiple agents + multiple developers) require GNN pooling?
+
+**Answer:** NO - GNN pooling still unnecessary because:
+
+**Phase 2A Architecture:**
+- **Each agent runs its own Yantra instance** with its own LOCAL GNN
+- **No shared GNN database** between agents
+- Each agent has: `Arc<Mutex<GNNEngine>>` + separate SQLite file
+- **Coordination happens via:**
+  - Git branches (each agent works on separate branch)
+  - Tier 2 (sled) for real-time file locking
+  - Git coordination branch for assignments/completions
+  - Cloud Graph DB (Phase 2B) for dependency conflict prevention
+
+**Key Insight:** "Team of Agents" = **independent processes**, NOT threads sharing database
+
+**From Specifications.md § Phase 2A:**
+
+```
+Agent 1 Desktop Instance:
+  ├─ LOCAL GNN (Arc<Mutex<GNNEngine>>) + SQLite
+  └─ Feature Branch: feature/agent-1-payment-api
+
+Agent 2 Desktop Instance:
+  ├─ LOCAL GNN (Arc<Mutex<GNNEngine>>) + SQLite  
+  └─ Feature Branch: feature/agent-2-checkout-ui
+
+Coordination:
+  ├─ Tier 2 (sled): File locking service
+  └─ Git: Branch isolation + coordination branch
+```
+
+**Conclusion:** GNN pooling provides zero benefit for MVP (single agent) AND Phase 2A (Team of Agents). Each agent's local GNN operates identically to MVP architecture.
+
 ### Success Criteria
 
 - ✅ GNN queries remain <1ms (already achieved)
 - ✅ No connection overhead (already achieved)
 - ✅ Time saved for actual features (HNSW, browser integration)
+- ✅ Architecture validated for Team of Agents (Phase 2A)
 
 ### References
 
 - **Analysis:** `.github/Storage_Performance_Analysis.md` § GNN Persistence Pooling
 - **Status:** `IMPLEMENTATION_STATUS.md` § 3A. Storage Optimization (marked complete without GNN pooling)
+- **Phase 2A Specs:** `.github/Specifications.md` § Cluster Agents Architecture
 
 ---
 
