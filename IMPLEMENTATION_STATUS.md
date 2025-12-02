@@ -17,7 +17,8 @@
 | **✅ LLM Integration**                      | 13/13        | 🟢 100%      | 0/1 (Qwen Coder)                | 🔴 0%             |
 | **✅ Agent Framework (Orchestration)**      | 13/13        | 🟢 100%      | 0/1 (Cross-Project)             | 🔴 0%             |
 | **🔴 Agentic Capabilities**                 | 1/10         | 🔴 10%       | -                               | -                 |
-| **� Project Initialization & Arch-First**   | 4/8          | � 50%        | -                               | -                 |
+| **🔴 Agent Execution Intelligence**         | 0/3          | 🔴 0%        | -                               | -                 |
+| **🟡 Project Initialization & Arch-First**  | 4/8          | 🟡 50%       | -                               | -                 |
 | **🔴 Interaction Modes (Guided/Auto)**      | 0/10         | 🔴 0%        | -                               | -                 |
 | **🔴 Cascading Failure Protection**         | 0/10         | 🔴 0%        | -                               | -                 |
 | **🔴 State Machine Refactoring**            | 0/4          | 🔴 0%        | 0/1 (Maintenance Machine)       | 🔴 0%             |
@@ -43,9 +44,9 @@
 | **⚡ Storage Tier 1 (In-Memory GNN)**       | -            | -            | 0/5 (Phase 3)                   | 🔴 0%             |
 | **🌐 Multi-Language Support**               | 10/10        | 🟢 100%      | -                               | -                 |
 | **🤝 Collaboration Features**               | -            | -            | 0/5                             | 🔴 0%             |
-| **TOTAL**                                   | **78/135**   | **58%**      | **0/105**                       | **0%**            |
+| **TOTAL**                                   | **78/138**   | **57%**      | **0/105**                       | **0%**            |
 
-**MVP Status:** 78/135 features complete (58%) - Core foundation + Architecture + Storage + HNSW pending! 🚀  
+**MVP Status:** 78/138 features complete (57%) - Core foundation solid, Agent Intelligence + Browser + HNSW pending! 🚀  
 **Post-MVP Status:** 0/105 features started (0%) - Optimization & scaling features for future phases
 
 **Key MVP Achievements:**
@@ -345,6 +346,129 @@
 | Smart Terminal Reuse   | Tool          | ✅ DONE | Process detection, reuse before create | P0       |
 
 **Status:** ✅ **COMPLETE** - Full terminal capabilities with smart management
+
+---
+
+#### 🆕 3.1B Agent Execution Intelligence (0/3 = 0%) 🔴 MVP CRITICAL
+
+**Purpose:** Prevent agent from blocking on long-running commands. Enable parallel task execution with transparent status reporting.
+
+**Problem:** Agent currently blocks on builds/tests (30-60s), appearing "frozen" to users. Cannot handle parallel tasks during long operations.
+
+**Solution:** Intelligent command classification + automatic background execution + polling + transparent communication.
+
+| Component | Status | Implementation | Priority |
+|-----------|--------|----------------|----------|
+| Command Classifier | 🔴 TODO | `agent/command_classifier.rs` (NEW, ~200 lines) | **P0** |
+| Intelligent Executor | 🔴 TODO | Update `agent/orchestrator.rs` (~300 lines) | **P0** |
+| Status Emitter | 🔴 TODO | Event system for UI updates (~100 lines) | **P0** |
+
+**Command Classification Patterns:**
+
+| Pattern | Duration | Strategy | Example |
+|---------|----------|----------|---------|
+| Build commands | Long (10-60s) | Background + poll every 2-5s | `npm run build`, `cargo build` |
+| Test execution | Long (5-30s) | Background + poll + progress | `pytest`, `npm test` |
+| Dev servers | Infinite | Fire & forget + monitor | `npm start`, `python manage.py runserver` |
+| Package install | Medium (5-20s) | Background + poll | `npm install`, `pip install` |
+| Quick queries | Quick (<1s) | Synchronous | `git status`, `ls`, `cat` |
+
+**Transparency Requirements (Must-Have):**
+
+Every long-running command MUST show:
+1. **Start:** "Detected long-running command (npm build), executing in background"
+2. **During:** Poll every 2-5s, show progress: "[12s] Still building... (47/150 files)"
+3. **Available:** Remind user: "💬 I'm still available! Ask me anything."
+4. **Complete:** Report results: "✅ Build completed in 23s!"
+
+**Agent Status Panel (UI):**
+
+```
+┌──────────────────────────────────────┐
+│ 🤖 Agent: ACTIVE & AVAILABLE         │
+├──────────────────────────────────────┤
+│ Background Tasks:                    │
+│ 🔨 npm run build [12s] ⏳           │
+│    📊 Compiling 47/150 files        │
+│ ✅ pytest [Complete] 15/15 passed   │
+│                                      │
+│ 💬 Ready for your next request!     │
+└──────────────────────────────────────┘
+```
+
+**Files to Create:**
+
+1. 🔴 **NEW:** `src-tauri/src/agent/command_classifier.rs` (~200 lines)
+   - `CommandDuration` enum (Quick, Medium, Long, Infinite)
+   - Pattern database for common commands
+   - `classify(command, args) -> CommandDuration`
+   - `explain_classification() -> String` (for transparency)
+
+2. 🔴 **UPDATE:** `src-tauri/src/agent/orchestrator.rs` (~300 lines added)
+   - `IntelligentExecutor` struct
+   - `execute_with_intelligence()` - main entry point
+   - `execute_with_polling()` - background + status updates
+   - `execute_fire_and_forget()` - infinite processes
+   - Status emission every 2-5s
+
+3. 🔴 **NEW:** `src-tauri/src/agent/status_emitter.rs` (~100 lines)
+   - `StatusEmitter` trait
+   - Tauri event integration for UI updates
+   - `emit_status()`, `emit_progress()`, `emit_error()`
+
+4. 🔴 **UPDATE:** `src-ui/components/AgentStatus.tsx` (~150 lines)
+   - Real-time status display
+   - Background task list with progress
+   - Availability indicator
+
+**Performance Targets:**
+
+- ✅ Classification time: <5ms (no added latency)
+- ✅ Poll interval: 2-5s (balance responsiveness vs overhead)
+- ✅ Agent response during background task: <200ms
+- ✅ Terminal pool utilization: >70% reuse rate
+- ✅ Parallel tasks: 3+ simultaneous background operations
+
+**Success Metrics:**
+
+- ✅ Agent never blocks >1s on any command
+- ✅ 100% of long-running commands show status updates
+- ✅ User can always interact with agent (no "frozen" state)
+- ✅ Clear transparency: what/why/when for every operation
+
+**Benefits:**
+
+1. **🚀 10x Perceived Speed:** Agent never appears frozen
+2. **💬 Always Available:** Respond to queries during builds/tests
+3. **🔄 True Parallelism:** Build + test + generate code simultaneously
+4. **📊 Full Visibility:** Users see exactly what's happening
+5. **🧠 Smart Execution:** Automatic optimal strategy selection
+6. **🎯 User Trust:** Transparency builds confidence in AI agent
+
+**Effort Estimate:** 6-8 hours
+- Command Classifier: 2 hours (pattern database + tests)
+- Intelligent Executor: 3 hours (orchestrator updates + polling)
+- Status Emitter: 1 hour (event system integration)
+- UI Updates: 1 hour (AgentStatus component)
+- Testing: 1 hour (verify all patterns work)
+
+**Status:** 🔴 **NOT STARTED**  
+**Priority:** ⚡ **P0 - MVP BLOCKER**  
+**Why Critical:** Agent that blocks for 30s on builds feels broken. This is the difference between "Ferrari MVP" and "frustrating MVP."
+
+**Dependencies:** 
+- ✅ Terminal infrastructure (complete)
+- ✅ Background execution support (complete)
+- ✅ Process detection (complete)
+
+**Next Steps:**
+1. Create `command_classifier.rs` with pattern database
+2. Update `orchestrator.rs` with intelligent execution logic
+3. Implement status polling with 2-5s intervals
+4. Add UI components for real-time status display
+5. Test with real-world scenarios (npm build, pytest, etc.)
+
+---
 
 #### 3.2 Git & Version Control (10/11 = 91%)
 
@@ -1308,10 +1432,10 @@ for node in gnn.get_all_nodes() {
 - ✅ **Test Stability:** All 4 storage tests pass (0.01s), no hanging issues
 - ✅ **Dependency Management:** Maintained rusqlite 0.30.0 + r2d2_sqlite 0.23 compatibility (no conflicts)
 
-| #    | Task                               | Status  | Files                                   | Notes                                               |
-| ---- | ---------------------------------- | ------- | --------------------------------------- | --------------------------------------------------- |
-| 3A.1 | Add r2d2 dependencies              | ✅ DONE | `Cargo.toml`                            | r2d2 = "0.8", r2d2_sqlite = "0.23"                  |
-| 3A.2 | Architecture storage WAL + pooling | ✅ DONE | `src-tauri/src/architecture/storage.rs` | Pool with 10 max connections, 2 min idle, WAL mode  |
+| #    | Task                               | Status  | Files                                   | Notes                                              |
+| ---- | ---------------------------------- | ------- | --------------------------------------- | -------------------------------------------------- |
+| 3A.1 | Add r2d2 dependencies              | ✅ DONE | `Cargo.toml`                            | r2d2 = "0.8", r2d2_sqlite = "0.23"                 |
+| 3A.2 | Architecture storage WAL + pooling | ✅ DONE | `src-tauri/src/architecture/storage.rs` | Pool with 10 max connections, 2 min idle, WAL mode |
 
 **GNN Persistence Decision:**  
 GNN pooling NOT implemented - analysis shows reads are in-memory only (<1ms), database only used for startup load and occasional persist. Pooling would add complexity with zero performance gain. See `.github/Storage_Performance_Analysis.md` for detailed analysis.
@@ -1330,23 +1454,23 @@ Yantra is building a **Ferrari MVP**, not a Corolla MVP. We use HNSW indexing fr
 
 **Performance Requirements:**
 
-| Codebase Size | Nodes   | Target  | Linear Scan | HNSW Index | Meets Target |
-|---------------|---------|---------|-------------|------------|--------------|
-| Small         | 1k      | <10ms   | 0.5ms       | 0.1ms      | ✅ Both pass |
-| Medium        | 10k     | <10ms   | 50ms ❌     | 2ms ✅     | HNSW only    |
-| Large         | 100k    | <10ms   | 500ms ❌    | 5ms ✅     | HNSW only    |
+| Codebase Size | Nodes | Target | Linear Scan | HNSW Index | Meets Target |
+| ------------- | ----- | ------ | ----------- | ---------- | ------------ |
+| Small         | 1k    | <10ms  | 0.5ms       | 0.1ms      | ✅ Both pass |
+| Medium        | 10k   | <10ms  | 50ms ❌     | 2ms ✅     | HNSW only    |
+| Large         | 100k  | <10ms  | 500ms ❌    | 5ms ✅     | HNSW only    |
 
 **Decision:** HNSW indexing is non-negotiable. Enterprise-ready from day one.
 
 **Implementation Tasks:**
 
-| #     | Task                          | Status  | Files                           | Effort |
-|-------|-------------------------------|---------|--------------------------------|--------|
-| 3B.1  | Add hnsw_rs dependency        | 🔴 TODO | `Cargo.toml`                    | 10min  |
-| 3B.2  | Extend CodeGraph with index   | 🔴 TODO | `src-tauri/src/gnn/graph.rs`    | 1h     |
-| 3B.3  | Add find_similar_nodes_indexed| 🔴 TODO | `src-tauri/src/gnn/graph.rs`    | 1h     |
-| 3B.4  | Update GNNEngine methods      | 🔴 TODO | `src-tauri/src/gnn/mod.rs`      | 30min  |
-| 3B.5  | Test & benchmark             | 🔴 TODO | `src-tauri/tests/gnn_*.rs`      | 1h     |
+| #    | Task                           | Status  | Files                        | Effort |
+| ---- | ------------------------------ | ------- | ---------------------------- | ------ |
+| 3B.1 | Add hnsw_rs dependency         | 🔴 TODO | `Cargo.toml`                 | 10min  |
+| 3B.2 | Extend CodeGraph with index    | 🔴 TODO | `src-tauri/src/gnn/graph.rs` | 1h     |
+| 3B.3 | Add find_similar_nodes_indexed | 🔴 TODO | `src-tauri/src/gnn/graph.rs` | 1h     |
+| 3B.4 | Update GNNEngine methods       | 🔴 TODO | `src-tauri/src/gnn/mod.rs`   | 30min  |
+| 3B.5 | Test & benchmark               | 🔴 TODO | `src-tauri/tests/gnn_*.rs`   | 1h     |
 
 **Total Effort:** ~3 hours
 
@@ -1371,13 +1495,13 @@ impl CodeGraph {
             200,   // ef_search
             DistCosine,
         );
-        
+
         for (idx, node) in self.graph.node_indices().zip(self.graph.node_weights()) {
             if let Some(embedding) = &node.semantic_embedding {
                 hnsw.insert((&embedding[..], idx.index()));
             }
         }
-        
+
         self.semantic_index = hnsw;
     }
 }
@@ -1591,18 +1715,18 @@ Scenario: User has dev server running in Terminal 1
 
 **Important:** This section tracks **actual autonomous agent implementations**, not the orchestration framework. The Agent Framework (Section 5) provides the infrastructure; this section tracks the agents that use it.
 
-| #     | Agent Capability          | Status  | Files                                       | Tests | Notes                                                 |
-| ----- | ------------------------- | ------- | ------------------------------------------- | ----- | ----------------------------------------------------- |
-| 5A.1  | **HTTP Client Agent**     | ✅ DONE | `src-tauri/src/agent/http_client/` (451 lines) | -   | Circuit breaker, retry, rate limiting (100 req/s)     |
-| 5A.2  | **Database Manager**      | 🔴 TODO | -                                           | -     | SQL execution, schema management, migrations          |
-| 5A.3  | **API Monitor**           | 🔴 TODO | -                                           | -     | External API tracking, health checks, auto-healing    |
-| 5A.4  | **File Watcher**          | 🔴 TODO | -                                           | -     | Real-time file change detection, debouncing           |
-| 5A.5  | **Workflow Engine**       | 🔴 TODO | -                                           | -     | Multi-step automation, conditional logic              |
-| 5A.6  | **Self-Healing Agent**    | 🔴 TODO | -                                           | -     | Production issue auto-fix, rollback decisions         |
-| 5A.7  | **Log Analyzer**          | 🔴 TODO | -                                           | -     | Error pattern recognition, root cause analysis        |
-| 5A.8  | **Performance Profiler**  | 🔴 TODO | -                                           | -     | Bottleneck detection, optimization suggestions        |
-| 5A.9  | **Cost Optimizer**        | 🔴 TODO | -                                           | -     | Cloud spend optimization, resource right-sizing       |
-| 5A.10 | **Documentation Agent**   | 🔴 TODO | -                                           | -     | Auto-doc generation, API doc sync, README maintenance |
+| #     | Agent Capability         | Status  | Files                                          | Tests | Notes                                                 |
+| ----- | ------------------------ | ------- | ---------------------------------------------- | ----- | ----------------------------------------------------- |
+| 5A.1  | **HTTP Client Agent**    | ✅ DONE | `src-tauri/src/agent/http_client/` (451 lines) | -     | Circuit breaker, retry, rate limiting (100 req/s)     |
+| 5A.2  | **Database Manager**     | 🔴 TODO | -                                              | -     | SQL execution, schema management, migrations          |
+| 5A.3  | **API Monitor**          | 🔴 TODO | -                                              | -     | External API tracking, health checks, auto-healing    |
+| 5A.4  | **File Watcher**         | 🔴 TODO | -                                              | -     | Real-time file change detection, debouncing           |
+| 5A.5  | **Workflow Engine**      | 🔴 TODO | -                                              | -     | Multi-step automation, conditional logic              |
+| 5A.6  | **Self-Healing Agent**   | 🔴 TODO | -                                              | -     | Production issue auto-fix, rollback decisions         |
+| 5A.7  | **Log Analyzer**         | 🔴 TODO | -                                              | -     | Error pattern recognition, root cause analysis        |
+| 5A.8  | **Performance Profiler** | 🔴 TODO | -                                              | -     | Bottleneck detection, optimization suggestions        |
+| 5A.9  | **Cost Optimizer**       | 🔴 TODO | -                                              | -     | Cloud spend optimization, resource right-sizing       |
+| 5A.10 | **Documentation Agent**  | 🔴 TODO | -                                              | -     | Auto-doc generation, API doc sync, README maintenance |
 
 **Implementation Progress:** 1/10 features (10%)
 
@@ -1611,6 +1735,7 @@ Scenario: User has dev server running in Terminal 1
 **Files:** `src-tauri/src/agent/http_client/mod.rs` (451 lines)
 
 **Features:**
+
 - ✅ Circuit breaker pattern (fail-fast on repeated errors)
 - ✅ Retry logic with exponential backoff
 - ✅ Rate limiting (100 requests/second)
@@ -1620,6 +1745,7 @@ Scenario: User has dev server running in Terminal 1
 - ✅ JSON serialization/deserialization
 
 **Usage Example:**
+
 ```rust
 let client = HttpClient::new("https://api.example.com")?;
 let response = client.get("/users/123", None).await?;
@@ -1632,6 +1758,7 @@ let response = client.get("/users/123", None).await?;
 These agents are **specified but not implemented**. They represent critical autonomous capabilities needed for a fully autonomous development platform.
 
 **Priority Order (for implementation):**
+
 1. **File Watcher** (5A.4) - Needed for reactive development
 2. **Database Manager** (5A.2) - Critical for data-driven apps
 3. **API Monitor** (5A.3) - Production readiness
@@ -1640,6 +1767,7 @@ These agents are **specified but not implemented**. They represent critical auto
 6. **Remaining agents** - Enhancement phase
 
 **Success Metrics:**
+
 - ✅ HTTP Client: 100% operational
 - 🔴 9 agents remaining for autonomous platform
 

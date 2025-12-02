@@ -1454,6 +1454,267 @@ Yantra's agentic capabilities are organized into four fundamental pillars that m
 
 **Status:** ✅ **100% COMPLETE** - Full terminal capabilities implemented
 
+---
+
+### 🆕 Agent Execution Intelligence (MVP Critical - Phase 1)
+
+**Problem:** Agent blocks on long-running commands (builds, tests, servers), becoming unresponsive and appearing "frozen" to users. This creates poor UX and prevents parallel task execution.
+
+**Solution:** Intelligent command classification with automatic background execution strategy and transparent status reporting.
+
+#### Command Classification & Execution Strategy
+
+**Agent Intelligence:** Automatically detect command duration and choose optimal execution pattern.
+
+| Command Pattern | Duration | Strategy | Agent Behavior | Example |
+|----------------|----------|----------|----------------|---------|
+| **Build commands** | Long (10-60s) | Background + polling | Execute in background, poll every 2-5s, report progress | `npm run build`, `cargo build`, `make` |
+| **Test execution** | Long (5-30s) | Background + polling | Execute in background, show test progress, report results | `pytest`, `npm test`, `cargo test` |
+| **Dev servers** | Infinite | Background + monitor | Fire and forget, monitor for crashes, report when ready | `npm start`, `python manage.py runserver` |
+| **Package install** | Medium (5-20s) | Background + polling | Execute in background, report completion | `npm install`, `pip install -r requirements.txt` |
+| **Quick queries** | Quick (<1s) | Synchronous | Execute immediately, return result | `git status`, `ls`, `cat file.py` |
+| **File operations** | Quick (<1s) | Synchronous | Execute immediately, return result | `cp`, `mv`, `rm` (non-recursive) |
+
+#### Transparent Agent Communication
+
+**Principle:** Agent must ALWAYS explain what it's doing and why. No silent operations.
+
+**Status Messages (Required for All Long-Running Commands):**
+
+```
+🔨 Building project...
+   Strategy: Background execution (expected 30s)
+   Reason: Build commands block for extended periods
+   Status: You can ask me anything while I monitor this!
+   
+   [2s] Still building... (checking every 2s)
+   [4s] Still building...
+   [6s] Build output: Compiling 47 files...
+   [10s] Build complete! ✅
+```
+
+**Transparency Requirements:**
+
+1. **Start:** Explain command classification
+   - "Detected long-running command (npm run build)"
+   - "Executing in background to keep me responsive"
+
+2. **During:** Show progress updates
+   - Poll status every 2-5 seconds
+   - Show relevant output lines (errors, warnings, completion %)
+   - Remind user: "I'm still available for other tasks!"
+
+3. **Completion:** Report results clearly
+   - Success: "Build completed in 23s ✅"
+   - Failure: "Build failed ❌ [show error excerpt]"
+   - Next steps: "Ready to run tests or deploy"
+
+4. **Interruption:** Allow user to stop
+   - User: "Stop that build"
+   - Agent: "Terminating npm build process... Done ✅"
+
+#### Implementation Architecture
+
+**Component 1: Command Classifier** (`agent/command_classifier.rs` - NEW)
+
+```rust
+pub enum CommandDuration {
+    Quick,        // <1s: git status, ls, cat
+    Medium,       // 1-5s: npm install (small)
+    Long,         // 5-60s: builds, tests, large installs
+    Infinite,     // Servers, watch modes, interactive
+}
+
+pub struct CommandClassifier {
+    patterns: HashMap<String, CommandDuration>,
+}
+
+impl CommandClassifier {
+    pub fn new() -> Self {
+        // Pattern database:
+        // "npm run build|test" -> Long
+        // "npm start|dev" -> Infinite
+        // "cargo build|test" -> Long
+        // "pytest" -> Long
+        // "git *" -> Quick
+    }
+    
+    pub fn classify(&self, command: &str, args: &[String]) -> CommandDuration {
+        // 1. Check exact matches
+        // 2. Check pattern matches (regex)
+        // 3. Default to Medium if unknown
+    }
+    
+    pub fn explain_classification(&self, cmd: &str) -> String {
+        // Return human-readable explanation:
+        // "npm run build is classified as Long (10-60s)"
+        // "Reason: Build commands typically take 10-60 seconds"
+    }
+}
+```
+
+**Component 2: Intelligent Executor** (Update `agent/orchestrator.rs`)
+
+```rust
+pub struct IntelligentExecutor {
+    terminal: TerminalExecutor,
+    classifier: CommandClassifier,
+    status_emitter: EventEmitter, // For UI updates
+}
+
+impl IntelligentExecutor {
+    pub async fn execute_with_intelligence(
+        &self,
+        command: &str,
+        args: Vec<String>,
+    ) -> Result<ExecutionResult, String> {
+        // 1. Classify command
+        let duration = self.classifier.classify(command, &args);
+        let explanation = self.classifier.explain_classification(command);
+        
+        // 2. Emit transparency message
+        self.emit_status(&format!(
+            "🔍 Detected: {} command\n📋 Strategy: {}\n💡 Reason: {}",
+            duration_name(duration),
+            strategy_name(duration),
+            explanation
+        ));
+        
+        // 3. Execute based on strategy
+        match duration {
+            CommandDuration::Quick => {
+                self.execute_synchronous(command, args).await
+            }
+            CommandDuration::Medium | CommandDuration::Long => {
+                self.execute_with_polling(command, args, duration).await
+            }
+            CommandDuration::Infinite => {
+                self.execute_fire_and_forget(command, args).await
+            }
+        }
+    }
+    
+    async fn execute_with_polling(
+        &self,
+        command: &str,
+        args: Vec<String>,
+        duration: CommandDuration,
+    ) -> Result<ExecutionResult, String> {
+        // 1. Start in background
+        let handle = self.terminal.execute_background(command, args).await?;
+        
+        self.emit_status(&format!(
+            "▶️  Started in background: {} {}\n💬 I'm still available! Ask me anything.",
+            command, args.join(" ")
+        ));
+        
+        // 2. Poll with status updates
+        let mut elapsed = 0;
+        let poll_interval = Duration::from_secs(2);
+        
+        loop {
+            tokio::time::sleep(poll_interval).await;
+            elapsed += 2;
+            
+            match handle.check_status().await? {
+                ProcessStatus::Running => {
+                    // Show progress
+                    self.emit_status(&format!(
+                        "⏳ [{}s] Still running...",
+                        elapsed
+                    ));
+                    
+                    // Show recent output if available
+                    if let Some(output) = handle.get_recent_output() {
+                        self.emit_status(&format!("   📤 {}", output));
+                    }
+                }
+                ProcessStatus::Completed(result) => {
+                    self.emit_status(&format!(
+                        "✅ Completed in {}s!\n📊 Exit code: {}",
+                        elapsed, result.exit_code.unwrap_or(0)
+                    ));
+                    return Ok(result);
+                }
+                ProcessStatus::Failed(error) => {
+                    self.emit_status(&format!(
+                        "❌ Failed after {}s\n🔍 Error: {}",
+                        elapsed, error
+                    ));
+                    return Err(error);
+                }
+            }
+        }
+    }
+}
+```
+
+**Component 3: Status Emitter** (Update UI events)
+
+```rust
+// Emit events to frontend for live status display
+pub trait StatusEmitter {
+    fn emit_status(&self, message: &str);
+    fn emit_progress(&self, percent: u8, message: &str);
+    fn emit_error(&self, error: &str);
+}
+```
+
+#### UI Integration
+
+**Agent Status Panel (Real-time Updates):**
+
+```
+┌─────────────────────────────────────────┐
+│ 🤖 Agent Status: ACTIVE & AVAILABLE     │
+├─────────────────────────────────────────┤
+│ Current Tasks:                          │
+│                                         │
+│ 🔨 [Background] npm run build           │
+│    ⏱️  Running for 12s                  │
+│    📊 Compiling 47/150 files           │
+│    💬 You can ask me anything!         │
+│                                         │
+│ ✅ [Complete] Generated UserService.py │
+│    ⏱️  Took 3s                          │
+│    📝 Added to src/services/           │
+└─────────────────────────────────────────┘
+```
+
+#### Performance Targets
+
+| Metric | Target | Rationale |
+|--------|--------|-----------|
+| Classification time | <5ms | Must not add latency |
+| Status poll interval | 2-5s | Balance responsiveness vs overhead |
+| Status message latency | <50ms | Real-time feel |
+| Agent response time (during background task) | <200ms | Must remain interactive |
+| Terminal pool utilization | >70% reuse rate | Efficient resource usage |
+
+#### Success Metrics
+
+- ✅ **Agent Responsiveness:** <200ms response to user queries during background tasks
+- ✅ **Transparency:** 100% of long-running commands show status updates
+- ✅ **Parallel Execution:** 3+ simultaneous background tasks supported
+- ✅ **User Confidence:** Clear "what/why/when" for every operation
+- ✅ **No Silent Failures:** All errors reported with context and suggestions
+
+#### Benefits
+
+1. **🚀 Perceived Speed:** Agent feels 10x faster (never "frozen")
+2. **💬 Continuous Availability:** Always ready for new requests
+3. **📊 Visibility:** Users see exactly what's happening
+4. **🔄 Parallel Work:** Build + test + generate simultaneously
+5. **🧠 Smart Resource Use:** Efficient terminal pool management
+6. **🎯 Trust:** Transparency builds user confidence in AI agent
+
+**Status:** 🔴 **NOT YET IMPLEMENTED** - Critical MVP feature (P0)  
+**Priority:** ⚡ **P0 - MVP BLOCKER**  
+**Effort:** ~6-8 hours implementation + testing  
+**Dependencies:** Existing terminal infrastructure (already complete)
+
+---
+
 #### 3.2 Git & Version Control
 
 | Capability             | Tool/Terminal | MVP Status | Purpose                                  | Implementation        |
