@@ -1,7 +1,7 @@
 // File: src-tauri/src/gnn/mod.rs
 // Purpose: Graph Neural Network module for code dependency tracking
 // Dependencies: tree-sitter, petgraph, rusqlite
-// Last Updated: November 30, 2025
+// Last Updated: December 3, 2025
 
 pub mod parser;
 pub mod parser_js;
@@ -20,6 +20,13 @@ pub mod incremental;
 pub mod features;
 pub mod embeddings;
 pub mod hnsw_index;
+pub mod query;
+
+// Re-export query types
+pub use query::{
+    QueryBuilder, QueryFilter, QueryResults, OrderDirection,
+    Aggregator, PathFinder, TransactionManager,
+};
 
 use std::path::Path;
 use serde::{Deserialize, Serialize};
