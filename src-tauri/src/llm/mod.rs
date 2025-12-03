@@ -12,6 +12,8 @@ pub mod orchestrator;
 pub mod prompts;
 pub mod context;
 pub mod context_depth;
+pub mod chroma_client;
+pub mod rag;
 pub mod config;
 pub mod tokens;
 pub mod models;
@@ -21,6 +23,13 @@ pub use context_depth::{
     assemble_4_level_context, FourLevelContext, ContextItem as DepthContextItem,
     ContextConfig, ContextStats,
 };
+
+// Re-export RAG types
+pub use rag::{
+    RAGSystem, CodePattern, TestPattern, FixPattern,
+    RetrievedPattern, RetrievedTestPattern, RetrievedFixPattern, RAGStats,
+};
+pub use chroma_client::{ChromaClient, Collection, Document, QueryResult};
 
 use serde::{Deserialize, Serialize};
 
