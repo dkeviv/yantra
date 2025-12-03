@@ -208,7 +208,40 @@ impl ProjectOrchestrator {
             }
         }
 
-        // Phase 7: Security scan (TODO - integrate Semgrep)
+        // Phase 7: Security scan with Semgrep
+        state.current_phase = AgentPhase::SecurityScanning;
+        self.state_manager.save_state(&state)?;
+        
+        println!("🔒 Running security scan with Semgrep...");
+        match self.run_security_scan(&plan.root_dir).await {
+            Ok(scan_result) => {
+                println!("✅ Security scan: {} issues found", scan_result.issues.len());
+                
+                // Filter critical and error severity issues
+                let critical_issues: Vec<_> = scan_result.issues.iter()
+                    .filter(|issue| matches!(issue.severity, crate::security::Severity::Critical | crate::security::Severity::Error))
+                    .collect();
+                
+                if !critical_issues.is_empty() {
+                    println!("⚠️ {} critical security issues found:", critical_issues.len());
+                    for issue in &critical_issues {
+                        println!("  - {} ({}:{})", issue.title, issue.file_path, issue.line_number);
+                    }
+                    
+                    // Add to errors but don't fail the build (warnings only)
+                    // In production, you may want to fail on critical issues
+                    for issue in critical_issues {
+                        errors.push(format!("Security: {} at {}:{}", issue.title, issue.file_path, issue.line_number));
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("⚠️ Security scan failed: {}", e);
+                // Don't fail the build if security scan fails (may not have Semgrep installed)
+                println!("ℹ️ Continuing without security scan (Semgrep may not be installed)");
+            }
+        }
+        
         // Phase 8: Browser validation (TODO - integrate CDP for UI projects)
 
         state.attempt_count = 1;
@@ -663,6 +696,16 @@ Include proper test files."#;
             ProjectTemplate::FullStack => "full-stack application",
             ProjectTemplate::Custom => "custom",
         }
+    }
+
+    /// Run security scan on project using Semgrep
+    async fn run_security_scan(&self, project_dir: &Path) -> Result<crate::security::ScanResult, String> {
+        use crate::security::SemgrepScanner;
+        
+        let scanner = SemgrepScanner::new(project_dir.to_path_buf())
+            .with_ruleset("p/owasp-top-10".to_string());
+        
+        scanner.scan().await
     }
 }
 

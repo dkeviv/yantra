@@ -19,6 +19,7 @@ pub mod persistence;
 pub mod incremental;
 pub mod features;
 pub mod embeddings;
+pub mod hnsw_index;
 
 use std::path::Path;
 use serde::{Deserialize, Serialize};

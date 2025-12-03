@@ -1,18 +1,22 @@
 // File: src-tauri/src/gnn/graph.rs
-// Purpose: Graph data structures using petgraph
-// Dependencies: petgraph, serde
-// Last Updated: November 20, 2025
+// Purpose: Graph data structures using petgraph with HNSW semantic indexing
+// Dependencies: petgraph, hnsw_rs, serde
+// Last Updated: December 3, 2025
 
 use super::{CodeNode, CodeEdge, EdgeType};
+use super::hnsw_index::HnswIndex;
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::EdgeRef;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct CodeGraph {
     graph: DiGraph<CodeNode, EdgeType>,
     // Map from node ID to graph index for quick lookup
     node_map: HashMap<String, NodeIndex>,
+    // HNSW index for fast semantic similarity search (O(log n) vs O(n))
+    hnsw_index: Option<Arc<HnswIndex>>,
 }
 
 impl CodeGraph {
@@ -20,6 +24,20 @@ impl CodeGraph {
         Self {
             graph: DiGraph::new(),
             node_map: HashMap::new(),
+            hnsw_index: None,
+        }
+    }
+    
+    /// Create new graph with HNSW indexing enabled
+    /// 
+    /// # Arguments
+    /// * `max_nodes` - Expected maximum number of nodes (for index sizing)
+    /// * `embedding_dim` - Embedding vector dimensions (384 for MiniLM)
+    pub fn new_with_hnsw(max_nodes: usize, embedding_dim: usize) -> Self {
+        Self {
+            graph: DiGraph::new(),
+            node_map: HashMap::new(),
+            hnsw_index: Some(Arc::new(HnswIndex::new(embedding_dim, max_nodes))),
         }
     }
     
@@ -30,6 +48,15 @@ impl CodeGraph {
         // Check if node already exists
         if self.node_map.contains_key(&node_id) {
             return;
+        }
+        
+        // Add to HNSW index if enabled and node has embedding
+        if let Some(ref hnsw) = self.hnsw_index {
+            if node.semantic_embedding.is_some() {
+                if let Err(e) = hnsw.add_node(&node) {
+                    eprintln!("Warning: Failed to add node to HNSW index: {}", e);
+                }
+            }
         }
         
         let index = self.graph.add_node(node);
@@ -374,6 +401,7 @@ impl CodeGraph {
 
     /// Find semantically similar nodes using embeddings
     /// 
+    /// Uses HNSW index for O(log n) search if available, falls back to linear scan.
     /// Returns nodes sorted by similarity score (highest first).
     /// Only nodes with embeddings are considered.
     /// 
@@ -387,6 +415,32 @@ impl CodeGraph {
         min_similarity: f32,
         max_results: usize,
     ) -> Vec<(CodeNode, f32)> {
+        // Use HNSW index if available (O(log n) search - FERRARI MVP requirement)
+        if let Some(ref hnsw) = self.hnsw_index {
+            match hnsw.search(query_embedding, max_results * 2) {
+                Ok(results) => {
+                    // Filter by minimum similarity and convert to CodeNode
+                    let filtered: Vec<(CodeNode, f32)> = results
+                        .into_iter()
+                        .filter(|(_, similarity)| *similarity >= min_similarity)
+                        .filter_map(|(node_id, similarity)| {
+                            self.node_map.get(&node_id).and_then(|&idx| {
+                                self.graph.node_weight(idx).map(|node| (node.clone(), similarity))
+                            })
+                        })
+                        .take(max_results)
+                        .collect();
+                    
+                    return filtered;
+                }
+                Err(e) => {
+                    eprintln!("Warning: HNSW search failed, falling back to linear scan: {}", e);
+                    // Fall through to linear scan
+                }
+            }
+        }
+        
+        // Fallback: Linear scan (O(n) - slow for large graphs, only used if HNSW unavailable)
         use super::embeddings::EmbeddingGenerator;
         
         let mut results: Vec<(CodeNode, f32)> = self

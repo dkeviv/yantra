@@ -9,6 +9,7 @@
 This document provides a consolidated view of all agentic capabilities in Yantra, tracking what is implemented, partially complete, or pending. This tracker was created based on comprehensive codebase verification against specifications.
 
 **Status Summary:**
+
 - **Total Capabilities:** 25
 - **Implemented (✅):** 12 (48%)
 - **Partial (🟡):** 3 (12%)
@@ -21,6 +22,7 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 ### 1. PERCEIVE Layer (6 capabilities)
 
 #### 1.1 File System Monitoring ✅ **IMPLEMENTED**
+
 - **Status:** Fully functional
 - **Evidence:** `src-tauri/src/gnn/analyzer.rs` (500+ lines), `file_watcher.rs`
 - **Functionality:**
@@ -30,6 +32,7 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 - **Verification:** Confirmed in codebase, meets spec requirements
 
 #### 1.2 HTTP Client for External APIs ✅ **IMPLEMENTED**
+
 - **Status:** Fully functional
 - **Evidence:** `src-tauri/src/llm/client.rs` (300+ lines)
 - **Functionality:**
@@ -40,6 +43,7 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 - **Verification:** Confirmed via grep search, implements all required features
 
 #### 1.3 Database Query Operations 🔴 **NOT IMPLEMENTED**
+
 - **Status:** Not started
 - **Required:** SQLite query interface for graph data
 - **Missing:**
@@ -49,6 +53,7 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 - **Priority:** P2 (not MVP blocker)
 
 #### 1.4 Code Parsing (Multi-Language) ✅ **IMPLEMENTED**
+
 - **Status:** Fully functional
 - **Evidence:** 11 parser files in `src-tauri/src/gnn/parser_*.rs`
   - Python, JavaScript, TypeScript, Rust, Go, Java, C, C++, Ruby, PHP, Swift, Kotlin
@@ -59,6 +64,7 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 - **Verification:** All 11 parsers confirmed, 10/10 spec features complete
 
 #### 1.5 GNN Dependency Analysis ✅ **IMPLEMENTED** (but see HNSW gap)
+
 - **Status:** Core functionality present, critical optimization missing
 - **Evidence:** `src-tauri/src/gnn/graph.rs` (800+ lines), `embeddings.rs`
 - **Functionality:**
@@ -73,6 +79,7 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 - **Verification:** 6/10 spec features complete
 
 #### 1.6 LLM Response Processing ✅ **IMPLEMENTED**
+
 - **Status:** Fully functional
 - **Evidence:** `src-tauri/src/llm/orchestrator.rs` (600+ lines), `response_parser.rs`
 - **Functionality:**
@@ -87,6 +94,7 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 ### 2. THINK Layer (7 capabilities)
 
 #### 2.1 Multi-LLM Orchestration ✅ **IMPLEMENTED**
+
 - **Status:** Fully functional
 - **Evidence:** `src-tauri/src/llm/orchestrator.rs` (600+ lines)
 - **Functionality:**
@@ -98,6 +106,7 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 - **Verification:** 11/13 spec features complete (85%)
 
 #### 2.2 Context Assembly from GNN 🟡 **PARTIAL**
+
 - **Status:** Basic implementation, missing advanced features
 - **Evidence:** `src-tauri/src/llm/context_builder.rs` (400+ lines)
 - **Functionality:**
@@ -109,6 +118,7 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 - **Verification:** 2/4 context levels implemented
 
 #### 2.3 Code Generation Strategy ✅ **IMPLEMENTED**
+
 - **Status:** Fully functional
 - **Evidence:** `src-tauri/src/agent/code_generator.rs` (500+ lines)
 - **Functionality:**
@@ -119,6 +129,7 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 - **Verification:** Confirmed in codebase
 
 #### 2.4 Testing Strategy Planning ✅ **IMPLEMENTED**
+
 - **Status:** Fully functional
 - **Evidence:** `src-tauri/src/testing/generator.rs` (500+ lines)
 - **Functionality:**
@@ -130,6 +141,7 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 - **Verification:** Python testing complete, JS testing missing
 
 #### 2.5 Security Analysis Planning ✅ **IMPLEMENTED**
+
 - **Status:** Fully functional
 - **Evidence:** `src-tauri/src/security/semgrep.rs` (235 lines)
 - **Functionality:**
@@ -141,6 +153,7 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 - **Verification:** Scanner exists but not called in main flow
 
 #### 2.6 Dependency Impact Analysis 🟡 **PARTIAL**
+
 - **Status:** Basic implementation, missing advanced features
 - **Evidence:** `src-tauri/src/gnn/graph.rs` - `get_dependents()` method
 - **Functionality:**
@@ -151,8 +164,9 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 - **Verification:** 3/6 features implemented
 
 #### 2.7 Refactoring Safety Analysis 🔴 **NOT IMPLEMENTED**
+
 - **Status:** Not started
-- **Required:** 
+- **Required:**
   - Breaking change detection
   - API compatibility checks
   - Safe refactoring suggestions
@@ -164,6 +178,7 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 ### 3. ACT Layer (7 capabilities)
 
 #### 3.1 Code File Writing ✅ **IMPLEMENTED**
+
 - **Status:** Fully functional
 - **Evidence:** `src-tauri/src/commands/file_operations.rs` (300+ lines)
 - **Functionality:**
@@ -174,6 +189,7 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 - **Verification:** Confirmed in codebase
 
 #### 3.2 Test Execution ✅ **IMPLEMENTED** (Python only)
+
 - **Status:** Partial - Python complete, JavaScript missing
 - **Evidence:** `src-tauri/src/testing/executor.rs` (400+ lines)
 - **Functionality:**
@@ -184,6 +200,7 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 - **Verification:** 3/6 spec features complete (50%)
 
 #### 3.3 Security Scan Execution 🟡 **PARTIAL**
+
 - **Status:** Scanner exists but not integrated
 - **Evidence:** `src-tauri/src/security/semgrep.rs` (235 lines)
 - **Functionality:**
@@ -193,6 +210,7 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 - **Verification:** 0.5/1 features complete (50%)
 
 #### 3.4 Browser Validation (CDP) 🔴 **NOT IMPLEMENTED**
+
 - **Status:** Complete placeholder - 0% functional
 - **Evidence:** `src-tauri/src/browser/` directory exists but empty stubs
 - **Missing:**
@@ -205,6 +223,7 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 - **Verification:** 0/8 spec features complete (0%)
 
 #### 3.5 Git Operations ✅ **IMPLEMENTED** (not MCP protocol)
+
 - **Status:** Functional via shell commands, not using MCP protocol
 - **Evidence:** `src-tauri/src/git/mcp.rs` (169 lines)
 - **Functionality:**
@@ -215,6 +234,7 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 - **Verification:** 1.5/2 features complete (75%)
 
 #### 3.6 Rollback on Failure ✅ **IMPLEMENTED**
+
 - **Status:** Fully functional
 - **Evidence:** `src-tauri/src/commands/rollback.rs` (200+ lines)
 - **Functionality:**
@@ -225,6 +245,7 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 - **Verification:** Confirmed in codebase
 
 #### 3.7 Auto-Retry with Regeneration 🔴 **NOT IMPLEMENTED**
+
 - **Status:** Not started
 - **Required:**
   - Test failure analysis
@@ -238,6 +259,7 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 ### 4. REASON Layer (5 capabilities)
 
 #### 4.1 Orchestration State Machine ✅ **IMPLEMENTED**
+
 - **Status:** Fully functional
 - **Evidence:** `src-tauri/src/agent/orchestrator.rs` (600+ lines)
 - **Functionality:**
@@ -248,6 +270,7 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 - **Verification:** 13/13 spec features complete (100%)
 
 #### 4.2 Error Classification & Recovery 🟡 **PARTIAL**
+
 - **Status:** Basic implementation, missing advanced recovery
 - **Evidence:** `src-tauri/src/agent/error_handler.rs` (300+ lines)
 - **Functionality:**
@@ -258,6 +281,7 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 - **Verification:** 2/4 features implemented
 
 #### 4.3 Prompt Engineering & Context Management ✅ **IMPLEMENTED**
+
 - **Status:** Fully functional
 - **Evidence:** `src-tauri/src/llm/prompt_builder.rs` (400+ lines)
 - **Functionality:**
@@ -268,6 +292,7 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 - **Verification:** Confirmed in codebase
 
 #### 4.4 Multi-LLM Consensus Logic 🔴 **NOT IMPLEMENTED**
+
 - **Status:** Not started
 - **Required:**
   - 3-way LLM consultation (Claude + GPT-4 + Qwen)
@@ -277,6 +302,7 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 - **Priority:** Post-MVP (0/5 features)
 
 #### 4.5 Learning from Past Actions 🔴 **NOT IMPLEMENTED**
+
 - **Status:** Not started
 - **Required:**
   - Action history database
@@ -289,39 +315,40 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 
 ## Evidence Matrix
 
-| Capability | File Location | Line Count | Functional Status |
-|------------|---------------|------------|-------------------|
-| File System Monitoring | `src-tauri/src/gnn/analyzer.rs` | 500+ | ✅ Fully working |
-| HTTP Client | `src-tauri/src/llm/client.rs` | 300+ | ✅ Fully working |
-| Database Queries | - | - | 🔴 Not started |
-| Code Parsing | `src-tauri/src/gnn/parser_*.rs` (11 files) | 2000+ total | ✅ Fully working |
-| GNN Analysis | `src-tauri/src/gnn/graph.rs` | 800+ | 🟡 Works, missing HNSW |
-| LLM Response Processing | `src-tauri/src/llm/response_parser.rs` | 200+ | ✅ Fully working |
-| Multi-LLM Orchestration | `src-tauri/src/llm/orchestrator.rs` | 600+ | ✅ Fully working |
-| Context Assembly | `src-tauri/src/llm/context_builder.rs` | 400+ | 🟡 2/4 levels only |
-| Code Generation | `src-tauri/src/agent/code_generator.rs` | 500+ | ✅ Fully working |
-| Testing Strategy | `src-tauri/src/testing/generator.rs` | 500+ | ✅ Python only |
-| Security Planning | `src-tauri/src/security/semgrep.rs` | 235 | 🟡 Stub, not integrated |
-| Dependency Impact | `src-tauri/src/gnn/graph.rs` | 800+ | 🟡 Basic only |
-| Refactoring Safety | - | - | 🔴 Not started |
-| File Writing | `src-tauri/src/commands/file_operations.rs` | 300+ | ✅ Fully working |
-| Test Execution | `src-tauri/src/testing/executor.rs` | 400+ | 🟡 Python only |
-| Security Scan | `src-tauri/src/security/semgrep.rs` | 235 | 🟡 Not integrated |
-| Browser Validation | `src-tauri/src/browser/` | Stubs only | 🔴 Placeholder |
-| Git Operations | `src-tauri/src/git/mcp.rs` | 169 | 🟡 Shell wrapper, no MCP |
-| Rollback | `src-tauri/src/commands/rollback.rs` | 200+ | ✅ Fully working |
-| Auto-Retry | - | - | 🔴 Not started |
-| State Machine | `src-tauri/src/agent/orchestrator.rs` | 600+ | ✅ Fully working |
-| Error Recovery | `src-tauri/src/agent/error_handler.rs` | 300+ | 🟡 Basic only |
-| Prompt Engineering | `src-tauri/src/llm/prompt_builder.rs` | 400+ | ✅ Fully working |
-| Multi-LLM Consensus | - | - | 🔴 Not started |
-| Learning | - | - | 🔴 Not started |
+| Capability              | File Location                               | Line Count  | Functional Status        |
+| ----------------------- | ------------------------------------------- | ----------- | ------------------------ |
+| File System Monitoring  | `src-tauri/src/gnn/analyzer.rs`             | 500+        | ✅ Fully working         |
+| HTTP Client             | `src-tauri/src/llm/client.rs`               | 300+        | ✅ Fully working         |
+| Database Queries        | -                                           | -           | 🔴 Not started           |
+| Code Parsing            | `src-tauri/src/gnn/parser_*.rs` (11 files)  | 2000+ total | ✅ Fully working         |
+| GNN Analysis            | `src-tauri/src/gnn/graph.rs`                | 800+        | 🟡 Works, missing HNSW   |
+| LLM Response Processing | `src-tauri/src/llm/response_parser.rs`      | 200+        | ✅ Fully working         |
+| Multi-LLM Orchestration | `src-tauri/src/llm/orchestrator.rs`         | 600+        | ✅ Fully working         |
+| Context Assembly        | `src-tauri/src/llm/context_builder.rs`      | 400+        | 🟡 2/4 levels only       |
+| Code Generation         | `src-tauri/src/agent/code_generator.rs`     | 500+        | ✅ Fully working         |
+| Testing Strategy        | `src-tauri/src/testing/generator.rs`        | 500+        | ✅ Python only           |
+| Security Planning       | `src-tauri/src/security/semgrep.rs`         | 235         | 🟡 Stub, not integrated  |
+| Dependency Impact       | `src-tauri/src/gnn/graph.rs`                | 800+        | 🟡 Basic only            |
+| Refactoring Safety      | -                                           | -           | 🔴 Not started           |
+| File Writing            | `src-tauri/src/commands/file_operations.rs` | 300+        | ✅ Fully working         |
+| Test Execution          | `src-tauri/src/testing/executor.rs`         | 400+        | 🟡 Python only           |
+| Security Scan           | `src-tauri/src/security/semgrep.rs`         | 235         | 🟡 Not integrated        |
+| Browser Validation      | `src-tauri/src/browser/`                    | Stubs only  | 🔴 Placeholder           |
+| Git Operations          | `src-tauri/src/git/mcp.rs`                  | 169         | 🟡 Shell wrapper, no MCP |
+| Rollback                | `src-tauri/src/commands/rollback.rs`        | 200+        | ✅ Fully working         |
+| Auto-Retry              | -                                           | -           | 🔴 Not started           |
+| State Machine           | `src-tauri/src/agent/orchestrator.rs`       | 600+        | ✅ Fully working         |
+| Error Recovery          | `src-tauri/src/agent/error_handler.rs`      | 300+        | 🟡 Basic only            |
+| Prompt Engineering      | `src-tauri/src/llm/prompt_builder.rs`       | 400+        | ✅ Fully working         |
+| Multi-LLM Consensus     | -                                           | -           | 🔴 Not started           |
+| Learning                | -                                           | -           | 🔴 Not started           |
 
 ---
 
 ## Critical Gaps (P0 - MVP Blockers)
 
 ### 1. HNSW Semantic Indexing ⚠️ **FERRARI MVP VIOLATION**
+
 - **Status:** Completely missing
 - **Impact:** Performance breaks at 10k+ nodes (50ms actual vs <10ms target)
 - **Evidence:** No `hnsw_rs` dependency, uses linear scan in `find_similar_nodes()`
@@ -330,6 +357,7 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 - **Priority:** P0
 
 ### 2. Browser CDP Integration ⚠️ **COMPLETE PLACEHOLDER**
+
 - **Status:** 0/8 features (0%)
 - **Impact:** Cannot validate UI, "code that never breaks" guarantee incomplete
 - **Missing:**
@@ -342,6 +370,7 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 - **Priority:** P0
 
 ### 3. Auto-Retry with Code Regeneration ⚠️ **MISSING**
+
 - **Status:** Not implemented
 - **Impact:** Single-shot failures, no learning from mistakes
 - **Required:**
@@ -352,6 +381,7 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 - **Priority:** P1
 
 ### 4. Security Scanning Integration ⚠️ **NOT INTEGRATED**
+
 - **Status:** Scanner exists but not called
 - **Impact:** No automated security validation
 - **Evidence:** `orchestrator.rs` line 211: "// Phase 7: Security scan (TODO - integrate Semgrep)"
@@ -359,6 +389,7 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 - **Priority:** P1
 
 ### 5. Refactoring Safety Analysis ⚠️ **NOT STARTED**
+
 - **Status:** Not implemented
 - **Impact:** Risky refactorings, potential breaking changes
 - **Required:**
@@ -379,6 +410,7 @@ This document provides a consolidated view of all agentic capabilities in Yantra
 **Gap:** 18 features (12%)
 
 **Status:**
+
 - ✅ Core orchestration complete
 - ✅ Python code generation complete
 - 🟡 Testing infrastructure partial (Python only)
@@ -426,6 +458,7 @@ This tracker was created through:
    - Calculated accurate completion percentages
 
 **Audit Reports:**
+
 - See `IMPLEMENTATION_VERIFICATION_REPORT.md` for detailed analysis of Architecture, GNN, LLM, Agent Framework
 - See `COMPREHENSIVE_STATUS_AUDIT.md` for complete audit of all components
 
@@ -433,8 +466,8 @@ This tracker was created through:
 
 ## Update History
 
-| Date | Changes | Author |
-|------|---------|--------|
+| Date         | Changes                                                       | Author |
+| ------------ | ------------------------------------------------------------- | ------ |
 | Nov 30, 2025 | Initial consolidated tracker created from comprehensive audit | System |
 
 ---

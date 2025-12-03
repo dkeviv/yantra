@@ -18,11 +18,11 @@
 
 | Category                                    | MVP Features | MVP Progress | Post-MVP Features               | Post-MVP Progress |
 | ------------------------------------------- | ------------ | ------------ | ------------------------------- | ----------------- |
-| **🟡 Architecture View System**             | 11/16        | � 69%       | -                               | -                 |
-| **🟡 GNN Dependency Tracking**              | 6/10         | � 60%       | -                               | -                 |
+| **🟡 Architecture View System**             | 11/16        | � 69%        | -                               | -                 |
+| **🟡 GNN Dependency Tracking**              | 6/10         | � 60%        | -                               | -                 |
 | **🟢 LLM Integration**                      | 11/13        | 🟢 85%       | 0/1 (Qwen Coder)                | 🔴 0%             |
 | **✅ Agent Framework (Orchestration)**      | 13/13        | 🟢 100%      | 0/1 (Cross-Project)             | 🔴 0%             |
-| **� Agentic Capabilities**                 | 12/25        | � 48%       | -                               | -                 |
+| **� Agentic Capabilities**                  | 12/25        | � 48%        | -                               | -                 |
 | **🔴 Agent Execution Intelligence**         | 0/3          | 🔴 0%        | -                               | -                 |
 | **� Dependency Intelligence & Env Mgmt**    | 0/10         | 🔴 0%        | -                               | -                 |
 | **�🟡 Project Initialization & Arch-First** | 4/8          | 🟡 50%       | -                               | -                 |
@@ -30,14 +30,14 @@
 | **🔴 Cascading Failure Protection**         | 0/10         | 🔴 0%        | -                               | -                 |
 | **🔴 State Machine Refactoring**            | 0/4          | � 0%         | 0/1 (Maintenance Machine)       | 🔴 0%             |
 | **🔴 Concurrency Validation (Safety)**      | 0/1          | 🔴 0%        | -                               | -                 |
-| **🟡 Testing & Validation**                 | 3/6          | � 50%       | -                               | -                 |
-| **🟡 Security Scanning**                    | 0.5/1        | � 50%       | -                               | -                 |
+| **🟡 Testing & Validation**                 | 3/6          | � 50%        | -                               | -                 |
+| **🟡 Security Scanning**                    | 0.5/1        | � 50%        | -                               | -                 |
 | **🔴 Browser Integration (CDP)**            | 0/8          | 🔴 0%        | 0/6                             | 🔴 0%             |
 | **🟢 Git Integration**                      | 1.5/2        | 🟢 75%       | -                               | -                 |
 | **🟢 UI/Frontend (Basic + Minimal UI)**     | 3/4          | 🟢 75%       | -                               | -                 |
 | **🔴 Code Autocompletion (Monaco)**         | 0/4          | 🔴 0%        | 0/3                             | 🔴 0%             |
 | **🔴 Multi-LLM Consultation Mode**          | 0/5          | 🔴 0%        | 0/3 (3-way, patterns, learning) | 🔴 0%             |
-| **🟡 Documentation System**                 | 0.5/1        | � 50%       | -                               | -                 |
+| **🟡 Documentation System**                 | 0.5/1        | � 50%        | -                               | -                 |
 | **✅ Storage Optimization (Architecture)**  | 2/2          | 🟢 100%      | -                               | -                 |
 | **🔴 HNSW Semantic Indexing (Ferrari MVP)** | 0/3          | 🔴 0%        | Post-browser, critical          | 🔴 0%             |
 | **🧹 Clean Code Mode**                      | -            | -            | 0/18                            | 🔴 0%             |
