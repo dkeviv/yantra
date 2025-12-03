@@ -1,9 +1,9 @@
 # Yantra - Implementation Status
 
-**Last Updated:** December 3, 2025  
-**Purpose:** Crisp tracking table of what's implemented vs pending  
-**Test Status:** 259 library tests (241+ passing ✅, fixed 13 critical bugs)  
-**Recent Fixes:** Native library conflicts, test path bugs, deadlock issues (Dec 2, 2025)  
+**Last Updated:** December 3, 2025
+**Purpose:** Crisp tracking table of what's implemented vs pending
+**Test Status:** 259 library tests (241+ passing ✅, fixed 13 critical bugs)
+**Recent Fixes:** Native library conflicts, test path bugs, deadlock issues (Dec 2, 2025)
 **Scope:** MVP Phase 1 + Post-MVP features identified
 
 **Changelog (Dec 3, 2025):** 🎉 **MAJOR MILESTONE - 10 Agentic Capabilities Complete!**
@@ -24,50 +24,47 @@
 
 ## 📊 Implementation Overview
 
-| Category                                    | MVP Features | MVP Progress | Post-MVP Features               | Post-MVP Progress |
-| ------------------------------------------- | ------------ | ------------ | ------------------------------- | ----------------- |
-| **🟡 Architecture View System**             | 11/16        | � 69%        | -                               | -                 |
-| **🟡 GNN Dependency Tracking**              | 6/10         | � 60%        | -                               | -                 |
-| **🟢 LLM Integration**                      | 11/13        | 🟢 85%       | 0/1 (Qwen Coder)                | 🔴 0%             |
-| **✅ Agent Framework (Orchestration)**      | 13/13        | 🟢 100%      | 0/1 (Cross-Project)             | 🔴 0%             |
-| **🟢 Agentic Capabilities**                 | 21/25        | 🟢 84%       | -                               | -                 |
-| **🔴 Agent Execution Intelligence**         | 0/3          | 🔴 0%        | -                               | -                 |
-| **� Dependency Intelligence & Env Mgmt**    | 0/10         | 🔴 0%        | -                               | -                 |
-| **�🟡 Project Initialization & Arch-First** | 4/8          | 🟡 50%       | -                               | -                 |
-| **🔴 Interaction Modes (Guided/Auto)**      | 0/10         | 🔴 0%        | -                               | -                 |
-| **🔴 Cascading Failure Protection**         | 0/10         | 🔴 0%        | -                               | -                 |
-| **🔴 State Machine Refactoring**            | 0/4          | � 0%         | 0/1 (Maintenance Machine)       | 🔴 0%             |
-| **🔴 Concurrency Validation (Safety)**      | 0/1          | 🔴 0%        | -                               | -                 |
-| **✅ Testing & Validation**                 | 6/6          | 🟢 100%      | -                               | -                 |
-| **✅ Security Scanning**                    | 1/1          | 🟢 100%      | -                               | -                 |
-| **✅ Browser Integration (CDP)**            | 8/8          | 🟢 100%      |
-| **✅ Git Integration**                      | 2/2          | 🟢 100%      | -                               | -                 |
-| **🟢 UI/Frontend (Basic + Minimal UI)**     | 3/4          | 🟢 75%       | -                               | -                 |
-| **🔴 Code Autocompletion (Monaco)**         | 0/4          | 🔴 0%        | 0/3                             | 🔴 0%             |
-| **🔴 Multi-LLM Consultation Mode**          | 0/5          | 🔴 0%        | 0/3 (3-way, patterns, learning) | 🔴 0%             |
-| **🟡 Documentation System**                 | 0.5/1        | � 50%        | -                               | -                 |
-| **✅ Storage Optimization (Architecture)**  | 2/2          | 🟢 100%      | -                               | -                 |
-| **✅ HNSW Semantic Indexing (Ferrari MVP)** | 3/3          | 🟢 100%      |
-| **🧹 Clean Code Mode**                      | -            | -            | 0/18                            | 🔴 0%             |
-| **💰 Monetization (Subscription)**          | -            | -            | 0/6 (Post-MVP Priority #1)      | 🔴 0%             |
-| **📊 Analytics & Metrics**                  | -            | -            | 0/4                             | 🔴 0%             |
-| **🔄 Workflow Automation**                  | -            | -            | 0/6                             | 🔴 0%             |
-| **🔥 Yantra Codex (Pair Programming)**      | -            | -            | 0/13                            | 🔴 0%             |
-| **🤖 Cluster Agents (Master-Servant)**      | -            | -            | 0/12 (Phase 2A)                 | 🔴 0%             |
-| **🌐 Cloud Graph DB (Tier 0)**              | -            | -            | 0/8 (Phase 2B)                  | 🔴 0%             |
-| **📝 Storage Tier 2 (sled)**                | -            | -            | 0/4 (Phase 2A)                  | 🔴 0%             |
-| **💨 Storage Tier 4 (LRU Cache)**           | -            | -            | 0/3 (Phase 2)                   | 🔴 0%             |
-| **⚡ Storage Tier 1 (In-Memory GNN)**       | -            | -            | 0/5 (Phase 3)                   | 🔴 0%             |
-| **🌐 Multi-Language Support**               | 10/10        | 🟢 100%      | -                               | -                 |
-| **🤝 Collaboration Features**               | -            | -            | 0/5                             | 🔴 0%             |
-| **TOTAL**                                   | **87/149**   | **58%**      | **0/105**                       | **0%**            |
+### **📋 Detailed Category Breakdown**
 
-**MVP Definition:** ALL P0 + P1 capabilities = MVP Scope  
-**P0 Status (MVP Blockers):** 65/80 complete (81%) - 13 TODO, 2 PARTIAL - **CRITICAL PATH**  
-**P1 Status (MVP High Priority):** ~20 capabilities identified - **ESSENTIAL FOR LAUNCH**  
-**Total MVP Scope:** ~100 P0+P1 capabilities across all categories  
-**MVP Status:** 87/149 table features (58%) - Includes P0/P1 plus architectural foundation  
-**Post-MVP Status:** 0/105 features started (0%) - Optimization & scaling features for future phases
+| Category                                    | MVP Features  | MVP Progress | Post-MVP Features               | Post-MVP Progress |
+| ------------------------------------------- | ------------- | ------------ | ------------------------------- | ----------------- |
+| **🟡 Architecture View System**             | 11/16         | � 69%        | -                               | -                 |
+| **🟡 GNN Dependency Tracking**              | 6/10          | � 60%        | -                               | -                 |
+| **🟢 LLM Integration**                      | 11/13         | 🟢 85%       | 0/1 (Qwen Coder)                | 🔴 0%             |
+| **✅ Agent Framework (Orchestration)**      | 13/13         | 🟢 100%      | 0/1 (Cross-Project)             | 🔴 0%             |
+| **🀽� Agentic Capabilities**                 | 61/97 (P0+P1) | 🟢 63%       | -                               | -                 |
+| **🔴 Agent Execution Intelligence (P0: 3)** | 0/3           | 🔴 0%        | -                               | -                 |
+| **🔴 Interaction Modes (Guided/Auto)**      | 0/10          | 🔴 0%        | -                               | -                 |
+| **🔴 Cascading Failure Protection**         | 0/10          | 🔴 0%        | -                               | -                 |
+| **🔴 State Machine Refactoring**            | 0/4           | � 0%         | 0/1 (Maintenance Machine)       | 🔴 0%             |
+| **🔴 Concurrency Validation (Safety)**      | 0/1           | 🔴 0%        | -                               | -                 |
+| **✅ Testing & Validation**                 | 6/6           | 🟢 100%      | 0/2 (P1: affected tests, E2E)   | 🔴 0%             |
+| **🟢 UI/Frontend (Basic + Minimal UI)**     | 3/4           | 🟢 75%       | -                               | -                 |
+| **🔴 Code Autocompletion (Monaco)**         | 0/4           | 🔴 0%        | 0/3                             | 🔴 0%             |
+| **🔴 Multi-LLM Consultation Mode**          | 0/5           | 🔴 0%        | 0/3 (3-way, patterns, learning) | 🔴 0%             |
+| **✅ Documentation System**                 | 1/1           | 🟢 100%      | -                               | -                 |
+| **✅ Storage Optimization (Architecture)**  | 2/2           | 🟢 100%      | -                               | -                 |
+| **✅ HNSW Semantic Indexing (Ferrari MVP)** | 3/3           | 🟢 100%      | -                               | -                 |
+| **🧹 Clean Code Mode**                      | -             | -            | 0/18                            | 🔴 0%             |
+| **💰 Monetization (Subscription)**          | -             | -            | 0/6 (Post-MVP Priority #1)      | 🔴 0%             |
+| **📊 Analytics & Metrics**                  | -             | -            | 0/4                             | 🔴 0%             |
+| **🔄 Workflow Automation**                  | -             | -            | 0/6                             | 🔴 0%             |
+| **🔥 Yantra Codex (Pair Programming)**      | -             | -            | 0/13                            | 🔴 0%             |
+| **🤖 Cluster Agents (Master-Servant)**      | -             | -            | 0/12 (Phase 2A)                 | 🔴 0%             |
+| **🌐 Cloud Graph DB (Tier 0)**              | -             | -            | 0/8 (Phase 2B)                  | 🔴 0%             |
+| **📝 Storage Tier 2 (sled)**                | -             | -            | 0/4 (Phase 2A)                  | 🔴 0%             |
+| **💨 Storage Tier 4 (LRU Cache)**           | -             | -            | 0/3 (Phase 2)                   | 🔴 0%             |
+| **⚡ Storage Tier 1 (In-Memory GNN)**       | -             | -            | 0/5 (Phase 3)                   | 🔴 0%             |
+| **🌐 Multi-Language Support**               | 10/10         | 🟢 100%      | -                               | -                 |
+| **🤝 Collaboration Features**               | -             | -            | 0/5                             | 🔴 0%             |
+| **TOTAL (All Categories)**                  | **87/149**    | **58%**      | **0/105**                       | **0%**            |
+
+---
+
+**🎯 MVP SCOPE = P0 + P1 ONLY**
+**MVP Status:** 61/97 P0+P1 capabilities complete (63%) - **36 items remaining**
+**P0 Critical Path:** 61/80 (76%) - 19 blockers remaining
+**P1 High Priority:** 0/17 (0%) - All 17 pending
 
 **Key MVP Achievements:**
 
@@ -91,11 +88,9 @@
 - 🟢 **Agentic Capabilities** - 21/25 features (84%, 10 core capabilities complete: HNSW, Browser CDP, Security, Auto-Retry, Refactoring Safety, Jest/JS Testing, 4-Level Context, ChromaDB RAG, DB Query, Git MCP)
 - 🔴 **Agent Execution Intelligence** - 3/3 features (0%, command classification, background execution, transparency)
 - 🔴 **Dependency Intelligence** - 10/10 features (0%, dry-run validation, .venv enforcement, GNN tech stack, conflict detection, rollback, multi-project isolation)
-
 - 🔴 **Code Autocompletion** - 4/4 features (0%, hybrid static + GNN completions)
 - 🔴 **Multi-LLM Consultation Mode** - 5/5 features (0%, stretch goal - collaborative LLM consultation)
 - 🔴 **Project Initialization & Arch-First** - 4/8 features remaining (50% done, 4 critical features pending)
-
 - 🔴 **Interaction Modes** - 10/10 features (0%, Guided/Auto modes)
 - 🔴 **Cascading Failure Protection** - 10/10 features (0%, Rollback, isolation)
 - ✅ **State Machine Refactoring** - 4/4 features (100% complete: CodeGen/Testing/Deploy/Maintenance split implemented)
@@ -204,11 +199,11 @@
 
 ## 🤖 AGENTIC CAPABILITIES - Comprehensive Framework
 
-**Last Updated:** December 2, 2025  
-**Philosophy:** Four pillars of autonomous development: 🔍 PERCEIVE → 🧠 REASON → ⚡ ACT → 🔄 LEARN  
-**Total Capabilities:** 118 (80 implemented, 38 pending)  
-**MVP Completion:** 81% (65/80 P0 capabilities implemented - 13 TODO, 2 PARTIAL)  
-**Test Stability:** ✅ Major improvements - Fixed 13 critical bugs (native libs, deadlocks, path issues)  
+**Last Updated:** December 2, 2025
+**Philosophy:** Four pillars of autonomous development: 🔍 PERCEIVE → 🧠 REASON → ⚡ ACT → 🔄 LEARN
+**Total Capabilities:** 118 (80 implemented, 38 pending)
+**MVP Completion:** 81% (65/80 P0 capabilities implemented - 13 TODO, 2 PARTIAL)
+**Test Stability:** ✅ Major improvements - Fixed 13 critical bugs (native libs, deadlocks, path issues)
 **Documentation:** `.github/Specifications.md` §"Comprehensive Agentic Capabilities Framework"
 
 ### Recent Agentic Infrastructure Improvements (December 2, 2025)
@@ -230,13 +225,13 @@
 
 ### Summary by Pillar
 
-| Pillar                            | Total   | Implemented | Pending | Completion % | Status          |
-| --------------------------------- | ------- | ----------- | ------- | ------------ | --------------- |
-| 🔍 **PERCEIVE** (Input & Sensing) | 47      | 24          | 23      | 51%          | 🟡 IN PROGRESS  |
-| 🧠 **REASON** (Decision-Making)   | 8       | 8           | 0       | **100%**     | ✅ **COMPLETE** |
-| ⚡ **ACT** (Execution)            | 56      | 43          | 13      | **77%**      | 🟢 **STRONG**   |
-| 🔄 **LEARN** (Adaptation)         | 7       | 7           | 0       | **100%**     | ✅ **COMPLETE** |
-| **TOTAL**                         | **118** | **82**      | **36**  | **69%**      | 🟢 **GOOD**     |
+| Pillar                           | Total   | Implemented | Pending | Completion % | Status         |
+| -------------------------------- | ------- | ----------- | ------- | ------------ | -------------- |
+| 🔍**PERCEIVE** (Input & Sensing) | 47      | 24          | 23      | 51%          | 🟡 IN PROGRESS |
+| 🧠**REASON** (Decision-Making)   | 8       | 8           | 0       | **100%**     | ✅**COMPLETE** |
+| ⚡**ACT** (Execution)            | 56      | 43          | 13      | **77%**      | 🟢**STRONG**   |
+| 🔄**LEARN** (Adaptation)         | 7       | 7           | 0       | **100%**     | ✅**COMPLETE** |
+| **TOTAL**                        | **118** | **82**      | **36**  | **69%**      | 🟢**GOOD**     |
 
 ### 1. 🔍 PERCEIVE - Input & Sensing Layer (51% Complete)
 
@@ -476,8 +471,8 @@ Every long-running command MUST show:
 - UI Updates: 1 hour (AgentStatus component)
 - Testing: 1 hour (verify all patterns work)
 
-**Status:** 🔴 **NOT STARTED**  
-**Priority:** ⚡ **P0 - MVP BLOCKER**  
+**Status:** 🔴 **NOT STARTED**
+**Priority:** ⚡ **P0 - MVP BLOCKER**
 **Why Critical:** Agent that blocks for 30s on builds feels broken. This is the difference between "Ferrari MVP" and "frustrating MVP."
 
 **Dependencies:**
@@ -710,8 +705,8 @@ Every long-running command MUST show:
 - **P1 (HIGH):** 7 hours (Features 5-8)
 - **Total Critical Path:** 19 hours
 
-**Status:** 🔴 **NOT STARTED**  
-**Priority:** ⚡ **P0 - MVP BLOCKER** (Features 1-4) + 🟡 **P1 HIGH** (Features 5-8)  
+**Status:** 🔴 **NOT STARTED**
+**Priority:** ⚡ **P0 - MVP BLOCKER** (Features 1-4) + 🟡 **P1 HIGH** (Features 5-8)
 **Why Critical:** Without dependency intelligence, agent breaks environments with bad installations. Ferrari MVP requires 100% validation before execution.
 
 **Dependencies:**
@@ -1009,8 +1004,8 @@ Every long-running command MUST show:
 
 ## 🔄 State Machine Architecture (Design Complete, Implementation Pending)
 
-**Decision Date:** November 30, 2025  
-**Status:** ✅ Design Complete | 🔴 Implementation Pending  
+**Decision Date:** November 30, 2025
+**Status:** ✅ Design Complete | 🔴 Implementation Pending
 **Documentation:** `.github/Specifications.md` (State Machine Architecture section), `Decision_Log.md` (Entry #Nov30-2025)
 
 ### Current Implementation (To Be Refactored)
@@ -1227,12 +1222,12 @@ CREATE TABLE maintenance_sessions (
 
 ### 🔥 1. Yantra Codex (Pair Programming Engine) - 0% Complete 🔮 POST-MVP
 
-**Status:** 🔴 NOT STARTED (Post-MVP - Week 1-4 implementation planned)  
-**Phase:** POST-MVP (NOT required for launch)  
-**Specification:** `Specifications.md` lines 16-280 (Yantra Codex Pair Programming section)  
+**Status:** 🔴 NOT STARTED (Post-MVP - Week 1-4 implementation planned)
+**Phase:** POST-MVP (NOT required for launch)
+**Specification:** `Specifications.md` lines 16-280 (Yantra Codex Pair Programming section)
 **Business Impact:** Future differentiator - "Fast, learning AI that reduces LLM costs by 90-97%"
 
-**Future Mode:** Yantra GNN + LLM (Claude/GPT-4) Pair Programming with Continuous Learning  
+**Future Mode:** Yantra GNN + LLM (Claude/GPT-4) Pair Programming with Continuous Learning
 **Note:** This is an optimization feature for future phases, NOT required for MVP launch.
 
 | #    | Feature                                  | Status  | Files                                            | Tests | Week   | Notes                                        |
@@ -1251,7 +1246,7 @@ CREATE TABLE maintenance_sessions (
 | 1.12 | Feedback loop validation                 | 🔴 TODO | -                                                | -     | Week 4 | Validate: tests pass → Yantra learns         |
 | 1.13 | HumanEval benchmark integration          | 🔴 TODO | -                                                | -     | Week 2 | Validate 55-60% accuracy target              |
 
-**Blockers:** None - Ready to start Week 1  
+**Blockers:** None - Ready to start Week 1
 **Dependencies Ready:** ✅ Tree-sitter parsers, ✅ CodeContests dataset (6,508 examples), ✅ Feature extractor (978-dim), ✅ LLM orchestrator (Claude/OpenAI)
 
 **Pair Programming Benefits:**
@@ -1273,12 +1268,12 @@ CREATE TABLE maintenance_sessions (
 
 ### 🏗️ 2. Architecture View System - 100% Complete ✅ MVP COMPLETE
 
-**Status:** ✅ COMPLETE (16/16 features)  
-**Latest Update:** December 1, 2025 - Alignment features + Tauri commands completed  
-**Specification:** `.github/Specifications.md` lines 2735-3232 (498 lines of comprehensive specs!)  
-**Documentation:** `Technical_Guide.md` Section 16 (600+ lines), `Features.md` Feature #18, `Decision_Log.md` (3 decisions)  
-**Business Impact:** Design-first development, architecture governance, living architecture diagrams  
-**User Request:** "Where is the visualization of architecture flow? We had a lengthy discussion on that." ✅ DELIVERED  
+**Status:** ✅ COMPLETE (16/16 features)
+**Latest Update:** December 1, 2025 - Alignment features + Tauri commands completed
+**Specification:** `.github/Specifications.md` lines 2735-3232 (498 lines of comprehensive specs!)
+**Documentation:** `Technical_Guide.md` Section 16 (600+ lines), `Features.md` Feature #18, `Decision_Log.md` (3 decisions)
+**Business Impact:** Design-first development, architecture governance, living architecture diagrams
+**User Request:** "Where is the visualization of architecture flow? We had a lengthy discussion on that." ✅ DELIVERED
 **Priority:** ⚡ Implement BEFORE Pair Programming (architectural foundation needed first) - ✅ COMPLETE
 
 **Important Note:** Switched from React Flow to Cytoscape.js for SolidJS compatibility (Nov 28, 2025)
@@ -1302,9 +1297,7 @@ CREATE TABLE maintenance_sessions (
 | 2.15 | **Architecture Auto-Correction**           | ✅ DONE | 3000-3050  | deviation_detector.rs (auto_correct_code method)                        | 2/2   | **MVP:** Auto-fix Low severity deviations           |
 | 2.16 | **Architecture Impact Analysis**           | ✅ DONE | 3000-3050  | deviation_detector.rs (analyze_change_impact method)                    | 1/1   | **MVP:** Analyze change scope before implementation |
 
-**Progress:** 16/16 features complete (100%) ✅  
-**MVP Features:** 16/16 (100%) ✅ | **Post-MVP Features:** Deferred to Phase 2  
-**Latest Update:** December 1, 2025 - Alignment features complete, 2 new Tauri commands added
+**Progress:** 16/16 features complete (100%) ✅**MVP Features:** 16/16 (100%) ✅ | **Post-MVP Features:** Deferred to Phase 2**Latest Update:** December 1, 2025 - Alignment features complete, 2 new Tauri commands added
 
 - ✅ **Week 1 Backend DONE**: Storage (602 lines), Types (416 lines), Manager (191 lines), Commands (490 lines)
 - ✅ **Week 2 Frontend DONE**: Cytoscape.js UI, Hierarchical Tabs, Component/Connection visualization
@@ -1355,11 +1348,11 @@ CREATE TABLE maintenance_sessions (
 
 ### � 2.5. Project Initialization & Architecture-First Workflow - 50% Complete ⚡ MVP CRITICAL
 
-**Status:** � IN PROGRESS (4/8 features complete)  
-**Created:** November 28, 2025  
-**Updated:** December 1, 2025 - Added multi-format architecture import  
-**Specification:** `.github/Specifications.md` (inserted after Architecture View section)  
-**Priority:** ⚡ MVP CRITICAL (Must implement before any code generation)  
+**Status:** � IN PROGRESS (4/8 features complete)
+**Created:** November 28, 2025
+**Updated:** December 1, 2025 - Added multi-format architecture import
+**Specification:** `.github/Specifications.md` (inserted after Architecture View section)
+**Priority:** ⚡ MVP CRITICAL (Must implement before any code generation)
 **Business Impact:** Ensures architecture exists and is approved before implementation, prevents drift
 
 **Core Principle:** Every project (new or existing) MUST have reviewed architecture before code generation begins.
@@ -1375,7 +1368,7 @@ CREATE TABLE maintenance_sessions (
 | 2.5.7 | **Project Scaffolding**         | 🔴 TODO | Template system for new projects             | -     | Generate initial structure from templates                                           |
 | 2.5.8 | **Dependency Auto-Setup**       | 🔴 TODO | Auto-detect and install dependencies         | -     | package.json, requirements.txt, Cargo.toml generation                               |
 
-**Progress:** 4/8 features complete (50%)  
+**Progress:** 4/8 features complete (50%)
 **Latest Update:** December 1, 2025 - Added comprehensive architecture import with multi-format support
 
 **December 1, 2025 Implementation:**
@@ -1426,16 +1419,16 @@ CREATE TABLE maintenance_sessions (
 
 ### ✅ 3. GNN Dependency Tracking - 100% Complete ✅ MVP DONE
 
-**Status:** ✅ FULLY IMPLEMENTED (176 tests passing) + ✅ Semantic Enhancement (100% - production ready)  
-**Specification:** Core GNN module for dependency tracking with semantic embeddings  
-**Phase:** MVP - Structural dependencies complete, Semantic layer complete  
+**Status:** ✅ FULLY IMPLEMENTED (176 tests passing) + ✅ Semantic Enhancement (100% - production ready)
+**Specification:** Core GNN module for dependency tracking with semantic embeddings
+**Phase:** MVP - Structural dependencies complete, Semantic layer complete
 **Latest Enhancement:** Semantic-enhanced dependency graph fully implemented (Dec 1, 2025)
 
 | #    | Feature                                  | Status  | Files                                          | Tests | Notes                                                                |
 | ---- | ---------------------------------------- | ------- | ---------------------------------------------- | ----- | -------------------------------------------------------------------- |
 | 3.1  | Python parser (Tree-sitter)              | ✅ DONE | `src-tauri/src/gnn/parser.rs` (363 lines)      | 2     | Extracts functions, classes, imports + code snippets & docstrings    |
 | 3.2  | JavaScript/TypeScript parser             | ✅ DONE | `src-tauri/src/gnn/parser_js.rs` (383 lines)   | 5     | Supports .js/.ts/.jsx/.tsx + semantic extraction                     |
-| 3.3  | Dependency graph builder                 | ✅ DONE | `src-tauri/src/gnn/graph.rs` (520 lines)       | 3     | petgraph-based, calls/uses/imports edges + **3 semantic search**     |
+| 3.3  | Dependency graph builder                 | ✅ DONE | `src-tauri/src/gnn/graph.rs` (520 lines)       | 3     | petgraph-based, calls/uses/imports edges +**3 semantic search**      |
 | 3.4  | Incremental updates (<50ms)              | ✅ DONE | `src-tauri/src/gnn/incremental.rs` (276 lines) | 4     | **Achieved 1ms average** (50x faster!)                               |
 | 3.5  | SQLite persistence                       | ✅ DONE | `src-tauri/src/gnn/persistence.rs` (198 lines) | 2     | Save/load graph state with embeddings                                |
 | 3.6  | Feature extraction (986-dim)             | ✅ DONE | `src-tauri/src/gnn/features.rs` (526 lines)    | 5     | Complexity, naming, language encoding (12 langs) + semantic features |
@@ -1446,8 +1439,8 @@ CREATE TABLE maintenance_sessions (
 
 **Semantic-Enhanced Dependency Graph - ✅ 100% Complete (Dec 1, 2025):**
 
-**Status:** ✅ PRODUCTION READY - All infrastructure implemented and tested  
-**Priority:** MVP COMPLETE (enables intent-driven context assembly)  
+**Status:** ✅ PRODUCTION READY - All infrastructure implemented and tested
+**Priority:** MVP COMPLETE (enables intent-driven context assembly)
 **Architecture:** Hybrid structural (exact) + semantic (fuzzy) search in single unified graph
 
 **What's Implemented (100%):**
@@ -1533,6 +1526,7 @@ We're enhancing the **dependency graph** itself with embeddings, NOT building a 
    ```
 
 2. **Refactoring Detection:**
+
    ```
    Find similar functions → validate_email_format(), check_email(), is_valid_email()
    Similarity: 0.90-0.95 → Suggest consolidation
@@ -1552,7 +1546,7 @@ We're enhancing the **dependency graph** itself with embeddings, NOT building a 
 
 **Tech Stack Dependency Tracking (Nov 30, 2025):**
 
-**Status:** 🔄 Specification complete, implementation pending  
+**Status:** 🔄 Specification complete, implementation pending
 **Priority:** High (eliminates unnecessary package bloat)
 
 **Problem:** Currently, `requirements.txt` lists all packages but doesn't specify which files use which packages. This leads to:
@@ -1680,8 +1674,8 @@ for node in gnn.get_all_nodes() {
 
 ### ✅ 3A. Storage Optimization (Architecture) - 100% Complete ✅ DONE
 
-**Status:** ✅ COMPLETE (December 2, 2025)  
-**Priority:** 🔥 CRITICAL (Architecture storage optimized with connection pooling)  
+**Status:** ✅ COMPLETE (December 2, 2025)
+**Priority:** 🔥 CRITICAL (Architecture storage optimized with connection pooling)
 **Specification:** 4-Tier Storage Architecture (see Specifications.md)
 
 **Implementation Completed (December 2, 2025):**
@@ -1697,15 +1691,15 @@ for node in gnn.get_all_nodes() {
 | 3A.1 | Add r2d2 dependencies              | ✅ DONE | `Cargo.toml`                            | r2d2 = "0.8", r2d2_sqlite = "0.23"                 |
 | 3A.2 | Architecture storage WAL + pooling | ✅ DONE | `src-tauri/src/architecture/storage.rs` | Pool with 10 max connections, 2 min idle, WAL mode |
 
-**GNN Persistence Decision:**  
+**GNN Persistence Decision:**
 GNN pooling NOT implemented - analysis shows reads are in-memory only (<1ms), database only used for startup load and occasional persist. Pooling would add complexity with zero performance gain. See `.github/Storage_Performance_Analysis.md` for detailed analysis.
 
 ---
 
 ### 🔴 3B. HNSW Semantic Indexing - Ferrari MVP Standard
 
-**Status:** 🔴 NOT STARTED (Scheduled after Browser Integration)  
-**Priority:** 🔥 CRITICAL FOR SCALE (No compromise on performance)  
+**Status:** 🔴 NOT STARTED (Scheduled after Browser Integration)
+**Priority:** 🔥 CRITICAL FOR SCALE (No compromise on performance)
 **Specification:** See Specifications.md § HNSW Vector Indexing
 
 **Why This Matters:**
@@ -1787,7 +1781,7 @@ impl CodeGraph {
 
 ### ✅ 4. LLM Integration - 89% Complete ✅ MVP MOSTLY DONE
 
-**Status:** ✅ DONE  
+**Status:** ✅ DONE
 **Phase:** MVP
 
 | #    | Feature                         | Status  | Files                                           | Tests | Notes                                                 |
@@ -1820,27 +1814,27 @@ impl CodeGraph {
 
 ### ✅ 5. Agent Framework (Orchestration Infrastructure) - 100% Complete ✅ MVP COMPLETE
 
-**Status:** ✅ COMPLETE  
+**Status:** ✅ COMPLETE
 **Phase:** MVP
 
 **Important:** This section tracks the **orchestration framework** that agents use, not the agents themselves. For actual agent implementations, see Section 5A (Agentic Capabilities).
 
-| #     | Feature                              | Status      | Files                                                     | Tests      | Notes                                                                          |
-| ----- | ------------------------------------ | ----------- | --------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------ |
-| 5.1   | Agent state machine                  | ✅ DONE     | `src-tauri/src/agent/state.rs` (355 lines)                | 6          | 9 phases with crash recovery                                                   |
-| 5.2   | Confidence scoring                   | ✅ DONE     | `src-tauri/src/agent/confidence.rs` (320 lines)           | 13         | Multi-factor for auto-retry                                                    |
-| 5.3   | Dependency validation                | ✅ DONE     | `src-tauri/src/agent/validation.rs` (412 lines)           | 5          | GNN-based breaking change detection                                            |
-| 5.4   | Terminal execution                   | ✅ DONE     | `src-tauri/src/agent/terminal.rs` (391 lines)             | 5          | Security whitelist, streaming                                                  |
-| 5.4.1 | Smart Terminal Management            | ✅ DONE     | `src-tauri/src/terminal/executor.rs` (331 lines)          | 4          | **Process detection, terminal reuse, platform-specific (macOS/Linux/Windows)** |
-| 5.5   | Script execution (Python)            | ✅ DONE     | `src-tauri/src/agent/execution.rs` (438 lines)            | 7          | Error type classification                                                      |
-| 5.6   | Package detection & install          | ✅ DONE     | `src-tauri/src/agent/dependencies.rs` (429 lines)         | 5          | Python/Node/Rust detection                                                     |
-| 5.7   | Package building                     | ✅ DONE     | `src-tauri/src/agent/packaging.rs` (528 lines)            | 8          | Docker, setup.py, package.json                                                 |
-| 5.8   | Deployment automation                | ✅ DONE     | `src-tauri/src/agent/deployment.rs` (636 lines)           | 5          | K8s, staging/prod                                                              |
-| 5.9   | Production monitoring                | ✅ DONE     | `src-tauri/src/agent/monitoring.rs` (754 lines)           | 7          | Metrics, alerts, self-healing                                                  |
-| 5.10  | Orchestration pipeline (Single File) | ✅ DONE     | `src-tauri/src/agent/orchestrator.rs` (651 lines)         | 12         | Full validation pipeline with auto-retry                                       |
-| 5.11  | **Multi-File Project Orchestration** | ✅ **DONE** | `src-tauri/src/agent/project_orchestrator.rs` (647 lines) | ⏳ Pending | **E2E autonomous project creation**                                            |
-| 5.12  | Agent API facade                     | ✅ DONE     | `src-tauri/src/agent/mod.rs` (64 lines)                   | 0          | Public API exports                                                             |
-| 5.13  | Cross-Project Orchestration          | 🔴 TODO     | -                                                         | -          | **Post-MVP:** Coordinate changes across repos                                  |
+| #     | Feature                              | Status     | Files                                                     | Tests      | Notes                                                                          |
+| ----- | ------------------------------------ | ---------- | --------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------ |
+| 5.1   | Agent state machine                  | ✅ DONE    | `src-tauri/src/agent/state.rs` (355 lines)                | 6          | 9 phases with crash recovery                                                   |
+| 5.2   | Confidence scoring                   | ✅ DONE    | `src-tauri/src/agent/confidence.rs` (320 lines)           | 13         | Multi-factor for auto-retry                                                    |
+| 5.3   | Dependency validation                | ✅ DONE    | `src-tauri/src/agent/validation.rs` (412 lines)           | 5          | GNN-based breaking change detection                                            |
+| 5.4   | Terminal execution                   | ✅ DONE    | `src-tauri/src/agent/terminal.rs` (391 lines)             | 5          | Security whitelist, streaming                                                  |
+| 5.4.1 | Smart Terminal Management            | ✅ DONE    | `src-tauri/src/terminal/executor.rs` (331 lines)          | 4          | **Process detection, terminal reuse, platform-specific (macOS/Linux/Windows)** |
+| 5.5   | Script execution (Python)            | ✅ DONE    | `src-tauri/src/agent/execution.rs` (438 lines)            | 7          | Error type classification                                                      |
+| 5.6   | Package detection & install          | ✅ DONE    | `src-tauri/src/agent/dependencies.rs` (429 lines)         | 5          | Python/Node/Rust detection                                                     |
+| 5.7   | Package building                     | ✅ DONE    | `src-tauri/src/agent/packaging.rs` (528 lines)            | 8          | Docker, setup.py, package.json                                                 |
+| 5.8   | Deployment automation                | ✅ DONE    | `src-tauri/src/agent/deployment.rs` (636 lines)           | 5          | K8s, staging/prod                                                              |
+| 5.9   | Production monitoring                | ✅ DONE    | `src-tauri/src/agent/monitoring.rs` (754 lines)           | 7          | Metrics, alerts, self-healing                                                  |
+| 5.10  | Orchestration pipeline (Single File) | ✅ DONE    | `src-tauri/src/agent/orchestrator.rs` (651 lines)         | 12         | Full validation pipeline with auto-retry                                       |
+| 5.11  | **Multi-File Project Orchestration** | ✅**DONE** | `src-tauri/src/agent/project_orchestrator.rs` (647 lines) | ⏳ Pending | **E2E autonomous project creation**                                            |
+| 5.12  | Agent API facade                     | ✅ DONE    | `src-tauri/src/agent/mod.rs` (64 lines)                   | 0          | Public API exports                                                             |
+| 5.13  | Cross-Project Orchestration          | 🔴 TODO    | -                                                         | -          | **Post-MVP:** Coordinate changes across repos                                  |
 
 **NEW - Multi-File Project Orchestration (Feature 5.11, Nov 28, 2025):**
 
@@ -1886,7 +1880,7 @@ impl CodeGraph {
 - ✅ Supports Python (.py), JavaScript (.js, .jsx), TypeScript (.ts, .tsx)
 - ✅ Non-blocking: GNN tracking failures don't stop project generation
 - ✅ Metrics reported: duration, nodes updated, edges updated
-- ✅ Arc<Mutex<GNNEngine>> for thread-safe access
+- ✅ Arc<Mutex `<GNNEngine>`> for thread-safe access
 
 **Future Enhancements (Documented):**
 
@@ -1908,8 +1902,8 @@ Yantra: 🚀 Starting autonomous project creation...
 
 **NEW - Smart Terminal Management (Feature 5.4.1, Nov 28, 2025):**
 
-**Status:** 🔴 NOT STARTED  
-**Priority:** ⚡ MVP CRITICAL  
+**Status:** 🔴 NOT STARTED
+**Priority:** ⚡ MVP CRITICAL
 **Purpose:** Intelligent terminal session management to avoid interruptions and resource waste
 
 **Requirements:**
@@ -1969,8 +1963,8 @@ Scenario: User has dev server running in Terminal 1
 
 ### � 5A. Agentic Capabilities - 84% Complete (21/25 features)
 
-**Status:** � **MAJOR PROGRESS** (10 core capabilities implemented, Dec 3, 2025)  
-**Phase:** MVP  
+**Status:** � **MAJOR PROGRESS** (10 core capabilities implemented, Dec 3, 2025)
+**Phase:** MVP
 **Priority:** 🔥 CRITICAL (Core autonomous capabilities)
 
 **Important:** This section tracks **actual autonomous agent implementations**, not the orchestration framework. The Agent Framework (Section 5) provides the infrastructure; this section tracks the agents that use it.
@@ -2058,15 +2052,15 @@ These agents are **specified but not implemented**. They represent critical auto
 
 ### 🔴 6. Interaction Modes (Guided vs Auto) - 0% Complete ⚡ MVP PRIORITY
 
-**Status:** 🔴 NOT STARTED (Specification captured, implementation pending)  
-**Specification:** `.github/Specifications.md` lines 1920-2669 (750 lines - comprehensive specs!)  
-**Business Impact:** User experience control - guided learning vs fast autonomous execution  
-**Priority:** ⚡ MVP REQUIRED (User requested: "Should be in MVP")  
-**Phase:** MVP  
+**Status:** 🔴 NOT STARTED (Specification captured, implementation pending)
+**Specification:** `.github/Specifications.md` lines 1920-2669 (750 lines - comprehensive specs!)
+**Business Impact:** User experience control - guided learning vs fast autonomous execution
+**Priority:** ⚡ MVP REQUIRED (User requested: "Should be in MVP")
+**Phase:** MVP
 **Assumption:** Captured in specification, ready for implementation
 
-**Design Status:** ✅ FULLY SPECIFIED  
-**Implementation Status:** 🔴 NOT STARTED  
+**Design Status:** ✅ FULLY SPECIFIED
+**Implementation Status:** 🔴 NOT STARTED
 **Estimated Effort:** 2 weeks (Week 5-6 after state machines)
 
 **Two Interaction Modes:**
@@ -2098,7 +2092,7 @@ These agents are **specified but not implemented**. They represent critical auto
 | 6.5  | **Decision Logging**                    | 🔴 TODO | 2200-2300  | `src-tauri/src/agent/decision_log.rs`     | -     | `.yantra/logs/decisions.log` with queries           |
 | 6.6  | **Progress Status (Project-Level)**     | 🔴 TODO | 2300-2400  | `generate_progress_report()`              | -     | Regular status updates with milestones              |
 | 6.7  | **Mode Switching**                      | 🔴 TODO | 2410-2480  | UI + backend integration                  | -     | Toggle anytime, auto-switch after 3 failures        |
-| 6.8  | **Frontend Mode Indicator**             | 🔴 TODO | 2600-2620  | `src-ui/stores/interactionModeStore.ts`   | -     | 🚀 Auto \| 🧭 Guided indicator                      |
+| 6.8  | **Frontend Mode Indicator**             | 🔴 TODO | 2600-2620  | `src-ui/stores/interactionModeStore.ts`   | -     | 🚀 Auto\| 🧭 Guided indicator                       |
 | 6.9  | **Guided Mode Phase Explanations**      | 🔴 TODO | 1980-2080  | Agent prompts for each phase              | -     | Architecture, Generation, Testing, Security, Commit |
 | 6.10 | **Config Persistence**                  | 🔴 TODO | 2410-2450  | `.yantra/config.json`                     | -     | Save mode preference                                |
 
@@ -2172,10 +2166,10 @@ export interface InteractionModeStore {
 
 ### 🔴 7. Cascading Failure Protection - 0% Complete ⚡ MVP PRIORITY
 
-**Status:** 🔴 NOT STARTED  
-**Specification:** `.github/Specifications.md` lines 2669-3408 (739 lines - comprehensive specs!)  
-**Business Impact:** Safety net - prevents agent from digging deeper into failures, always revertible  
-**Priority:** ⚡ MVP CRITICAL (User requested: "Should be in MVP")  
+**Status:** 🔴 NOT STARTED
+**Specification:** `.github/Specifications.md` lines 2669-3408 (739 lines - comprehensive specs!)
+**Business Impact:** Safety net - prevents agent from digging deeper into failures, always revertible
+**Priority:** ⚡ MVP CRITICAL (User requested: "Should be in MVP")
 **Phase:** MVP
 
 **Core Principle:** Every modification is reversible with one click. Automatically detect failure loops and revert to last known working state.
@@ -2316,8 +2310,8 @@ User Options (After 3 Failures):
 
 ### ✅ 8. Testing & Validation - 83% Complete ✅ MVP MOSTLY DONE
 
-**Status:** ✅ MOSTLY DONE (1 feature pending)  
-**Phase:** MVP  
+**Status:** ✅ MOSTLY DONE (1 feature pending)
+**Phase:** MVP
 **Test Infrastructure:** Dual system (Vitest + Jest) due to SolidJS JSX compatibility - see Technical_Guide.md Testing Infrastructure section
 
 | #   | Feature                          | Status  | Files                                                                                      | Tests  | Notes                                                              |
@@ -2358,15 +2352,15 @@ User Options (After 3 Failures):
 - Fixed error message display for failed tasks
 - 2 remaining failures are jsdom limitations (getComputedStyle returns empty strings)
 
-**Why Two Test Runners?**  
+**Why Two Test Runners?**
 SolidJS JSX requires vite-plugin-solid, but vitest bundles its own Vite → version conflict. Solution: Vitest for stores (49 tests, 100%), Jest with babel-preset-solid for components (76 tests, 97%). See Technical_Guide.md § Testing Infrastructure for full details.
 
 ---
 
 ### ✅ 9. Security Scanning - 100% Complete ✅ MVP DONE
 
-**Status:** ✅ FULLY IMPLEMENTED  
-**Phase:** MVP - COMPLETE  
+**Status:** ✅ FULLY IMPLEMENTED
+**Phase:** MVP - COMPLETE
 **Implementation Date:** November 22-23, 2025
 
 | #   | Feature                                | Status  | Files                                                                                            | Tests | Notes                                                |
@@ -2386,8 +2380,8 @@ SolidJS JSX requires vite-plugin-solid, but vitest bundles its own Vite → vers
 
 ### 🔴 10. Browser Integration (Chrome DevTools Protocol) - 25% Complete 🔴 MVP CRITICAL
 
-**Status:** 🔴 PARTIALLY DONE (2/8 MVP features, 6 missing, 0/6 Post-MVP features)  
-**Phase:** MVP - **CRITICAL GAPS IDENTIFIED**  
+**Status:** 🔴 PARTIALLY DONE (2/8 MVP features, 6 missing, 0/6 Post-MVP features)
+**Phase:** MVP - **CRITICAL GAPS IDENTIFIED**
 **Specification:** `.github/Specifications.md` (Browser Integration with CDP section, comprehensive spec added Nov 30, 2025)
 
 #### MVP Features (8 total - 25% complete)
@@ -2514,7 +2508,7 @@ SolidJS JSX requires vite-plugin-solid, but vitest bundles its own Vite → vers
 
 ### ✅ 11. Git Integration - 100% Complete ✅ MVP DONE
 
-**Status:** ✅ FULLY IMPLEMENTED  
+**Status:** ✅ FULLY IMPLEMENTED
 **Phase:** MVP - COMPLETE
 
 | #    | Feature            | Status  | Files                                     | Tests | Notes                           |
@@ -2528,9 +2522,9 @@ SolidJS JSX requires vite-plugin-solid, but vitest bundles its own Vite → vers
 
 ### ✅ 12. UI/Frontend (Basic + Minimal UI) - 100% Complete ✅ MVP DONE
 
-**Status:** � FULLY IMPLEMENTED (All MVP features complete)  
-**Latest Update:** November 28, 2025 - Minimal UI improvements implemented  
-**Phase:** MVP - COMPLETE  
+**Status:** � FULLY IMPLEMENTED (All MVP features complete)
+**Latest Update:** November 28, 2025 - Minimal UI improvements implemented
+**Phase:** MVP - COMPLETE
 **Documentation:** `Technical_Guide.md` Section 17 (225 lines), `UX.md` (documentation panels + chat + view tabs sections), `Specifications.md` (minimal UI requirements section)
 
 | #    | Feature                             | Status  | Files                                                   | Tests | Notes                                                 |
@@ -2574,8 +2568,8 @@ SolidJS JSX requires vite-plugin-solid, but vitest bundles its own Vite → vers
 
 ### ✅ 13. Documentation System - 100% Complete ✅ MVP DONE
 
-**Status:** ✅ FULLY IMPLEMENTED  
-**Phase:** MVP - COMPLETE  
+**Status:** ✅ FULLY IMPLEMENTED
+**Phase:** MVP - COMPLETE
 **Specification:** `.github/Specifications.md` lines 3233-3504 (Documentation System section, 272 lines)
 
 | #    | Feature                  | Status  | Files                                            | Tests | Notes                                 |
@@ -2586,9 +2580,9 @@ SolidJS JSX requires vite-plugin-solid, but vitest bundles its own Vite → vers
 
 ### 🔴 14. Code Autocompletion (Monaco Editor) - 0% Complete 🔴 MVP TODO
 
-**Status:** 🔴 NOT STARTED  
-**Phase:** MVP - Developer Experience Enhancement  
-**Specification:** `.github/Specifications.md` (Code Autocompletion section, comprehensive spec added Nov 30, 2025)  
+**Status:** 🔴 NOT STARTED
+**Phase:** MVP - Developer Experience Enhancement
+**Specification:** `.github/Specifications.md` (Code Autocompletion section, comprehensive spec added Nov 30, 2025)
 **Implementation Approach:** Hybrid - Static completions (instant) + GNN-powered (context-aware)
 
 #### MVP Features (4 total - 0% complete)
@@ -2711,9 +2705,9 @@ pub async fn get_gnn_completions(
 
 ### 🔴 15. Multi-LLM Consultation Mode - 0% Complete 🔴 MVP STRETCH
 
-**Status:** 🔴 NOT STARTED  
-**Phase:** MVP - Stretch Goal (Last MVP feature)  
-**Specification:** `.github/Specifications.md` (Multi-LLM Consultation Mode section, ~1,200 lines added Nov 30, 2025)  
+**Status:** 🔴 NOT STARTED
+**Phase:** MVP - Stretch Goal (Last MVP feature)
+**Specification:** `.github/Specifications.md` (Multi-LLM Consultation Mode section, ~1,200 lines added Nov 30, 2025)
 **Implementation Approach:** Collaborative consultation - Primary LLM + Consultant LLM for second opinions
 
 #### MVP Features (5 total - 0% complete)
@@ -2988,7 +2982,7 @@ pub async fn get_available_models(app: AppHandle) -> Result<Vec<ModelInfo>, Stri
 
 ## 📦 Supporting Infrastructure - 100% Complete ✅
 
-**Status:** ✅ FULLY IMPLEMENTED  
+**Status:** ✅ FULLY IMPLEMENTED
 **Phase:** MVP - COMPLETE
 
 | Component                    | Status  | Files                                                  | Notes                   |
@@ -3004,9 +2998,9 @@ pub async fn get_available_models(app: AppHandle) -> Result<Vec<ModelInfo>, Stri
 
 ### 💰 1. Monetization & Subscription System - 0% Complete 💰 POST-MVP PRIORITY #1
 
-**Status:** 🔴 NOT STARTED  
-**Phase:** Post-MVP Priority #1 (First feature after MVP completion)  
-**Specification:** `.github/Specifications.md` (Monetization Model section, ~1,000 lines added Nov 30, 2025)  
+**Status:** 🔴 NOT STARTED
+**Phase:** Post-MVP Priority #1 (First feature after MVP completion)
+**Specification:** `.github/Specifications.md` (Monetization Model section, ~1,000 lines added Nov 30, 2025)
 **Implementation Timeline:** 5 weeks (subscription backend, payment integration, UI, testing)
 
 **Business Model:**
@@ -3221,11 +3215,11 @@ Next Billing: Dec 30, 2025
 
 ### 11. Clean Code Mode (Automated Code Hygiene) - 0% Complete 🧹
 
-**Status:** 🔴 NOT STARTED (Post-MVP, 5 weeks planned)  
-**Priority:** High (Quality Enabler)  
-**Phase:** Post-MVP (After Yantra Codex & Architecture View)  
-**Specification:** `Specifications.md` lines 1309+ (Clean Code Mode section, ~1500 lines)  
-**Epic Plan:** `Project_Plan.md` - Clean Code Mode Epic (5-week detailed breakdown)  
+**Status:** 🔴 NOT STARTED (Post-MVP, 5 weeks planned)
+**Priority:** High (Quality Enabler)
+**Phase:** Post-MVP (After Yantra Codex & Architecture View)
+**Specification:** `Specifications.md` lines 1309+ (Clean Code Mode section, ~1500 lines)
+**Epic Plan:** `Project_Plan.md` - Clean Code Mode Epic (5-week detailed breakdown)
 **Business Impact:** Automated technical debt reduction, 20% reduction in code review time
 
 **Overview:** Automated code maintenance system leveraging GNN to detect dead code, perform safe refactorings, validate changes, and harden components after implementation.
@@ -3307,7 +3301,7 @@ src-ui/components/CleanCode/
 
 ### 12. Analytics & Metrics Dashboard - 0% Complete 📊
 
-**Status:** 🔴 NOT STARTED  
+**Status:** 🔴 NOT STARTED
 **Phase:** Post-MVP (Month 3-6)
 
 | #    | Feature                        | Status  | Notes                               |
@@ -3321,7 +3315,7 @@ src-ui/components/CleanCode/
 
 ### 13. Workflow Automation - 0% Complete 🔄
 
-**Status:** 🔴 NOT STARTED  
+**Status:** 🔴 NOT STARTED
 **Phase:** Post-MVP (Month 5-8)
 
 | #    | Feature                    | Status  | Notes                           |
@@ -3337,9 +3331,9 @@ src-ui/components/CleanCode/
 
 ### 13A. Cluster Agents Architecture (Master-Servant) - 0% Complete 🤖
 
-**Status:** 🔴 NOT STARTED (Planned for Phase 2A, Months 3-4)  
-**Phase:** Phase 2A (Months 3-4)  
-**Priority:** HIGH (Enables team collaboration + 3x faster features)  
+**Status:** 🔴 NOT STARTED (Planned for Phase 2A, Months 3-4)
+**Phase:** Phase 2A (Months 3-4)
+**Priority:** HIGH (Enables team collaboration + 3x faster features)
 **Effort:** 4 weeks
 
 **Innovation:** Proactive conflict prevention using GNN dependency analysis + Git coordination branch + Tier 2 file locking
@@ -3378,9 +3372,9 @@ src-ui/components/CleanCode/
 
 ### 13B. Cloud Graph Database (Tier 0 - Shared Coordination) - 0% Complete 🌐
 
-**Status:** 🔴 NOT STARTED (Planned for Phase 2B, Months 4-5)  
-**Phase:** Phase 2B (Months 4-5)  
-**Priority:** MEDIUM (Enables team collaboration + multi-user projects)  
+**Status:** 🔴 NOT STARTED (Planned for Phase 2B, Months 4-5)
+**Phase:** Phase 2B (Months 4-5)
+**Priority:** MEDIUM (Enables team collaboration + multi-user projects)
 **Effort:** 3 weeks
 
 **Note:** This is NOT "Cloud GNN" - the GNN (intelligence layer) runs locally. This is a cloud-hosted graph database (PostgreSQL + Redis) that stores the shared dependency graph for coordination.
@@ -3424,9 +3418,9 @@ src-ui/components/CleanCode/
 
 ### 13C. Storage Tier 2 (sled for Real-Time Coordination) - 0% Complete 📝
 
-**Status:** 🔴 NOT STARTED (Planned for Phase 2A, Month 3-4)  
-**Phase:** Phase 2A (Month 3-4)  
-**Priority:** HIGH (Required for cluster agents)  
+**Status:** 🔴 NOT STARTED (Planned for Phase 2A, Month 3-4)
+**Phase:** Phase 2A (Month 3-4)
+**Priority:** HIGH (Required for cluster agents)
 **Effort:** 1 week
 
 **Decision:** SQLite + WAL + pooling stays for Tier 3 (architecture/config). sled for Tier 2 (agent coordination).
@@ -3458,9 +3452,9 @@ src-ui/components/CleanCode/
 
 ### 13A. Storage Tier 2 (sled/RocksDB for Agent Coordination) - 0% Complete �
 
-**Status:** 🔴 NOT STARTED (Planned for Phase 2, Month 4)  
-**Phase:** Phase 2 (Month 4)  
-**Priority:** MEDIUM (Required for cluster agents)  
+**Status:** 🔴 NOT STARTED (Planned for Phase 2, Month 4)
+**Phase:** Phase 2 (Month 4)
+**Priority:** MEDIUM (Required for cluster agents)
 **Effort:** 1 week
 
 **Decision:** SQLite + WAL + pooling stays for Tier 3 (architecture/config). No PostgreSQL migration needed!
@@ -3492,9 +3486,9 @@ src-ui/components/CleanCode/
 
 ### 13C. Storage Tier 4 (In-Memory LRU Cache) - 0% Complete �
 
-**Status:** 🔴 NOT STARTED (Planned for Phase 2, Month 4)  
-**Phase:** Phase 2 (Month 4)  
-**Priority:** LOW (Performance optimization)  
+**Status:** 🔴 NOT STARTED (Planned for Phase 2, Month 4)
+**Phase:** Phase 2 (Month 4)
+**Priority:** LOW (Performance optimization)
 **Effort:** 3-4 days
 
 **Rationale:** Eliminate write amplification from caching to disk
@@ -3518,9 +3512,9 @@ src-ui/components/CleanCode/
 
 ### 13D. Storage Tier 1 (In-Memory GNN) - 0% Complete 🔴
 
-**Status:** 🔴 NOT STARTED (Planned for Phase 3, Months 5-8)  
-**Phase:** Phase 3 (Months 5-8)  
-**Priority:** MEDIUM (For >100K LOC projects)  
+**Status:** 🔴 NOT STARTED (Planned for Phase 3, Months 5-8)
+**Phase:** Phase 3 (Months 5-8)
+**Priority:** MEDIUM (For >100K LOC projects)
 **Effort:** 2 weeks
 
 **Rationale:** Disk I/O is catastrophically slow for pointer-chasing graph traversal
@@ -3548,8 +3542,8 @@ src-ui/components/CleanCode/
 
 ### 14. Multi-Language Support (Extended) - 100% Complete ✅
 
-**Status:** ✅ COMPLETE (All 10 languages implemented)  
-**Phase:** MVP Complete  
+**Status:** ✅ COMPLETE (All 10 languages implemented)
+**Phase:** MVP Complete
 **Total Effort:** ~9 days (completed Nov 30, 2025)
 
 **Architecture Advantage:** GNN logic patterns are language-independent. Only tree-sitter parsers needed per language. Pattern established with Python + JS/TS parsers.
@@ -3668,6 +3662,7 @@ src-ui/components/CleanCode/
 6. **Tests Complete (3 per parser = 24 new tests):**
    - Each parser has 3 unit tests (function, class, import)
    - Example test pattern:
+
    ```rust
    #[test]
    fn test_parse_rust_function() {
@@ -3758,7 +3753,7 @@ After resolving tree-sitter API version conflicts:
 
 **Tree-sitter Version Resolution:**
 
-Problem: Old parsers (python/js/ts) used tree-sitter 0.20 with `language()` function API.  
+Problem: Old parsers (python/js/ts) used tree-sitter 0.20 with `language()` function API.
 New parsers required tree-sitter 0.22, causing type conflicts.
 
 Solution:
@@ -3794,7 +3789,7 @@ let language = unsafe {
 
 ### 15. Collaboration Features - 0% Complete 🤝
 
-**Status:** 🔴 NOT STARTED  
+**Status:** 🔴 NOT STARTED
 **Phase:** Post-MVP (Year 2+)
 
 | #    | Feature                    | Status  | Notes                        |
@@ -4004,7 +3999,7 @@ Thank you for catching this critical omission!
 
 ### Week 1 (Nov 26 - Dec 2): Extract Logic Patterns from CodeContests
 
-**Status:** 🔴 NOT STARTED  
+**Status:** 🔴 NOT STARTED
 **Priority:** 🔥 CRITICAL PATH
 
 **Tasks:**
@@ -4014,7 +4009,7 @@ Thank you for catching this critical omission!
 - [ ] Output: `~/.yantra/datasets/logic_patterns.jsonl`
 - [ ] Validate: 95%+ extraction success rate
 
-**Blockers:** None - Ready to start  
+**Blockers:** None - Ready to start
 **Estimate:** 3-4 days
 
 ---
@@ -4042,12 +4037,10 @@ See Specifications.md lines 234-1230 for full technical specifications.
 - **`Specifications.md`** - Complete product specifications
   - Lines 16-232: Yantra Codex (GNN code generation)
   - Lines 234-1230: Architecture View System (997 lines!)
+
 - **`Project_Plan.md`** - 4-week Yantra Codex implementation plan (Week 1-4 detailed)
-
 - **`docs/Yantra_Codex_Implementation_Plan.md`** - Technical implementation details
-
 - **`Decision_Log.md`** - Architecture decisions (1024 dims, universal learning, etc.)
-
 - **`File_Registry.md`** - All project files and their purposes
 
 ---
@@ -4240,7 +4233,7 @@ _Last updated: November 26, 2025_
 - [ ] Output: `~/.yantra/datasets/logic_patterns.jsonl`
 - [ ] Validate: 95%+ extraction success rate
 
-**Blockers:** None - Ready to start  
+**Blockers:** None - Ready to start
 **Estimate:** 3-4 days
 
 ---
@@ -4254,7 +4247,7 @@ _Last updated: November 26, 2025_
 - [ ] Train on problem → logic mapping
 - [ ] Evaluate on HumanEval: Target 55-60% accuracy
 
-**Dependencies:** Week 1 complete  
+**Dependencies:** Week 1 complete
 **Estimate:** 4-5 days
 
 ---
@@ -4268,7 +4261,7 @@ _Last updated: November 26, 2025_
 - [ ] Extend Tree-sitter for code generation
 - [ ] Integration testing: 50 problems, 55-60% pass rate
 
-**Dependencies:** Week 2 complete  
+**Dependencies:** Week 2 complete
 **Estimate:** 5-6 days
 
 ---
@@ -4282,7 +4275,7 @@ _Last updated: November 26, 2025_
 - [ ] Build feedback loop (GNN → tests → learn)
 - [ ] Prepare Yantra Cloud Codex API
 
-**Dependencies:** Week 3 complete  
+**Dependencies:** Week 3 complete
 **Estimate:** 5-6 days
 
 ---
@@ -4335,8 +4328,8 @@ Model selection UI existed but was hidden behind a toggle button ("▼ Models").
 
 ---
 
-**Document Status:** ✅ Verified and updated based on code review and specifications analysis  
-**Last Updated:** November 29, 2025 - Added Task 25 completion, Technical Guide sections  
+**Document Status:** ✅ Verified and updated based on code review and specifications analysis
+**Last Updated:** November 29, 2025 - Added Task 25 completion, Technical Guide sections
 **User Feedback Applied:** Added Architecture View System (15 features, 997 lines of specs), separated MVP vs Post-MVP
 
 ---
@@ -4358,8 +4351,8 @@ Model selection UI existed but was hidden behind a toggle button ("▼ Models").
 
 **Technical Solution:**
 
-- Fixed `generate_architecture_from_intent` - Clone Arc<Mutex<LLMOrchestrator>> before await
-- Fixed `generate_architecture_from_code` - Clone Arc<Mutex<GNNEngine>> before await
+- Fixed `generate_architecture_from_intent` - Clone Arc<Mutex `<LLMOrchestrator>`> before await
+- Fixed `generate_architecture_from_code` - Clone Arc<Mutex `<GNNEngine>`> before await
 - Fixed `initialize_new_project` - Clone Arc before locking and calling async method
 - Fixed `initialize_existing_project` - Same pattern as above
 - Fixed `review_existing_code` - Get Architecture from manager first, then call async
