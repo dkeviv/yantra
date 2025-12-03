@@ -629,26 +629,27 @@ Team of Agents Architecture:
 
 ### Why GNN Pooling Still Unnecessary
 
-| Concern | Reality | Pooling Benefit |
-|---------|---------|-----------------|
-| **Multiple agents writing** | Each has own SQLite file | 0% (no shared DB) |
-| **Concurrent access** | Each agent: Arc<Mutex<>> serializes | 0% (independent processes) |
-| **Read performance** | Each agent: In-memory graph (<1ms) | 0% (no DB reads) |
-| **Coordination** | Via Git branches + Tier 2 (sled) | 0% (different mechanism) |
+| Concern                     | Reality                             | Pooling Benefit            |
+| --------------------------- | ----------------------------------- | -------------------------- |
+| **Multiple agents writing** | Each has own SQLite file            | 0% (no shared DB)          |
+| **Concurrent access**       | Each agent: Arc<Mutex<>> serializes | 0% (independent processes) |
+| **Read performance**        | Each agent: In-memory graph (<1ms)  | 0% (no DB reads)           |
+| **Coordination**            | Via Git branches + Tier 2 (sled)    | 0% (different mechanism)   |
 
 ### What Actually Matters for Team of Agents
 
 **Must Implement (Phase 2A):**
+
 1. ✅ **Tier 2 (sled)**: File locking system - prevents same-file conflicts
 2. ✅ **Git branches**: Each agent works on separate branch - isolation
 3. ✅ **A2A protocol**: Agent-to-agent messaging via Tier 2 - dependency coordination
 4. ✅ **Master agent**: Work decomposition and assignment
 5. ✅ **Git coordination branch**: Append-only event log for assignments/completions
 
-**Phase 2B (Optional for Ferrari MVP):**
-6. 🔄 **Cloud Graph DB (Tier 0)**: PostgreSQL + Redis for proactive conflict detection
-   - Warns when Agent B's file depends on Agent A's file being modified
-   - NOT SQLite pooling - different technology entirely
+**Phase 2B (Optional for Ferrari MVP):** 6. 🔄 **Cloud Graph DB (Tier 0)**: PostgreSQL + Redis for proactive conflict detection
+
+- Warns when Agent B's file depends on Agent A's file being modified
+- NOT SQLite pooling - different technology entirely
 
 ### Conclusion
 
@@ -661,4 +662,3 @@ Team of Agents Architecture:
 **Ferrari MVP Standard Applied:** We analyzed future requirements (Team of Agents) BEFORE deciding. Result: Original decision (skip GNN pooling) validated for all phases.
 
 **Your decision?**
-

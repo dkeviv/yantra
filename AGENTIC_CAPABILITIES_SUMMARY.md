@@ -1,8 +1,8 @@
 # Yantra - Agentic Capabilities Summary
 
-**Last Updated:** December 1, 2025  
-**Purpose:** Quick reference for agentic capabilities framework  
-**Full Documentation:** `.github/Specifications.md` §"Comprehensive Agentic Capabilities Framework"  
+**Last Updated:** December 1, 2025
+**Purpose:** Quick reference for agentic capabilities framework
+**Full Documentation:** `.github/Specifications.md` §"Comprehensive Agentic Capabilities Framework"
 **Implementation Tracking:** `IMPLEMENTATION_STATUS.md` §"🤖 AGENTIC CAPABILITIES"
 
 ---
@@ -229,8 +229,8 @@
 
 ## 🎯 Success Criteria
 
-✅ **Reasoning & Learning** - Both pillars 100% complete  
-🟢 **Execution** - 73% complete, strong foundation  
+✅ **Reasoning & Learning** - Both pillars 100% complete
+🟢 **Execution** - 73% complete, strong foundation
 🟡 **Perception** - 51% complete, needs database & API capabilities
 
 **Next Focus:** Database connection manager + HTTP client + Browser CDP (Weeks 1-2)

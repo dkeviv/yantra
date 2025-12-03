@@ -268,7 +268,3 @@ With GNN:    "File changed → 3 files affected → 2 tests" → 5 seconds
 ```
 
 This is how you deliver "never breaks" without sacrificing speed.
-
----
-
-Want me to add this tiered validation strategy to the spec?

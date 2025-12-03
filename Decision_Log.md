@@ -229,6 +229,7 @@ GNNEngine
 **Answer:** NO - GNN pooling still unnecessary because:
 
 **Phase 2A Architecture:**
+
 - **Each agent runs its own Yantra instance** with its own LOCAL GNN
 - **No shared GNN database** between agents
 - Each agent has: `Arc<Mutex<GNNEngine>>` + separate SQLite file
@@ -248,7 +249,7 @@ Agent 1 Desktop Instance:
   └─ Feature Branch: feature/agent-1-payment-api
 
 Agent 2 Desktop Instance:
-  ├─ LOCAL GNN (Arc<Mutex<GNNEngine>>) + SQLite  
+  ├─ LOCAL GNN (Arc<Mutex<GNNEngine>>) + SQLite
   └─ Feature Branch: feature/agent-2-checkout-ui
 
 Coordination:

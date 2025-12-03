@@ -15,32 +15,31 @@ Yantra follows a **Minimal UX** design philosophy focused on maximizing content 
 ### Core Principles
 
 1. **Space Optimization** - Every pixel counts
-
    - Controls take minimal space (top bar, inline settings)
    - Content maximized (chat, editor, terminal take 90%+ screen)
    - No unnecessary panels or toolbars
-2. **Single-Line Layouts** - Inline controls where possible
 
+2. **Single-Line Layouts** - Inline controls where possible
    - LLM settings: provider dropdown + API key + status (one line)
    - Terminal toggle: single button with visual state
    - No dedicated settings windows unless absolutely necessary
-3. **Visual Indicators** - Small, clear, unobtrusive
 
+3. **Visual Indicators** - Small, clear, unobtrusive
    - Status dots (green/red/yellow, 2px)
    - Pulsing animations for active states
    - Hover tooltips for detailed info
-4. **Auto-Save** - Reduce explicit save actions
 
+4. **Auto-Save** - Reduce explicit save actions
    - LLM settings auto-save on blur
    - Code auto-saves on edit (debounced)
    - Terminal history persists across sessions
-5. **Keyboard-First** - Power users efficiency
 
+5. **Keyboard-First** - Power users efficiency
    - Cmd+` toggle terminal
    - Cmd+B toggle file tree
    - All major actions have shortcuts
-6. **Progressive Disclosure** - Show details on demand
 
+6. **Progressive Disclosure** - Show details on demand
    - API settings collapsed by default
    - Terminal hidden until needed
    - Dependency graph available but not intrusive
@@ -72,18 +71,17 @@ Yantra follows a **Minimal UX** design philosophy focused on maximizing content 
 ### Installation
 
 1. **Download Yantra**
-
    - Visit yantra.dev (coming soon)
    - Download for your platform (macOS, Windows, Linux)
    - Run the installer
-2. **First Launch**
 
+2. **First Launch**
    - Open Yantra application
    - You'll see "YANTRA" in bright white at the top
    - 3-panel interface: File Tree (left), Chat (center), Code Editor (right)
    - Terminal hidden by default (toggle with Cmd+`)
-3. **Load Your Project**
 
+3. **Load Your Project**
    - Click "Open Project Folder" in File Tree
    - Select your project folder
    - Yantra analyzes your codebase (takes 5-30 seconds)
@@ -568,7 +566,6 @@ body.dragging-vertical * {
 
 ## LLM Settings (November 28, 2025)
 
-
 ### Design: Minimal Inline Component
 
 **Philosophy:** Single-line layout, auto-save, visual status
@@ -582,18 +579,17 @@ body.dragging-vertical * {
 **Components:**
 
 1. **Provider Dropdown** (128px width)
-
    - Options: Claude, OpenAI, Qwen
    - Auto-switches API key placeholder
    - Clears input when changed
-2. **API Key Input** (Flexible width)
 
+2. **API Key Input** (Flexible width)
    - Type: Password (hidden characters)
    - Placeholder: "Enter API Key" (unconfigured) or "••••••••" (configured)
    - Auto-save: On blur (when you click away)
    - Security: Clears input after successful save
-3. **Status Indicator** (2px dot)
 
+3. **Status Indicator** (2px dot)
    - 🟢 Green: API key configured and valid
    - 🔴 Red: No API key configured
    - 🟡 Yellow (pulsing): Saving in progress
@@ -785,15 +781,15 @@ Yantra  File  Edit  View  Help
 
 ### Keyboard Shortcuts
 
-| Shortcut        | Action           | Category |
-| --------------- | ---------------- | -------- |
+| Shortcut  | Action           | Category |
+| --------- | ---------------- | -------- |
 | **Cmd+`** | Toggle Terminal  | View     |
 | **Cmd+B** | Toggle File Tree | View     |
-| Cmd+N           | New File         | File     |
-| Cmd+O           | Open             | File     |
-| Cmd+S           | Save             | File     |
-| Cmd+W           | Close            | File     |
-| Cmd+Z           | Undo             | Edit     |
+| Cmd+N     | New File         | File     |
+| Cmd+O     | Open             | File     |
+| Cmd+S     | Save             | File     |
+| Cmd+W     | Close            | File     |
+| Cmd+Z     | Undo             | Edit     |
 
 ---
 
@@ -811,10 +807,10 @@ The Documentation Panels automatically track your project's features, decisions,
 
 **4 Tabs (Minimal UI Design):**
 
-- 📋 **Features** - What you're building
-- 💡 **Decisions** - Why you chose specific approaches
-- 📝 **Changes** - What files were modified
-- 🎯 **Plan** - Tasks organized by milestones
+- 📋 **Features** - What you're building (auto-extracted from docs, chat, code)
+- 💡 **Decisions** - Why you chose specific approaches (approval audit trail)
+- 📝 **Changes** - What files were modified (complete audit trail)
+- 🎯 **Plan** - Tasks organized by milestones (persistent project plan)
 
 **Tab Design (Compact):**
 
@@ -824,6 +820,10 @@ Padding: 12px horizontal, 8px vertical (px-3 py-2)
 Border: 2px blue underline for active tab
 Background: Gray-700 for active, transparent for inactive
 ```
+
+**Multi-User Synchronization:**
+
+All four tabs synchronize in real-time across users working on the same project. When one user makes changes, all team members see the same view instantly.
 
 ### Search Functionality (NEW - November 28)
 
@@ -861,32 +861,36 @@ Background: Gray-700 for active, transparent for inactive
 - Instant feedback (no debounce needed for small lists)
 - Efficient with createMemo memoization
 
-### Natural Language Explanations (NEW - November 28)
+### Natural Language Explanations (Updated - December 3, 2025)
 
-**Each tab now explains itself:**
+**Each tab now explains itself with detailed context:**
 
 **Features Tab:**
 
-> "Features are automatically extracted from your chat conversations. As you describe what you want to build, Yantra identifies and tracks features, updating their status as implementation progresses."
+> "Features are automatically extracted from your documentation, chat conversations, and code files. Agent monitors external tools like Notion for feature updates. Status updates in real-time as implementation progresses, with accurate completion tracking. All team members see the same synchronized view."
 
 **Decisions Tab:**
 
-> "Critical technical decisions are logged here with full context. Each decision includes why it was made, what alternatives were considered, and the rationale behind the choice."
+> "Critical technical decisions are logged here with full context to serve as an approval audit trail. Each decision includes why it was made, what alternatives were considered, and the rationale behind the choice. Timestamps show when Agent proposed and when user approved. All team members see the same synchronized view."
 
 **Changes Tab:**
 
-> "Complete audit trail of all code changes. Track what files were added, modified, or deleted, along with timestamps and descriptions."
+> "Complete audit trail of all code changes. Track what files were added, modified, or deleted, along with timestamps and descriptions. All team members see the same synchronized view."
 
 **Plan Tab:**
+
+> "Your project plan with tasks organized by milestones. Agent confirms milestones and prioritization before starting work. Dependencies are tracked automatically, and tasks requiring your input are highlighted. The plan persists across sessions and all team members see the same synchronized view."
 
 > "Your project plan with tasks organized by milestones. Dependencies are tracked automatically, and tasks requiring your input are highlighted."
 
 **Why Explanations Matter:**
 
-- Users understand where data comes from
-- Sets expectations for automation
+- Users understand where data comes from (docs, chat, code, external tools)
+- Sets expectations for automation and multi-user synchronization
 - Reduces confusion about empty states
 - Explains system behavior in natural language
+- Clarifies Agent's role in managing each tab
+- Highlights approval audit and persistence features
 
 ### Minimal UI Updates (November 28)
 
@@ -925,37 +929,83 @@ Search input:    14px → 11px  (21% smaller)
 
 ### Features Tab
 
+**Purpose:** Automatically extract and track features from multiple sources with accurate completion tracking.
+
+**Feature Extraction Sources:**
+
+1. **Documentation Files:**
+   - Markdown files (README.md, docs/\*.md)
+   - Project documentation
+   - Technical specifications
+2. **Chat Conversations:**
+   - User requests: "Add user authentication"
+   - Natural language requirements
+   - Feature discussions
+3. **Code Files:**
+   - Existing implementations
+   - Code comments and docstrings
+   - Function/class definitions
+
+4. **External Tools (Post-MVP):**
+   - **Notion:** Extract features from Notion pages
+   - **Confluence:** Extract features from Confluence spaces (Post-MVP)
+   - **Linear:** Import issues and feature requests
+
+**Multi-User Synchronization:**
+
+When multiple users work on the same project, all users see the same Features view in real-time. Feature status updates are synchronized across all connected clients instantly.
+
+**Completion Tracking:**
+
+Agent accurately tracks feature completion by monitoring:
+
+- Code generation and implementation
+- Test pass rates
+- Integration status
+- Deployment status
+
+Features automatically move through status:
+
+- ⏳ **Planned** → 🔄 **In Progress** → ✅ **Done**
+
 **What You See:**
 
 ```
 ┌─────────────────────────────────────────────┐
+│ Features are automatically extracted from   │
+│ your documentation, chat conversations, and │
+│ code files. Status updates in real-time.    │
+│                                             │
 │ [🔍 Search features...                    ] │
 │                                             │
 │ ┌─────────────────────────────────────────┐ │
 │ │ 📋 Add User Authentication        ✅ Done│ │
 │ │ JWT tokens with bcrypt password hash    │ │
 │ │ Extracted from: Chat conversation       │ │
+│ │ Completion: 100% (Tests passing)        │ │
 │ └─────────────────────────────────────────┘ │
 │                                             │
 │ ┌─────────────────────────────────────────┐ │
 │ │ 🔄 Implement File Upload  🔄 In Progress│ │
 │ │ S3 storage with presigned URLs          │ │
-│ │ Extracted from: User request            │ │
+│ │ Extracted from: README.md               │ │
+│ │ Completion: 60% (4/7 files done)        │ │
 │ └─────────────────────────────────────────┘ │
 │                                             │
 │ ┌─────────────────────────────────────────┐ │
 │ │ ⏳ Add Email Notifications      ⏳ Planned│ │
 │ │ SendGrid integration with templates     │ │
-│ │ Extracted from: Product roadmap         │ │
+│ │ Extracted from: Notion roadmap          │ │
+│ │ Completion: 0% (Not started)            │ │
 │ └─────────────────────────────────────────┘ │
 └─────────────────────────────────────────────┘
 ```
 
 **Status Indicators:**
 
-- ✅ Done - Green badge with checkmark
-- 🔄 In Progress - Yellow badge with arrows
-- ⏳ Planned - Gray badge with hourglass
+- ✅ Done - Green badge with checkmark (100% complete)
+- 🔄 In Progress - Yellow badge with arrows (1-99% complete)
+- ⏳ Planned - Gray badge with hourglass (0% complete)
 
 **Information Shown:**
 
@@ -963,23 +1013,58 @@ Search input:    14px → 11px  (21% smaller)
 - Status badge (right-aligned)
 - Description (11px, gray)
 - Source attribution (10px, italic)
+- Completion percentage with details
 
 **Interaction:**
 
-- Click search to filter
-- Scroll through features
-- No editing (read-only display)
+- Click search to filter features
+- Scroll through feature list
+- Real-time updates as Agent works
+- Synchronized across all team members
+- Read-only display (Agent manages status)
 
 ### Decisions Tab
+
+**Purpose:** Document all project decisions with full context to serve as an approval audit trail.
+
+**Decision Documentation:**
+
+Agent automatically documents decisions based on:
+
+- Chat conversations with user
+- Technical choices made during implementation
+- Architecture decisions
+- Technology selections
+- Design pattern choices
+- Trade-offs and alternatives considered
+
+**Multi-User Synchronization:**
+
+When multiple users work on the same project, all users see the same Decisions view in real-time. New decisions are synchronized across all connected clients instantly.
+
+**MVP: Approval Audit View**
+
+For MVP, the Decisions tab serves as the **Approver Audit View**:
+
+- All critical decisions logged with timestamps
+- Full context showing why decision was made
+- User approval/confirmation captured
+- Alternatives considered documented
+- Complete audit trail for compliance
 
 **What You See:**
 
 ```
 ┌─────────────────────────────────────────────┐
+│ Critical technical decisions are logged     │
+│ here with full context. Serves as approval  │
+│ audit trail for all project choices.        │
+│                                             │
 │ [🔍 Search decisions...                   ] │
 │                                             │
 │ ┌─────────────────────────────────────────┐ │
 │ │ Use PostgreSQL over MySQL               │ │
+│ │ 👤 User Approved ✅                      │ │
 │ │                                         │ │
 │ │ Context:                                │ │
 │ │ Need JSONB support for flexible schema  │ │
@@ -987,10 +1072,38 @@ Search input:    14px → 11px  (21% smaller)
 │ │ Decision:                               │ │
 │ │ PostgreSQL 14+ with JSONB columns       │ │
 │ │                                         │ │
-│ │ Rationale:                              │ │
-│ │ Better JSON performance, native support │ │
+│ │ Alternatives Considered:                │ │
+│ │ • MySQL 8.0 - Limited JSON support      │ │
+│ │ • MongoDB - No ACID guarantees          │ │
 │ │                                         │ │
-│ │ Nov 28, 2025 10:30 AM                   │ │
+│ │ Rationale:                              │ │
+│ │ Better JSON performance, native support,│ │
+│ │ full ACID compliance for critical data  │ │
+│ │                                         │ │
+│ │ Nov 28, 2025 10:30 AM - Agent proposed │ │
+│ │ Nov 28, 2025 10:32 AM - User approved  │ │
+│ └─────────────────────────────────────────┘ │
+│                                             │
+│ ┌─────────────────────────────────────────┐ │
+│ │ Choose FastAPI over Django              │ │
+│ │ 👤 User Approved ✅                      │ │
+│ │                                         │ │
+│ │ Context:                                │ │
+│ │ Building REST API with async endpoints  │ │
+│ │                                         │ │
+│ │ Decision:                               │ │
+│ │ FastAPI with Pydantic validation        │ │
+│ │                                         │ │
+│ │ Alternatives Considered:                │ │
+│ │ • Django REST Framework - Heavier      │ │
+│ │ • Flask - Manual async handling         │ │
+│ │                                         │ │
+│ │ Rationale:                              │ │
+│ │ Native async, automatic OpenAPI docs,   │ │
+│ │ type safety with Pydantic               │ │
+│ │                                         │ │
+│ │ Nov 28, 2025 09:15 AM - Agent proposed │ │
+│ │ Nov 28, 2025 09:18 AM - User approved  │ │
 │ └─────────────────────────────────────────┘ │
 └─────────────────────────────────────────────┘
 ```
@@ -998,17 +1111,32 @@ Search input:    14px → 11px  (21% smaller)
 **Information Shown:**
 
 - Decision title (bold, 12px)
-- Context section (11px, gray)
-- Decision section (11px, white, bold)
-- Rationale section (11px, gray)
-- Timestamp (10px, light gray)
+- Approval status badge (✅ Approved / ⏳ Pending)
+- Context section (11px, gray) - Why decision needed
+- Decision section (11px, white, bold) - What was chosen
+- Alternatives section (11px, gray) - Options considered
+- Rationale section (11px, gray) - Why this choice
+- Dual timestamps (10px, light gray):
+  - When Agent proposed
+  - When User approved
 
-**Decision Logging:**
+**Decision Logging Workflow:**
 
-- Automatically captured from chat
-- Includes AI reasoning
-- Shows alternatives considered
-- Explains trade-offs made
+1. Agent encounters decision point during implementation
+2. Agent analyzes options and proposes recommendation
+3. Decision logged with full context in Decisions tab
+4. User reviews in chat and approves/modifies
+5. Approval captured with timestamp
+6. All team members see updated decision instantly
+
+**Interaction:**
+
+- Search to filter decisions by keyword
+- Scroll through decision history
+- Click to expand full details (if truncated)
+- Real-time updates as new decisions logged
+- Synchronized across all team members
+- Read-only display (Agent manages logging)
 
 ### Changes Tab
 
@@ -1049,28 +1177,111 @@ Search input:    14px → 11px  (21% smaller)
 
 ### Plan Tab
 
+**Purpose:** Create and maintain a persistent project-level plan that Agent methodically executes and tracks.
+
+**Plan Creation:**
+
+Agent creates project plan by:
+
+- Breaking down user requirements into tasks
+- Identifying dependencies between tasks
+- Organizing tasks by milestones
+- **Confirming milestones and prioritization with user**
+- Adding sub-tasks as needed to track granular work
+
+**Plan Persistence:**
+
+- **Project-level plan** persists across sessions
+- Plan survives application restarts
+- Task status preserved and updated continuously
+- Historical task data maintained for audit trail
+
+**Multi-User Synchronization:**
+
+When multiple users work on the same project, all users see the same Plan view in real-time. Task status updates, new tasks, and milestone changes are synchronized across all connected clients instantly.
+
+**Milestone Confirmation:**
+
+Before starting work, Agent must:
+
+1. Propose milestones and task breakdown
+2. Present prioritization to user
+3. Wait for user confirmation/modification
+4. Adjust plan based on user feedback
+5. Only then begin execution
+
+**Sub-Task Tracking:**
+
+Agent can dynamically add sub-tasks to track:
+
+- Implementation steps
+- Testing requirements
+- Code review checkpoints
+- Deployment stages
+- Documentation updates
+
 **What You See:**
 
 ```
 ┌─────────────────────────────────────────────┐
+│ Your project plan with tasks organized by   │
+│ milestones. Agent confirms milestones and   │
+│ prioritization before starting work.        │
+│                                             │
 │ [🔍 Search plan...                        ] │
 │                                             │
-│ 🎯 MVP Milestone                            │
+│ 🎯 MVP Milestone (Priority: High)           │
+│ Status: 2/5 tasks complete (40%)            │
 │                                             │
 │ ┌─────────────────────────────────────────┐ │
-│ │ Implement User Authentication       ✅  │ │
-│ │ Depends on: Database setup              │ │
+│ │ ✅ Setup Project Structure          ✅  │ │
+│ │ Completed: Nov 28, 2025 09:00 AM        │ │
+│ │ Depends on: None                        │ │
+│ │ Sub-tasks: 3/3 complete                 │ │
 │ └─────────────────────────────────────────┘ │
 │                                             │
 │ ┌─────────────────────────────────────────┐ │
-│ │ Add File Upload Functionality       🔄  │ │
-│ │ Depends on: Auth, S3 bucket             │ │
+│ │ ✅ Implement Database Layer         ✅  │ │
+│ │ Completed: Nov 28, 2025 10:15 AM        │ │
+│ │ Depends on: Project Structure           │ │
+│ │ Sub-tasks:                              │ │
+│ │   ✅ Design schema                      │ │
+│ │   ✅ Create migrations                  │ │
+│ │   ✅ Add connection pooling             │ │
+│ └─────────────────────────────────────────┘ │
+│                                             │
+│ ┌─────────────────────────────────────────┐ │
+│ │ 🔄 Implement User Authentication    🔄  │ │
+│ │ In Progress: Started Nov 28, 11:00 AM   │ │
+│ │ Depends on: Database layer              │ │
+│ │ Sub-tasks:                              │ │
+│ │   ✅ JWT token generation               │ │
+│ │   🔄 Password hashing (in progress)     │ │
+│ │   ⏳ Login endpoint (pending)           │ │
+│ │   ⏳ Registration endpoint (pending)    │ │
+│ └─────────────────────────────────────────┘ │
+│                                             │
+│ ┌─────────────────────────────────────────┐ │
+│ │ ⏳ Add File Upload Functionality    ⏳  │ │
+│ │ Depends on: Auth, S3 bucket setup       │ │
 │ │ [👤 User Action Required - Click]      │ │
+│ │ Action: Confirm S3 bucket configuration │ │
 │ └─────────────────────────────────────────┘ │
 │                                             │
 │ ┌─────────────────────────────────────────┐ │
-│ │ Setup Email Notifications           ⏳  │ │
+│ │ ⏳ Setup Email Notifications        ⏳  │ │
 │ │ Depends on: SendGrid API key            │ │
+│ │ Blocked: Waiting for API key from user  │ │
+│ └─────────────────────────────────────────┘ │
+│                                             │
+│ 🎯 Phase 2 Milestone (Priority: Medium)     │
+│ Status: 0/3 tasks complete (0%)             │
+│ Starts after: MVP Milestone                 │
+│                                             │
+│ ┌─────────────────────────────────────────┐ │
+│ │ ⏳ Implement Real-time Features     ⏳  │ │
+│ │ Depends on: MVP completion              │ │
+│ │ [⏱️ Waiting on: MVP milestone]         │ │
 │ └─────────────────────────────────────────┘ │
 └─────────────────────────────────────────────┘
 ```
@@ -1078,31 +1289,57 @@ Search input:    14px → 11px  (21% smaller)
 **Task Status:**
 
 - ✅ Completed - Green checkmark badge
-- 🔄 In Progress - Yellow arrows badge
+- 🔄 In Progress - Yellow arrows badge with sub-task breakdown
 - ⏳ Pending - Gray hourglass badge
+- 🚫 Blocked - Red stop badge with blocker reason
+
+**Milestone Status:**
+
+- Progress percentage (X/Y tasks complete)
+- Priority indicator (High/Medium/Low)
+- Dependency on other milestones
+- Estimated completion (based on velocity)
 
 **Information Shown:**
 
-- Milestone header (12px, bold, white)
+- Milestone header (12px, bold, white) with status
 - Task title (12px, white, word-wrapped)
 - Status badge (right-aligned, 10px)
-- Dependencies (11px, gray, truncated)
-- User action button (when needed)
+- Timestamps (completion time or start time)
+- Dependencies (11px, gray, truncated if long)
+- Sub-tasks with individual status (11px, indented)
+- User action button (when confirmation needed)
+- Blocker reason (when task blocked)
 
-**User Actions:**
+**User Action Workflow:**
 
-- Click "👤 User Action Required" button
-- Task instructions sent to chat
-- You review and confirm
-- Agent executes the action
-- Task status updates automatically
+1. Task requires user input/confirmation
+2. "👤 User Action Required" button appears
+3. Click button → instructions sent to chat
+4. User reviews and provides input in chat
+5. Agent confirms understanding
+6. Agent executes the action
+7. Task status updates automatically
+8. All team members see update instantly
 
-**Plan Panel Overflow Fix (November 28):**
+**Plan Tracking:**
 
-- Added break-words to task titles
-- Truncate long dependency lists
-- pr-2 padding on titles prevents badge overlap
-- All tasks now visible without horizontal scroll
+- Agent methodically works through tasks in order
+- Respects dependencies (won't start dependent tasks early)
+- Adds sub-tasks as needed for granular tracking
+- Updates status in real-time
+- Highlights blockers and user action items
+- Calculates milestone completion percentage
+- Provides velocity metrics
+
+**Interaction:**
+
+- Click search to filter tasks by keyword
+- Scroll through plan hierarchy
+- Click "User Action Required" for instructions
+- Real-time updates as Agent works
+- Synchronized across all team members
+- Read-only display (Agent manages plan)
 
 ### Toggle Between Files and Docs
 

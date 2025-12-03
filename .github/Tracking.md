@@ -13,44 +13,43 @@ November 22 2025
 5. ✅ [Features.md](vscode-file://vscode-app/Applications/Visual%20Studio%20Code.app/Contents/Resources/app/out/vs/code/electron-browser/workbench/workbench.html) - Automation features documented
 6. ✅ [Decision_Log.md](vscode-file://vscode-app/Applications/Visual%20Studio%20Code.app/Contents/Resources/app/out/vs/code/electron-browser/workbench/workbench.html) - Terminal integration decision justified
 
-**Implementation Phase (3 tasks):**
-7. ✅ **Terminal Executor** - Fully implemented with security validation
+**Implementation Phase (3 tasks):** 7. ✅ **Terminal Executor** - Fully implemented with security validation
 
-* 529 lines of code
-* 6 unit tests, all passing
-* Security: Whitelist, blocked patterns, argument validation, timeouts
-* Performance: <1ms validation, <50ms spawn, <10ms streaming
+- 529 lines of code
+- 6 unit tests, all passing
+- Security: Whitelist, blocked patterns, argument validation, timeouts
+- Performance: <1ms validation, <50ms spawn, <10ms streaming
 
 8. ✅ **Test Runner** - pytest integration complete
-   * 549 lines of code
-   * 4 unit tests, all passing
-   * Parses pytest output and JUnit XML
-   * Classifies test failures (AssertionError, ImportError, etc.)
-   * Performance: <100ms XML parsing for 1000 tests
+   - 549 lines of code
+   - 4 unit tests, all passing
+   - Parses pytest output and JUnit XML
+   - Classifies test failures (AssertionError, ImportError, etc.)
+   - Performance: <100ms XML parsing for 1000 tests
 9. ✅ **Dependency Installer** - Auto-fix missing imports
-   * 410 lines of code
-   * 7 unit tests, all passing
-   * Detects project type (Python/Node/Rust)
-   * Maps import names to packages (cv2→opencv-python, etc.)
-   * Auto-installs missing dependencies
-   * Performance: <10ms detection, <15s per package
+   - 410 lines of code
+   - 7 unit tests, all passing
+   - Detects project type (Python/Node/Rust)
+   - Maps import names to packages (cv2→opencv-python, etc.)
+   - Auto-installs missing dependencies
+   - Performance: <10ms detection, <15s per package
 
 ### 📊 Code Quality Metrics
 
-* **Total Lines Added:** ~1,500 lines of production code
-* **Total Tests:** 17 tests, 100% passing
-* **Test Coverage:** High (all critical paths tested)
-* **Security:** 5 validation layers in terminal executor
-* **Performance:** All targets met or exceeded
+- **Total Lines Added:** ~1,500 lines of production code
+- **Total Tests:** 17 tests, 100% passing
+- **Test Coverage:** High (all critical paths tested)
+- **Security:** 5 validation layers in terminal executor
+- **Performance:** All targets met or exceeded
 
 ### 🚀 Git Status
 
-* **Commits:** 3 feature commits pushed to main
-* **Branch:** main (synchronized with remote)
-* **Commits:**
-  * e455dec: Terminal executor with security validation
-  * 948f89b: Test runner with pytest integration
-  * e387d7f: Dependency installer with auto-fix
+- **Commits:** 3 feature commits pushed to main
+- **Branch:** main (synchronized with remote)
+- **Commits:**
+  - e455dec: Terminal executor with security validation
+  - 948f89b: Test runner with pytest integration
+  - e387d7f: Dependency installer with auto-fix
 
 ### ⏭️ Remaining Tasks (6 tasks)
 
@@ -95,31 +94,30 @@ All code is production-ready with comprehensive tests and security measures. The
 **Core Capabilities:**
 
 1. **Entry Point Detection**
-
    - Python: Detects `if __name__ == '__main__':` blocks and `main()` functions
    - Node.js: Reads package.json for entry points
    - Auto-discovers executable scripts
-2. **Error Classification** (6 types)
 
+2. **Error Classification** (6 types)
    - ImportError (missing modules)
    - SyntaxError (invalid code)
    - RuntimeError (TypeError, ValueError, ZeroDivisionError, etc.)
    - PermissionError (file access issues)
    - TimeoutError (execution timeout)
    - UnknownError (fallback)
-3. **Error Extraction**
 
+3. **Error Extraction**
    - Captures full tracebacks
    - Extracts error messages
    - Combines stdout/stderr for analysis
-4. **Auto-Fix Integration**
 
+4. **Auto-Fix Integration**
    - Detects import errors automatically
    - Calls DependencyInstaller to fix missing packages
    - Retries execution after installing dependencies
    - Configurable retry limit
-5. **Execution Modes**
 
+5. **Execution Modes**
    - Execute Python scripts from files
    - Execute Python code strings (for testing)
    - Execute Node.js scripts
@@ -161,14 +159,9 @@ All tests passing with 100% success rate!
 
 ### 🚀 Remaining Tasks (5 tasks)
 
-**High Priority (Core Execution Layer):**
-11. ⚪ Output Panel UI (2 days) - Frontend component for terminal output
-12. ⚪ Orchestrator Expansion (3 days) - Integrate all execution components
+**High Priority (Core Execution Layer):** 11. ⚪ Output Panel UI (2 days) - Frontend component for terminal output 12. ⚪ Orchestrator Expansion (3 days) - Integrate all execution components
 
-**Lower Priority (Advanced Features):**
-13. ⚪ Package Builder (packaging)
-14. ⚪ Deployment Automation (deployment)
-15. ⚪ Monitoring & Self-Healing (production monitoring)
+**Lower Priority (Advanced Features):** 13. ⚪ Package Builder (packaging) 14. ⚪ Deployment Automation (deployment) 15. ⚪ Monitoring & Self-Healing (production monitoring)
 
 ### 🎉 Major Milestone Achieved
 
@@ -232,28 +225,27 @@ I've successfully completed **all remaining tasks** from your todo list, impleme
 **Capabilities:**
 
 1. **Python Wheel Packages**
-
    - Generate `setup.py` with dependencies
    - Generate `pyproject.toml` for modern packaging
    - Build wheels using `python -m build`
    - Auto-detect Python projects
-2. **Docker Images**
 
+2. **Docker Images**
    - Generate `Dockerfile` with multi-stage build
    - Generate `.dockerignore` (Python, Node.js, build artifacts)
    - Build images using `docker build`
    - Tag with name:version format
-3. **npm Packages**
 
+3. **npm Packages**
    - Generate package.json with dependencies
    - Build tarballs using `npm pack`
    - Auto-detect Node.js projects
-4. **Static Sites**
 
+4. **Static Sites**
    - Bundle HTML/CSS/JS to `dist/` directory
    - Auto-detect based on index.html
-5. **Rust Binaries**
 
+5. **Rust Binaries**
    - Build release binaries using `cargo build --release`
    - Auto-detect Rust projects
 
@@ -309,41 +301,40 @@ I've successfully completed **all remaining tasks** from your todo list, impleme
 **Monitoring Capabilities:**
 
 1. **Health Checks**
-
    - Async HTTP endpoint monitoring
    - Configurable intervals and timeouts
    - Failure threshold detection
-2. **Performance Metrics**
 
+2. **Performance Metrics**
    - Latency tracking (p50, p95, p99 percentiles)
    - Throughput (requests per second)
    - Error rate percentage
    - CPU usage monitoring
    - Memory usage monitoring
    - Disk usage monitoring
-3. **Alert Management**
 
+3. **Alert Management**
    - 4 severity levels: Info, Warning, Error, Critical
    - Alert creation and resolution
    - Active alert filtering
    - Alert history tracking
    - Metadata tagging
-4. **Issue Detection** (Automated Thresholds)
 
+4. **Issue Detection** (Automated Thresholds)
    - High latency: p99 > 1000ms → Warning
    - High error rate: > 5% → Error
    - High CPU: > 80% → Warning
    - High memory: > 85% → Critical
-5. **Self-Healing Actions**
 
+5. **Self-Healing Actions**
    - `scale_up` - For high latency (add instances)
    - `rollback` - For high error rates (revert to stable version)
    - `scale_horizontal` - For high CPU (add more instances)
    - `restart` - For high memory (clear memory leaks)
    - Action history with timestamps
    - Success/failure tracking
-6. **Metrics Export**
 
+6. **Metrics Export**
    - **Prometheus format** - Standard exposition format
    - **JSON format** - For custom tooling
    - Time-series data with tags
@@ -466,22 +457,21 @@ pub use monitoring::{MonitoringManager, Alert, Severity, PerformanceMetrics};
 4. **Yantra executes** the code to test runtime behavior
 5. **Yantra runs tests** (pytest, jest, etc.)
 6. **Yantra packages** the application
-
    - Creates Docker image
    - Or builds Python wheel
    - Or generates npm package
-7. **Yantra deploys** to cloud
 
+7. **Yantra deploys** to cloud
    - Chooses optimal platform
    - Configures scaling
    - Sets up health checks
-8. **Yantra monitors** production
 
+8. **Yantra monitors** production
    - Tracks performance
    - Detects issues
    - Creates alerts
-9. **Yantra self-heals** problems
 
+9. **Yantra self-heals** problems
    - Scales up for latency
    - Rolls back for errors
    - Restarts for memory leaks
@@ -561,7 +551,7 @@ Read [](file:///Users/vivekdurairaj/Projects/yantra/src-tauri/src/git/mcp.rs)
 
 Read [](file:///Users/vivekdurairaj/Projects/yantra/src-ui/components/FileTree.tsx#1-1), lines 1 to 80
 
-Starting (1/7) *Redesign UI Layout - 3 Column with Terminal in Code Column*
+Starting (1/7) _Redesign UI Layout - 3 Column with Terminal in Code Column_
 
 Now let me start implementing the changes:
 
@@ -661,7 +651,7 @@ Using "Replace String in File"
 
 Now let's add the Git Tauri commands. First, update the manager to complete the todo:
 
-Starting (4/7) *Review Git MCP Capabilities*
+Starting (4/7) _Review Git MCP Capabilities_
 
 Now let me check and extend the Git MCP implementation:
 
@@ -711,7 +701,7 @@ Created [](file:///Users/vivekdurairaj/Projects/yantra/src-ui/utils/git.ts)
 
 Perfect! Now let's test the code by running it:
 
-Starting (6/7) *Test All Changes*
+Starting (6/7) _Test All Changes_
 
 Ran terminal command: npm run lint -- --fix 2>&1 | head -20
 
@@ -769,7 +759,7 @@ Ran terminal command: cd /Users/vivekdurairaj/Projects/yantra && git commit -m "
 
 Perfect! Now let's update the todo and create a quick summary of what was implemented:
 
-Completed (6/7) *Test All Changes*
+Completed (6/7) _Test All Changes_
 
 Now let me create a comprehensive summary document for you:
 
@@ -819,7 +809,7 @@ interface TreeNode {
   name: string;
   path: string;
   is_directory: boolean;
-  children?: TreeNode[];  // Lazily loaded
+  children?: TreeNode[]; // Lazily loaded
   isExpanded?: boolean;
 }
 ```
@@ -850,8 +840,8 @@ interface TreeNode {
 **State Management:**
 
 ```typescript
-openFiles: Array<{path: string, name: string, content: string}>
-activeFileIndex: number
+openFiles: Array<{ path: string; name: string; content: string }>;
+activeFileIndex: number;
 ```
 
 **Actions:**
@@ -1016,17 +1006,17 @@ await gitCheckout('/path/to/project', 'feature-branch');
 ## **Testing Recommendations:**
 
 1. **Test FileTree:**
-
    - Open a project folder
    - Expand multiple nested folders
    - Open several files
    - Switch between tabs
    - Close tabs
-2. **Test Layout:**
 
+2. **Test Layout:**
    - Resize panels (drag handles)
    - Verify terminal stays in right column
    - Check Agent Status at bottom of Files panel
+
 3. **Test Git (via Terminal first):**
 
    ```bash
@@ -1035,8 +1025,8 @@ await gitCheckout('/path/to/project', 'feature-branch');
    git add .
    git commit -m "test"
    ```
-4. **Test Git (via Agent later):**
 
+4. **Test Git (via Agent later):**
    - Import git utilities in agent code
    - Call git functions programmatically
    - Verify operations work correctly
@@ -1114,7 +1104,7 @@ Made changes.
 
 Now let's update the documentation. Let me start with Features.md:
 
-Starting (5/5) *Document All Changes*
+Starting (5/5) _Document All Changes_
 
 Read [](file:///Users/vivekdurairaj/Projects/yantra/Features.md#1-1), lines 1 to 100
 
@@ -1139,28 +1129,27 @@ Perfect! Now let me create a quick summary of what was accomplished:
 ### **Summary of What Was Built Today:**
 
 1. **✅ View Menu (Native Tauri)** - DONE
-
    - File, View, Help menus in OS menubar
    - Keyboard shortcuts (Cmd+B, Cmd+E, Cmd+`, Cmd+D)
    - Toggle panels, show dependencies, reset layout
    - Event-driven architecture (Rust → Frontend)
-2. **✅ Multi-Terminal System** - DONE
 
+2. **✅ Multi-Terminal System** - DONE
    - Multiple terminal instances (VSCode-style)
    - Terminal manager with intelligent routing
    - Status tracking (idle/busy/error)
    - Visual indicators and stats dashboard
    - Agent-aware execution (checks availability, never interrupts)
    - Auto-creates terminals when all busy
-3. **✅ View Routing for Dependencies** - DONE
 
+3. **✅ View Routing for Dependencies** - DONE
    - View selector tabs in Code Panel (column 3)
    - "Code Editor" and "Dependencies" views
    - Active view state management
    - Placeholder for dependency graph
    - Ready for cytoscape.js or d3.js integration
-4. **✅ All Views in Column 3** - DONE
 
+4. **✅ All Views in Column 3** - DONE
    - Code Editor renders in column 3
    - Dependencies view shows in same space
    - View switching via tabs
@@ -1185,7 +1174,7 @@ Perfect! Now let me create a quick summary of what was accomplished:
 
 ```
 af180f4 - feat: Add View Menu and Multi-Terminal System
-d1a806e - feat: Major UI redesign and Git MCP integration  
+d1a806e - feat: Major UI redesign and Git MCP integration
 046b45e - feat: Add panel close functionality and macOS icon
 ```
 
@@ -1236,21 +1225,21 @@ The current implementation is **ready for manual testing**. You can:
    # Try: View > Toggle Terminal (Cmd+`)
    # Try: View > Show Dependencies (Cmd+D)
    ```
-2. **Test Multi-Terminal:**
 
+2. **Test Multi-Terminal:**
    - Click "+ New" to create terminals
    - Switch between terminal tabs
    - See status indicators (idle/busy)
    - Try commands (currently simulated)
-3. **Test File Navigation:**
 
+3. **Test File Navigation:**
    - Open project folder
    - Expand folders recursively
    - Open multiple files
    - Switch between file tabs
    - Close tabs with X button
-4. **Test Layout:**
 
+4. **Test Layout:**
    - Resize panels with drag handles
    - Toggle panels via View menu
    - Switch views (Code Editor ↔ Dependencies)
@@ -1309,21 +1298,21 @@ The current implementation is **ready for manual testing**. You can:
    # Try: View > Toggle Terminal (Cmd+`)
    # Try: View > Show Dependencies (Cmd+D)
    ```
-2. **Test Multi-Terminal:**
 
+2. **Test Multi-Terminal:**
    - Click "+ New" to create terminals
    - Switch between terminal tabs
    - See status indicators (idle/busy)
    - Try commands (currently simulated)
-3. **Test File Navigation:**
 
+3. **Test File Navigation:**
    - Open project folder
    - Expand folders recursively
    - Open multiple files
    - Switch between file tabs
    - Close tabs with X button
-4. **Test Layout:**
 
+4. **Test Layout:**
    - Resize panels with drag handles
    - Toggle panels via View menu
    - Switch views (Code Editor ↔ Dependencies)
@@ -1443,7 +1432,7 @@ Ah! PyO3 0.20.3 doesn't support Python 3.13 yet (max is 3.12). We need to either
 
 Let me check if we can use Python 3.10:
 
-Ran terminal command: ls -la /opt/homebrew/Cellar/python@3.10/*/bin/python3
+Ran terminal command: ls -la /opt/homebrew/Cellar/python@3.10/\*/bin/python3
 
 Python 3.10 isn't actually installed. Let's upgrade PyO3 to a newer version that supports Python 3.13:
 
@@ -1563,7 +1552,7 @@ Ran terminal command: cargo test bridge --lib -- --nocapture
 
 Excellent! All 8 bridge tests passing! Now let's update the todo list and commit this achievement:
 
-Completed (1/6) *Week 2, Task 1: PyO3 Bridge Setup*
+Completed (1/6) _Week 2, Task 1: PyO3 Bridge Setup_
 
 Perfect! Now let's commit this major achievement to git:
 
@@ -1606,7 +1595,7 @@ Ran terminal command: cd /Users/vivekdurairaj/Projects/yantra && git commit -m "
 - src-tauri/src/bridge/pyo3_bridge.rs (300+ lines)
 - src-tauri/src/bridge/bench.rs (benchmarks)
 - src-python/yantra_bridge.py (Python interface)
-- src-python/model/__init__.py (placeholder for GraphSAGE)
+- src-python/model/**init**.py (placeholder for GraphSAGE)
 - src-tauri/.cargo/config.toml (PyO3 configuration)
 - requirements_backup.txt (venv package backup)
 
@@ -1638,17 +1627,16 @@ Excellent work! We've successfully completed the PyO3 bridge setup with outstand
 ### **What We Built:**
 
 1. **Complete Rust ↔ Python Bridge** (300+ lines)
-
    - `FeatureVector` struct: 978-dimensional feature validation
    - `ModelPrediction` struct: Full response parsing from GraphSAGE
    - `PythonBridge` struct: Thread-safe Python GIL management
-2. **Python 3.13 Upgrade:**
 
+2. **Python 3.13 Upgrade:**
    - Recreated venv with Homebrew Python 3.13.9
    - Upgraded PyO3 from 0.20 to 0.22 for compatibility
    - All packages reinstalled successfully
-3. **Configuration:**
 
+3. **Configuration:**
    - `.cargo/config.toml` - persistent PyO3 Python path
    - src-python module structure ready for GraphSAGE
 
@@ -1774,7 +1762,7 @@ Ran terminal command: cd /Users/vivekdurairaj/Projects/yantra && git add -A && g
 - src-tauri/src/bridge/pyo3_bridge.rs (256 lines)
 - src-tauri/src/bridge/bench.rs (117 lines)
 - src-python/yantra_bridge.py (Python interface)
-- src-python/model/__init__.py (placeholder for GraphSAGE)
+- src-python/model/**init**.py (placeholder for GraphSAGE)
 - src-tauri/.cargo/config.toml (PyO3 configuration)
 - requirements_backup.txt (venv package backup)
 
@@ -1794,7 +1782,7 @@ Ran terminal command: cd /Users/vivekdurairaj/Projects/yantra && git add -A && g
 
 Perfect! Now let's proceed to Week 2, Task 2: Feature Extraction. Let me update the todo list first:
 
-Starting (2/6) *Week 2, Task 2: Feature Extraction (978-dim)*
+Starting (2/6) _Week 2, Task 2: Feature Extraction (978-dim)_
 
 Perfect! Now let's start Task 2: Feature Extraction. First, let me check the current GNN structure to understand what features are available:
 
@@ -1866,7 +1854,7 @@ Ran terminal command: cargo test features::tests --lib -- --nocapture --test-thr
 
 🎉 Excellent! Feature extraction is **0.020ms (50x better than the 1ms target)**! All 5 tests passing! Now let's update the todo list and commit:
 
-Completed (2/6) *Week 2, Task 2: Feature Extraction (978-dim)*
+Completed (2/6) _Week 2, Task 2: Feature Extraction (978-dim)_
 
 Perfect! Now let's commit Task 2:
 
@@ -2184,7 +2172,6 @@ I've successfully updated all required documentation to reflect the clarified Ya
 ### 📝 Updated Files
 
 1. **Specifications.md** ✅
-
    - Added comprehensive ~250 line Yantra Codex section
    - Model specifications (1024-dim architecture)
    - How it works (4-step process)
@@ -2192,15 +2179,15 @@ I've successfully updated all required documentation to reflect the clarified Ya
    - Yantra Cloud Codex collective learning
    - Accuracy targets (Month 1 → Year 3+)
    - Comparison table with LLMs
-2. **Yantra_Codex_Implementation_Plan.md** ✅
 
+2. **Yantra_Codex_Implementation_Plan.md** ✅
    - Updated to 1024 dimensions throughout
    - Changed from "AST patterns" to "logic patterns"
    - Emphasized universal learning (not per-user)
    - Week 1-4 implementation with code examples
    - Cloud architecture showing universal model
-3. **Project_Plan.md** ✅
 
+3. **Project_Plan.md** ✅
    - Added 🔥 PRIORITY section at top
    - 4-week Yantra Codex implementation plan
    - Week 1: Extract logic patterns from CodeContests
@@ -2208,21 +2195,21 @@ I've successfully updated all required documentation to reflect the clarified Ya
    - Week 3: Code generation pipeline
    - Week 4: On-the-go learning system
    - Each week has detailed tasks with estimates
-4. **File_Registry.md** ✅
 
+4. **File_Registry.md** ✅
    - Added "Recent Major Updates" section
    - Updated file timestamps
    - Marked updated documents
    - Added context about 1024 dims decision
-5. **Decision_Log.md** ✅
 
+5. **Decision_Log.md** ✅
    - Added 4 comprehensive decision entries:
      1. Start with 1024 dimensions (cost-benefit analysis)
      2. Universal learning vs per-user (network effects)
      3. GNN logic + Tree-sitter syntax (multi-language)
      4. Coding specialization (like AlphaGo)
-6. **Session_Handoff.md** ✅
 
+6. **Session_Handoff.md** ✅
    - Updated with finalized architecture
    - 4 core decisions documented
    - Complete vision explanation
@@ -2346,7 +2333,7 @@ Yantra: 🚀 Starting autonomous project creation...
         📁 Location: /Users/vivek/my-project
         📝 Generated 8 files
         🧪 Tests: 6/6 passed (87.3% coverage)
-    
+
         Files created:
           - main.py
           - models.py
@@ -2392,61 +2379,56 @@ SPECIFICATIONS UPDATE (.github/Specifications.md):
 1. GUIDED MODE vs AUTO MODE (MVP Phase 1 - Priority)
 
    Auto Mode (Default for experienced users):
-
    - Fully autonomous execution with minimal interruption
    - User consulted only for:
-     * Architecture changes (always require consent)
-     * Critical blockers (API keys, manual setup)
-     * Failures after 3 auto-retry attempts
+     - Architecture changes (always require consent)
+     - Critical blockers (API keys, manual setup)
+     - Failures after 3 auto-retry attempts
    - All actions logged for review
    - Silent execution with final summary
 
    Guided Mode (Default for new users):
-
    - Explain impact before each major phase
    - Natural language impact explanation (via GNN):
-     * Features affected (not code terms)
-     * Components impacted
-     * User-facing changes
+     - Features affected (not code terms)
+     - Components impacted
+     - User-facing changes
    - User consent required for:
-     * Architecture changes
-     * Code generation
-     * Testing
-     * Security scans
-     * Git commits
+     - Architecture changes
+     - Code generation
+     - Testing
+     - Security scans
+     - Git commits
    - Decision logging with user reasoning
    - Regular progress reports at project level
 
    Mode Switching:
-
    - User can toggle anytime: 'switch to auto/guided mode'
    - Auto-switch to Guided after 3 failures
    - Mode preference saved in .yantra/config.json
 
    Implementation Architecture:
-
    - InteractionMode enum (Auto, Guided)
    - UserPromptTrigger enum (Architecture, Blocker, etc.)
    - InteractionManager with GNN integration
    - Natural language impact explanations
    - DecisionLog with query support
    - ProgressReport with project-level status
+
 2. CASCADING FAILURE PROTECTION (MVP Phase 1 - Priority)
 
    Checkpoint System (Critical):
-
    - Create checkpoint BEFORE any modification
    - Checkpoint hierarchy:
-     * Session (every chat session)
-     * Feature (before each feature)
-     * File (before file modification)
-     * Test (before running tests)
+     - Session (every chat session)
+     - Feature (before each feature)
+     - File (before file modification)
+     - Test (before running tests)
    - One-click restore from UI
    - Storage: .yantra/checkpoints/ (keep last 20)
    - Auto-pruning with compression
 
    Impact Assessment (GNN-Based):
-
    - Analyze dependencies before changes
    - Calculate risk score (0.0-1.0)
    - Estimate test impact
@@ -2454,45 +2436,39 @@ SPECIFICATIONS UPDATE (.github/Specifications.md):
    - User-friendly recommendations
 
    Automatic Testing After Changes:
-
    - Run relevant tests (GNN-based selection)
    - Detect regression immediately
    - Compare with previous test results
 
    Auto-Revert After Failed Attempts:
-
    - After EACH failure → revert to last working checkpoint
    - FailureTracker counts attempts
    - Last working checkpoint = confidence ≥ 0.95
    - Preserves bigger solution (prevents digging deeper)
 
    User Escalation After 3 Failures:
-
    - Escalate with full failure history
    - Show all 3 attempt error messages
    - Current state: reverted to last working checkpoint
    - User options:
-     * Provide missing input (API keys, credentials)
-     * Try different LLM (hot-swap)
-     * Search RAG/web for solution (with consent)
-     * Skip feature for now
+     - Provide missing input (API keys, credentials)
+     - Try different LLM (hot-swap)
+     - Search RAG/web for solution (with consent)
+     - Skip feature for now
 
    LLM Hot-Swapping:
-
    - After 3 failures, suggest trying different LLM
    - Available: Claude ↔ GPT-4 ↔ Qwen Coder
    - Reset failure count with new LLM
    - Preserve checkpoint state
 
    RAG/Web Search (User Consent Required):
-
    - Request permission before external search
    - Options: RAG only, Web only, Both, Neither
    - Search sources: Local RAG, StackOverflow, GitHub
    - Present solutions with relevance scores
 
    Implementation Architecture:
-
    - CheckpointManager (create, restore, list, prune)
    - ImpactAnalyzer (GNN-based risk assessment)
    - AutoTestRunner (run tests after changes)
@@ -2501,7 +2477,6 @@ SPECIFICATIONS UPDATE (.github/Specifications.md):
    - KnowledgeSearch (RAG/web with consent)
 
    Performance Targets:
-
    - Create checkpoint: <500ms
    - Restore checkpoint: <1s
    - Impact analysis: <100ms
@@ -2512,12 +2487,10 @@ BACKEND IMPLEMENTATION (src-tauri/src/architecture/):
 3. DEVIATION DETECTOR (from previous session - committed together)
 
    Purpose: Monitor code-architecture alignment
-
    - Check BEFORE writing files (proactive)
    - Check AFTER file save (reactive)
 
    Key Components:
-
    - DeviationDetector struct (GNN + ArchitectureManager)
    - monitor_code_generation() - pre-write validation
    - check_code_alignment() - post-save validation
@@ -2525,7 +2498,6 @@ BACKEND IMPLEMENTATION (src-tauri/src/architecture/):
    - User decision flow: Update Architecture / Fix Code / Cancel
 
    Integration:
-
    - GNN for dependency analysis
    - Architecture Manager for expected deps
    - Tree-sitter for import extraction (Python, JS/TS)
@@ -2604,22 +2576,21 @@ I've successfully captured both requirements in the Specifications.md with compr
 **Protection Flow:**
 
 1. **Impact Assessment (GNN-Based)**:
-
    - Analyze dependencies before changes
    - Calculate risk score (0.0-1.0)
    - Estimate test impact
    - User-friendly recommendations
-2. **Automated Testing After Changes**:
 
+2. **Automated Testing After Changes**:
    - Run relevant tests (GNN-based selection)
    - Detect regression immediately
-3. **Auto-Revert After EACH Failed Attempt**:
 
+3. **Auto-Revert After EACH Failed Attempt**:
    - Revert to last working checkpoint (confidence ≥ 0.95)
    - FailureTracker counts attempts
    - Preserves "bigger solution" (prevents digging deeper)
-4. **User Escalation After 3 Failures**:
 
+4. **User Escalation After 3 Failures**:
    - Full failure history shown
    - Current state: reverted to last working checkpoint
    - User options:
@@ -2627,12 +2598,12 @@ I've successfully captured both requirements in the Specifications.md with compr
      - Try different LLM (hot-swap: Claude ↔ GPT-4 ↔ Qwen)
      - Search RAG/web for solution (**with user consent**)
      - Skip feature for now
-5. **LLM Hot-Swapping**:
 
+5. **LLM Hot-Swapping**:
    - Suggest trying different LLM after 3 failures
    - Reset failure count with new LLM
-6. **RAG/Web Search (User Consent Required)**:
 
+6. **RAG/Web Search (User Consent Required)**:
    - Request permission before external search
    - Options: RAG only, Web only, Both, Neither
    - Search sources: Local RAG, StackOverflow, GitHub
@@ -2694,12 +2665,10 @@ Made changes.
 Added two new MVP priority features requested by user:
 
 1. INTERACTION MODES (Guided vs Auto) - Section 6
-
    - 0/10 features implemented (0% complete)
    - Specification: .github/Specifications.md lines 1920-2669 (750 lines)
 
    Features:
-
    - InteractionMode enum (Auto, Guided)
    - UserPromptTrigger enum (Architecture, Blocker, Testing, etc.)
    - InteractionManager with GNN integration
@@ -2712,17 +2681,15 @@ Added two new MVP priority features requested by user:
    - Config persistence (.yantra/config.json)
 
    Files to create:
-
    - src-tauri/src/agent/interaction_mode.rs
    - src-tauri/src/agent/decision_log.rs
    - src-ui/stores/interactionModeStore.ts
-2. CASCADING FAILURE PROTECTION - Section 7
 
+2. CASCADING FAILURE PROTECTION - Section 7
    - 0/10 features implemented (0% complete)
    - Specification: .github/Specifications.md lines 2669-3408 (739 lines)
 
    Features:
-
    - Checkpoint system (Session, Feature, File, Test)
    - Checkpoint storage (.yantra/checkpoints/ + SQLite)
    - Impact assessment (GNN-based risk score)
@@ -2735,7 +2702,6 @@ Added two new MVP priority features requested by user:
    - One-click restore UI
 
    Files to create:
-
    - src-tauri/src/checkpoints/manager.rs
    - src-tauri/src/agent/impact_analyzer.rs
    - src-tauri/src/testing/auto_runner.rs
@@ -2783,8 +2749,8 @@ I've successfully updated the IMPLEMENTATION_STATUS.md file with your two new MV
 
 **New Categories Added:**
 
-| Category                                     | Implemented | Pending | Total | Progress |
-| -------------------------------------------- | ----------- | ------- | ----- | -------- |
+| Category                               | Implemented | Pending | Total | Progress |
+| -------------------------------------- | ----------- | ------- | ----- | -------- |
 | **🔴 Interaction Modes (Guided/Auto)** | 0           | 10      | 10    | 🔴 0%    |
 | **🔴 Cascading Failure Protection**    | 0           | 10      | 10    | 🔴 0%    |
 
@@ -2888,53 +2854,53 @@ I've successfully updated all the documentation files to reflect the UI improvem
 ### ✅ Documentation Updates (4 files)
 
 1. **[UX.md](vscode-file://vscode-app/Applications/Visual%20Studio%20Code.app/Contents/Resources/app/out/vs/code/electron-browser/workbench/workbench.html)** (Updated) - Added comprehensive sections:
-   * Documentation Panels (search, minimal UI, natural language explanations)
-   * Chat Panel (header redesign, message area, input area with send button inside)
-   * View Tabs (inline icons with abbreviated text)
-   * All sections include before/after comparisons, design rationale, and space savings
+   - Documentation Panels (search, minimal UI, natural language explanations)
+   - Chat Panel (header redesign, message area, input area with send button inside)
+   - View Tabs (inline icons with abbreviated text)
+   - All sections include before/after comparisons, design rationale, and space savings
 2. **[Specifications.md](vscode-file://vscode-app/Applications/Visual%20Studio%20Code.app/Contents/Resources/app/out/vs/code/electron-browser/workbench/workbench.html)** (Updated) - Added detailed "Minimal UI Requirements" section:
-   * Design philosophy and core principles
-   * Documentation Panels requirements (search, explanations, spacing)
-   * Chat Panel requirements (header layout, model selector, messages, input area)
-   * View Tabs requirements (inline design, abbreviations)
-   * Performance requirements (<5ms search, <16ms re-render)
-   * Accessibility requirements (ARIA labels, keyboard navigation, screen reader support)
+   - Design philosophy and core principles
+   - Documentation Panels requirements (search, explanations, spacing)
+   - Chat Panel requirements (header layout, model selector, messages, input area)
+   - View Tabs requirements (inline design, abbreviations)
+   - Performance requirements (<5ms search, <16ms re-render)
+   - Accessibility requirements (ARIA labels, keyboard navigation, screen reader support)
 3. **[IMPLEMENTATION_STATUS.md](vscode-file://vscode-app/Applications/Visual%20Studio%20Code.app/Contents/Resources/app/out/vs/code/electron-browser/workbench/workbench.html)** (Updated):
-   * Changed UI/Frontend category from 33% → 100% complete
-   * Updated totals: 52/93 MVP features (56% complete, up from 54%)
-   * Added 3 new completed features (11.2, 11.3, 11.4)
-   * Listed all minimal UI improvements with metrics
-   * Updated "Latest Achievement" to reflect Nov 28, 2025 UI improvements
+   - Changed UI/Frontend category from 33% → 100% complete
+   - Updated totals: 52/93 MVP features (56% complete, up from 54%)
+   - Added 3 new completed features (11.2, 11.3, 11.4)
+   - Listed all minimal UI improvements with metrics
+   - Updated "Latest Achievement" to reflect Nov 28, 2025 UI improvements
 4. **[Technical_Guide.md](vscode-file://vscode-app/Applications/Visual%20Studio%20Code.app/Contents/Resources/app/out/vs/code/electron-browser/workbench/workbench.html)** (Previously completed) - Section 17 already added
 
 ### 📊 Results Achieved
 
 **Space Optimization:**
 
-* 30-40% more content visible per screen
-* Padding reduced by 25-50%
-* Font sizes reduced by 8-21%
+- 30-40% more content visible per screen
+- Padding reduced by 25-50%
+- Font sizes reduced by 8-21%
 
 **Features Implemented:**
 
-* ✅ Search in all 4 documentation tabs (<5ms latency)
-* ✅ Natural language explanations per tab
-* ✅ Minimal UI with reduced padding and fonts
-* ✅ Model selector moved to Chat header
-* ✅ Send button inside textarea
-* ✅ View tabs with inline icons and abbreviated text
-* ✅ Word-wrap for long content (no overflow)
+- ✅ Search in all 4 documentation tabs (<5ms latency)
+- ✅ Natural language explanations per tab
+- ✅ Minimal UI with reduced padding and fonts
+- ✅ Model selector moved to Chat header
+- ✅ Send button inside textarea
+- ✅ View tabs with inline icons and abbreviated text
+- ✅ Word-wrap for long content (no overflow)
 
 ### 📝 Documentation Consistency
 
 All 4 documentation files now:
 
-* ✅ Reference the same implementation details
-* ✅ Use consistent metrics (30-40% space savings, <5ms search, etc.)
-* ✅ Cross-reference each other appropriately
-* ✅ Document actual implementation (not just summaries)
-* ✅ Include before/after comparisons
-* ✅ Explain design rationale and benefits
+- ✅ Reference the same implementation details
+- ✅ Use consistent metrics (30-40% space savings, <5ms search, etc.)
+- ✅ Cross-reference each other appropriately
+- ✅ Document actual implementation (not just summaries)
+- ✅ Include before/after comparisons
+- ✅ Explain design rationale and benefits
 
 ---
 
@@ -2943,15 +2909,11 @@ All 4 documentation files now:
    Make feature extraction explicit and confirmable. After user describes intent, Yantra responds with a structured summary: "I understand you want: (1) User authentication with JWT, (2) Password reset flow via email, (3) Rate limiting on login attempts. Is this correct?" User confirms or clarifies. This confirmed summary becomes the SSOT entry.
    Link requirements to implementation bidirectionally. Each extracted feature links to the code that implements it. Each generated file links back to the requirement that spawned it. The Documentation System already has this structure - ensure it's populated automatically during generation.
    Enable requirements-based validation. When running tests, report results against requirements: "Requirement 1 (JWT auth): 4/4 tests passing. Requirement 2 (Password reset): 2/3 tests passing - email sending test failed." This closes the loop from intent to verification.
-3. Requirement Change: 3.1 For Dependencies, Remove resetand export function. 3.1 Include a tab called Tech Stack to show all the tool depencies with versions. If one tool requires another show that in a graph 3.3 The dependencies graph should be readable by default. 3.4 If it is too big, user should be able to scroll. All the dependencies should be searchable - user can search for a specific function, class or file and the graph should move to show just that part of the graph. It should also move to the relavant view in the dependency graph if user asks a the agent in chat  - Eg."Show me the dependencies for xxx file"
+3. Requirement Change: 3.1 For Dependencies, Remove resetand export function. 3.1 Include a tab called Tech Stack to show all the tool depencies with versions. If one tool requires another show that in a graph 3.3 The dependencies graph should be readable by default. 3.4 If it is too big, user should be able to scroll. All the dependencies should be searchable - user can search for a specific function, class or file and the graph should move to show just that part of the graph. It should also move to the relavant view in the dependency graph if user asks a the agent in chat - Eg."Show me the dependencies for xxx file"
 
 Capture this clearly in specifications.md after reviewing the file. The above requirements should be part of MVP. Include it in Implementation_status as part of MVP tasks to be implemented in the tables. Review the entire implementation_status before changing it so that it is appropriately included in the right section.
 
-
 ---
-
-
-
 
 ## 🎉 Complete Implementation Summary - All Tasks Finished!
 
@@ -3071,8 +3033,8 @@ handleMouseUp() → setIsResizingFileExplorer(false)
 
 ### **All Tasks Completed: 25/25 (100%)**
 
-| Priority                             | Tasks | Status | Completion |
-| ------------------------------------ | ----- | ------ | ---------- |
+| Priority                       | Tasks | Status | Completion |
+| ------------------------------ | ----- | ------ | ---------- |
 | **P1 - Critical Blockers**     | 2/2   | ✅     | 100%       |
 | **P2 - Terminal Management**   | 2/2   | ✅     | 100%       |
 | **P3 - Theme System**          | 4/4   | ✅     | 100%       |
@@ -3154,7 +3116,7 @@ handleMouseUp() → setIsResizingFileExplorer(false)
 - ✅ TypeScript strict mode
 - ✅ SolidJS reactive patterns
 - ✅ Rust error handling with Result types
-- ✅ Thread-safe state management (Arc`<Mutex>`)
+- ✅ Thread-safe state management (Arc `<Mutex>`)
 - ✅ localStorage persistence
 - ✅ WCAG AA contrast compliance
 - ✅ Smooth CSS transitions
@@ -3184,27 +3146,26 @@ All technical documentation is complete. User-facing documentation (Features.md,
 ### **What's Now Possible**
 
 1. **Smart Terminal Management**
-
    - Automatic terminal reuse
    - Process detection prevents conflicts
    - 5-minute idle timeout for cleanup
-2. **Professional Theming**
 
+2. **Professional Theming**
    - Two polished themes (dark/light)
    - Instant theme switching
    - Consistent across all components
-3. **Task Visibility**
 
+3. **Task Visibility**
    - Real-time task tracking
    - Priority and status badges
    - Auto-refreshing stats dashboard
-4. **Flexible Layout**
 
+4. **Flexible Layout**
    - Any panel can expand to 70%
    - File Explorer resizable (200-500px)
    - Smooth animated transitions
-5. **Universal LLM Support**
 
+5. **Universal LLM Support**
    - Model selection for all 5 providers
    - Always visible, no hidden features
    - Filtered display in chat panel
@@ -3214,22 +3175,21 @@ All technical documentation is complete. User-facing documentation (Features.md,
 ## **💡 Key Innovations**
 
 1. **Single Source of Truth (layoutStore)**
-
    - Centralized panel expansion logic
    - Prevents multiple panels expanded simultaneously
    - Smooth coordination across panels
-2. **Theme-Aware Architecture**
 
+2. **Theme-Aware Architecture**
    - CSS variables for all colors
    - No hardcoded colors
    - Easy to add new themes
-3. **Real-Time Task Tracking**
 
+3. **Real-Time Task Tracking**
    - Auto-refresh without user action
    - Visual feedback (pulse animation)
    - Comprehensive statistics
-4. **Intelligent Panel Sizing**
 
+4. **Intelligent Panel Sizing**
    - Dynamic width calculations
    - Smooth transitions prevent jarring
    - Percentage-based for responsiveness
@@ -3274,4 +3234,115 @@ All planned features are implemented, tested, and documented. The codebase is cl
 
 The foundation is solid and extensible for future development! 🚀
 
-Made changes.
+---
+
+Dec 1
+
+## ✅ Summary: Comprehensive Agentic Capabilities Framework Complete
+
+I've successfully created and integrated a comprehensive agentic capabilities framework for Yantra. Here's what was accomplished:
+
+### 📋 What Was Done
+
+1. **Reviewed Source Document** (`docs/*agentic capabilities.md`)
+   - Analyzed your comprehensive tool architecture with 118 capabilities across 17 categories
+   - Merged with my database/API analysis
+   - Integrated your 17 categories list
+
+2. **Updated Specifications.md** (Specifications.md)
+   - Added massive **"Comprehensive Agentic Capabilities Framework"** section (~2,500 lines)
+   - Organized into 4 pillars: 🔍 PERCEIVE → 🧠 REASON → ⚡ ACT → 🔄 LEARN
+   - Detailed tables for all 118 capabilities with implementation status
+   - Clear tool vs terminal decisions with reasoning
+   - Cross-references to existing implementations
+
+3. **Updated IMPLEMENTATION_STATUS.md**
+   - Added new **"🤖 AGENTIC CAPABILITIES"** section (~800 lines)
+   - Comprehensive tracking tables for all 5 capability groups:
+     - PERCEIVE (24/47 = 51%) - File ops, code intelligence, dependency graph, **database**, **API monitoring**, environment
+     - REASON (8/8 = 100%) ✅ - Fully complete
+     - ACT (41/56 = 73%) - Terminal, git, code gen, testing, build, package mgmt, deployment, **browser**, **HTTP**
+     - LEARN (7/7 = 100%) ✅ - Fully complete
+     - Cross-cutting (17/29 = 59%) - Debugging, docs, security, architecture viz, context
+   - Top 10 critical gaps identified with effort estimates
+   - 5-week implementation roadmap
+
+4. **Created AGENTIC_CAPABILITIES_SUMMARY.md**
+   - Quick reference document for fast lookups
+   - Summary stats, top 10 gaps, roadmap, checklist format
+   - Tool vs terminal decision matrix
+
+5. **Updated File_Registry.md**
+   - Documented all new/updated files
+   - Added latest update entry with comprehensive details
+   - Cross-referenced all documentation
+
+### 🎯 Key Findings
+
+**Strengths (100% Complete):**
+
+- ✅ **REASON Pillar** - All decision-making capabilities implemented
+- ✅ **LEARN Pillar** - All adaptation capabilities implemented
+- ✅ **Terminal & Shell** - Full terminal management with smart reuse
+- ✅ **Git Operations** - All basic git ops functional via terminal
+- ✅ **Package Management** - Complete package operations
+- ✅ **Deployment** - Railway deployment fully functional
+- ✅ **Architecture Visualization** - 100% complete
+
+**Critical Gaps (Highest Priority):**
+
+1. **Database Connection Manager** (0%) - Connection pooling, schema tracking, safe queries
+2. **HTTP Client with Intelligence** (0%) - Circuit breaker, retry, rate limiting
+3. **Browser Automation (CDP Full)** (22%) - Placeholder needs full implementation
+4. **API Contract Monitor** (0%) - Breaking change detection, rate limiting
+5. **Document Readers (DOCX/PDF)** (0%) - Architecture from documents
+6. **Database Migration Manager** (0%) - Safe migrations with rollback
+7. **E2E Testing Framework** (0%) - Playwright integration
+8. **Secrets Manager** (0%) - Encrypted credential storage
+
+### 📊 Stats
+
+- **Total Capabilities:** 118
+- **Implemented:** 80 (68%)
+- **Pending:** 38 (32%)
+- **MVP (P0) Completion:** 82% (53/65)
+
+**By Pillar:**
+
+- 🔍 PERCEIVE: 51% (24/47)
+- 🧠 REASON: **100%** (8/8) ✅
+- ⚡ ACT: 73% (41/56)
+- 🔄 LEARN: **100%** (7/7) ✅
+
+### 🚀 Next Steps
+
+**Phase 1 (Weeks 1-2): Database & API Foundation**
+
+- Database Connection Manager (3 days)
+- Database Migration Manager (3 days)
+- HTTP Client with Intelligence (2 days)
+- API Contract Monitor (2 days)
+
+**Phase 2 (Weeks 3-4): Browser & Testing**
+
+- Browser Automation (CDP Full) (4 days)
+- E2E Testing Framework (3 days)
+- Test Affected Files Only (1 day)
+
+**Phase 3 (Week 5): Documents & Security**
+
+- Document Readers (DOCX/PDF) (2 days)
+- Secrets Manager (2 days)
+- Advanced File Operations (2 days)
+
+### 📖 Documentation References
+
+- **Specifications:** Specifications.md §"Comprehensive Agentic Capabilities Framework"
+- **Implementation Tracking:** IMPLEMENTATION_STATUS.md §"🤖 AGENTIC CAPABILITIES"
+- **Quick Reference:** AGENTIC_CAPABILITIES_SUMMARY.md
+- **Source Analysis:** `docs/*agentic capabilities.md`
+- **File Registry:** File_Registry.md (updated with all changes)
+
+All documentation is now synchronized and cross-referenced. The platform has a clear roadmap for completing the remaining 38 agentic capabilities! 🎉
+
+---

@@ -1,4 +1,4 @@
-\*\*# Yantra: Complete Technical Specification
+\c\*\*# Yantra: Complete Technical Specification
 
 Version: 1.0
 Date: November 2024
@@ -18,11 +18,16 @@ Document Purpose: Complete technical blueprint for building Yantra from ground z
    - **Cloud:** Tier 0 PostgreSQL + Redis (structure only, no code)
 
 2. **Yantra Codex** (AI Code Generation)
-   - **Code Name:** "Yantra Codex" or "Codex"
-   - **Actual Technology:** GraphSAGE neural network (IS a real neural network)
-   - **Purpose:** Generate code from natural language using ML
-   - **Local:** 1024-dim GraphSAGE model, 150M parameters
-   - **Cloud:** Aggregated embeddings (opt-in, privacy-preserving)
+
+   **Code Name:** "Yantra Codex" or "Codex"
+
+   **Actual Technology:** GraphSAGE neural network (IS a real neural network)
+
+   **Purpose:** Generate code from natural language using ML
+
+   **Local:** 1024-dim GraphSAGE model, 150M parameters
+
+   **Cloud:** Aggregated embeddings (opt-in, privacy-preserving)
 
 **Why This Matters:** Throughout this document, "GNN" usually refers to the dependency graph (data structure), NOT the neural network (Yantra Codex). When we mean the AI code generation system, we explicitly say "Yantra Codex" or "GraphSAGE."
 
@@ -167,7 +172,7 @@ Total Addressable Market: $60B+
 | Internal system access        | ✅     | ⚠️      | ⚠️     | ❌     | ⚠️           |
 | Custom workflow code          | ✅     | ❌      | ❌     | ❌     | ⚠️           |
 | **Browser automation**        | ✅     | ❌      | ❌     | ❌     | ❌           |
-| **Integrated terminal**       | ✅     | ❌      | ❌     | N/A    | ✅           |
+| **Integrated terminal**       | ✅     | ✅      | ❌     | N/A    | ✅           |
 | **Desktop app (native)**      | ✅     | N/A     | ✅     | N/A    | ❌ (web)     |
 
 **Key Differentiators:**
@@ -201,7 +206,7 @@ Total Addressable Market: $60B+
 
 ### 1. Dependency Graph (Code Intelligence)
 
-**Purpose:** Track structural code relationships (imports, calls, dependencies)
+**Purpose:** Track ALL structural code relationships with bidirectional navigation and version-level granularity
 **Implementation:** petgraph-based directed graph (Rust)
 **Code Reference:** Often called "GNN" in codebase (historical naming, NOT a neural network)
 
@@ -217,15 +222,189 @@ Local Dependency Graph (Tier 1)          Cloud Dependency Graph (Tier 0)
 • Privacy: All code stays local          • Privacy: Structure only, no code
 ```
 
-**What it tracks:**
+**Comprehensive Dependency Tracking (ALL Bidirectional):**
 
-- File → File imports
-- Function → Function calls
-- Class → Class inheritance
-- Package → File usage
-- Semantic similarity (optional)
+1. **File ↔ File Dependencies**
+   - Import relationships (which files import which)
+   - Module dependencies (which modules depend on which)
+   - Test file ↔ Source file relationships
+   - **Version tracking**: File content hash, last modified timestamp
 
-**NOT a neural network** - Just a graph data structure with optional embeddings for fuzzy search.
+2. **Code Symbol ↔ Code Symbol Dependencies**
+   - Function → Function calls (caller/callee relationships)
+   - Class → Class inheritance (parent/child hierarchies)
+   - Method → Method invocations (cross-class calls)
+   - Variable → Variable usage (data flow tracking)
+   - **Version tracking**: Symbol signature hash, parameter changes
+
+3. **Package ↔ Package Dependencies**
+   - Direct dependencies (package.json, requirements.txt, Cargo.toml)
+   - Transitive dependencies (full dependency tree)
+   - Peer dependencies and optional dependencies
+   - **Version tracking**: Exact version, version range, compatibility matrix
+
+4. **Tool ↔ Tool Dependencies**
+   - Build tool chains (webpack → babel → terser)
+   - Test framework dependencies (pytest → coverage → plugins)
+   - Linter/formatter chains (ESLint → Prettier → plugins)
+   - **Version tracking**: Tool version, plugin versions, config file hash
+
+5. **Package ↔ File Dependencies**
+   - Which files use which packages (`import numpy` → file.py uses numpy)
+   - Unused package detection (packages installed but never imported)
+   - Package-to-module mapping (numpy → specific submodules used)
+   - **Version tracking**: Import statement location, package version used
+
+6. **User ↔ File Dependencies (MVP)**
+   - Active work tracking (which developer is editing which files)
+   - File modification history (who last modified, when)
+   - Work visibility indicators (show active sessions on files)
+   - **Version tracking**: User session ID, file version at edit start
+
+7. **User ↔ Git Checkout Dependencies (Post-MVP)**
+   - Branch-to-file mapping (which files changed in which branches)
+   - Merge conflict prediction (parallel edits on same files)
+   - Work isolation tracking (developer workspace state)
+   - **Version tracking**: Git commit SHA, branch name, checkout timestamp
+
+**Edge Types (All Bidirectional Navigable):**
+
+- `Calls` / `CalledBy` - Function call relationships
+- `Uses` / `UsedBy` - Variable/resource usage
+- `Imports` / `ImportedBy` - Import relationships
+- `Inherits` / `InheritedBy` - Class inheritance
+- `Defines` / `DefinedBy` - Definition relationships
+- `Tests` / `TestedBy` - Test coverage relationships
+- `TestDependency` / `HasTest` - Test file dependencies
+- `UsesPackage` / `UsedByFile` - Package usage (Post-MVP)
+- `DependsOn` / `RequiredBy` - Package dependencies (Post-MVP)
+- `EditedBy` / `Edits` - User active work (MVP)
+- `ModifiedBy` / `Modifies` - File modification history (MVP)
+- `CheckedOut` / `ActiveIn` - Git branch relationships (Post-MVP)
+
+**Version-Level Dependency Tracking:**
+
+```rust
+pub struct VersionedEdge {
+    edge_type: EdgeType,
+    source_id: String,
+    target_id: String,
+
+    // Version tracking metadata
+    source_version: String,      // Hash or version number
+    target_version: String,      // Hash or version number
+    created_at: Timestamp,
+    last_validated: Timestamp,
+
+    // Dependency constraint (for packages)
+    version_constraint: Option<String>,  // ">=1.2.0,<2.0.0"
+    is_compatible: bool,
+
+    // Change tracking
+    last_modified_by: Option<String>,    // User ID
+    modification_count: u32,
+}
+```
+
+**Web Search & RAG for Dependency Resolution:**
+
+**Problem:** LLM knowledge is static (training cutoff date), but packages/tools evolve constantly.
+
+**Solution:** Agent uses web search + RAG to access live package documentation:
+
+1. **Web Search Integration (DependencyAssessment State)**
+   - **When**: Resolving package versions, compatibility issues, API changes
+   - **Primary Method**: Browser automation via Chrome DevTools Protocol (CDP) - **Built-in capability**
+     - Agent navigates like a human user: opens browser, searches, clicks links, extracts content
+     - **Parallel Processing**: Open multiple tabs simultaneously for faster information gathering
+       - Tab 1: PyPI/npm official package page (version, release date)
+       - Tab 2: Package changelog/release notes (breaking changes)
+       - Tab 3: Migration guide or upgrade documentation
+       - Tab 4: Known issues (GitHub issues, Stack Overflow)
+       - **Consolidation**: LLM synthesizes information from all tabs into coherent recommendation
+       - **Performance**: ~5-8 seconds total (parallel) vs ~15-20 seconds (sequential)
+     - **Advantages**: No external dependencies, works offline (cached), full DOM access, parallel efficiency
+     - **Trade-off**: Slightly slower than MCP API calls, but more reliable for complex pages
+     - **Queries**:
+       - Navigate to Google: "numpy version 2.0 breaking changes"
+       - Click top results (PyPI, numpy.org, Stack Overflow)
+       - Extract version info, changelog, migration guides from page content
+   - **Alternative Method (Optional)**: MCP servers for faster API-based search
+     - MCP `@modelcontextprotocol/server-brave-search` - Brave Search API (fast, structured)
+     - MCP `@modelcontextprotocol/server-fetch` - Direct HTTP fetch (for known URLs)
+     - **Advantages**: Faster (<1 second), structured JSON responses
+     - **Trade-off**: Requires external MCP server setup, API keys, internet dependency
+   - **Strategy**:
+     - **Default**: Use browser automation with parallel tabs (built-in, reliable, no setup)
+     - **Optimization**: Use MCP servers if installed and configured (faster for simple queries)
+     - **Hybrid**: Browser automation for complex pages + MCP for structured API data
+     - **Fallback**: If both fail, use LLM knowledge with disclaimer about potential outdated info
+   - **Processing**:
+     - Fetch official docs (PyPI, npm, crates.io, official websites)
+     - Extract version compatibility matrices using tree-sitter or DOM parsing
+     - Consolidate information from multiple sources (official docs + community knowledge)
+     - Cache results in Vector DB for future use (TTL: 7 days)
+
+2. **RAG-Enhanced Dependency Resolution (ConflictCheck State)**
+   - **When**: Detecting version conflicts, suggesting package updates
+   - **Storage**: HNSW index in CodeGraph (in-memory semantic search)
+   - **Data Sources**:
+     - Cached package documentation (from web search - browser or MCP)
+     - Historical conflict resolutions (from past projects)
+     - Known compatibility issues (community knowledge)
+     - Migration guides and changelogs
+   - **Process**:
+     - Query: "How to resolve numpy 1.24 vs pandas 2.1 conflict?"
+     - RAG retrieves: Similar past conflicts + official compatibility docs
+     - LLM synthesizes: Recommended version upgrade path
+
+3. **Package Documentation Fetching (Post-MVP)**
+   - **Automated**: When new package added, fetch + index its documentation
+   - **Sources**:
+     - Official docs (docs.python.org, react.dev, docs.rs)
+     - README files from package repositories
+     - Changelog/migration guides
+   - **Method**: Browser automation navigates to docs, extracts structured content
+   - **Indexing**: Store in Vector DB with semantic embeddings
+   - **Usage**: Provide as context to LLM when generating code using that package
+
+**Example Flow (Browser Automation - Default):**
+
+```
+User: "Add numpy for matrix operations"
+  ↓
+DependencyAssessment State:
+  → Check current numpy version in requirements.txt (1.24.0)
+  → Open browser (headless Chrome via CDP)
+  → Navigate to Google: "numpy latest version 2024"
+  → Click first result (PyPI numpy page)
+  → Extract version: 2.0.0, release date, breaking changes link
+  → Navigate to numpy.org/doc/2.0/release/2.0.0-notes.html
+  → Extract: Breaking changes in numpy.random module
+  → Total time: ~8-12 seconds (acceptable for critical decisions)
+  → RAG query: "numpy 1.24 to 2.0 migration"
+  → Retrieve: Known migration guide from Vector DB
+  ↓
+Agent proposes:
+  "Current: numpy==1.24.0
+   Latest: numpy==2.0.0 (breaking changes in numpy.random)
+   Recommendation: numpy==1.26.4 (stable, compatible)
+
+   Reason: numpy 2.0 changes numpy.random.Generator API.
+   Your code uses np.random.rand() which is deprecated in 2.0.
+   Version 1.26.4 is latest stable with backward compatibility.
+
+   Source: Verified via PyPI and numpy.org (fetched 30 seconds ago)"
+```
+
+**Implementation Notes:**
+
+- Web search results cached in SQLite with TTL (7 days for package info)
+- RAG embeddings updated incrementally (fastembed + HNSW index)
+- LLM prompted with: "Use web search for latest package info, your knowledge may be outdated"
+- Conflict resolution prioritizes: 1) Official docs, 2) Community recommendations, 3) LLM reasoning
+
+**NOT a neural network** - Just a graph data structure with optional embeddings for fuzzy search + web-augmented knowledge.
 
 ### 2. Yantra Codex (AI Code Generation)
 
@@ -257,16 +436,16 @@ Local Yantra Codex (Tier 1)              Cloud Yantra Codex (Tier 0 - Optional)
 
 ### Why Two Systems?
 
-| Aspect          | Dependency Graph          | Yantra Codex               |
-| --------------- | ------------------------- | -------------------------- |
-| **Purpose**     | Code relationships        | Code generation            |
-| **Technology**  | petgraph (data structure) | GraphSAGE (neural network) |
-| **Input**       | AST from tree-sitter      | Problem description        |
-| **Output**      | Dependency queries        | Generated code             |
-| **Speed**       | <1ms                      | 15ms                       |
-| **Learning**    | No learning               | Continuous learning        |
-| **Local/Cloud** | Both (sync structure)     | Both (sync embeddings)     |
-| **Code Name**   | "GNN" (misleading)        | "Yantra Codex"             |
+| Aspect          | Dependency Graph (In code GNN is used) | Yantra Codex               |
+| --------------- | -------------------------------------- | -------------------------- |
+| **Purpose**     | Code relationships                     | Code generation            |
+| **Technology**  | petgraph (data structure)              | GraphSAGE (neural network) |
+| **Input**       | AST from tree-sitter                   | Problem description        |
+| **Output**      | Dependency queries                     | Generated code             |
+| **Speed**       | <1ms                                   | 15ms                       |
+| **Learning**    | No learning                            | Continuous learning        |
+| **Local/Cloud** | Both (sync structure)                  | Both (sync embeddings)     |
+| **Code Name**   | "GNN" (misleading)                     | "Yantra Codex"             |
 
 **Integration:** Dependency Graph provides context → Yantra Codex generates code → Dependency Graph validates new code fits properly
 
@@ -409,13 +588,13 @@ Cost Trajectory: $0.015 → $0.010 → $0.005 → $0 (100% saved)
 
 **Comparison Table:**
 
-| Metric        | LLM Only   | Yantra + LLM (Month 1) | Yantra + LLM (Year 1) |
-| ------------- | ---------- | ---------------------- | --------------------- | --- |
-| Cost/1000 gen | $25        | $9 (64% ↓)             | $1 (96% ↓)            |     |
-| Quality       | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐             | ⭐⭐⭐⭐⭐            |
-| Speed         | 3-5s       | 0.5-2s                 | 0.015-0.5s            |
-| Learning      | ❌         | ✅                     | ✅✅✅                |
-| Privacy       | ❌ (cloud) | ✅ (mostly local)      | ✅ (95% local)        |
+| Metric        | LLM Only   | Yantra + LLM (Month 1) | Yantra + LLM (Year 1) |     |     |     |     |
+| ------------- | ---------- | ---------------------- | --------------------- | --- | --- | --- | --- | --- |
+| Cost/1000 gen | $25        | $9 (64% ↓)             | $1 (96% ↓)            |     |     |     |     |     |
+| Quality       | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐             | ⭐⭐⭐⭐⭐            |     |     |     |     |
+| Speed         | 3-5s       | 0.5-2s                 | 0.015-0.5s            |     |     |     |     |
+| Learning      | ❌         | ✅                     | ✅✅✅                |     |     |     |     |
+| Privacy       | ❌ (cloud) | ✅ (mostly local)      | ✅ (95% local)        |     |     |     |     |
 
 #### 4. Multi-Language Support
 
@@ -518,135 +697,179 @@ More users = Better model = Lower LLM costs = Attracts more users (flywheel)
 
 ---
 
-## Core Architecture
-
-### System Overview
-
-┌──────────────────────────────────────────────────────┐
-
-│ AI-CODE PLATFORM │
-
-├──────────────────────────────────────────────────────┤
-
-│ │
-
-│ USER INTERFACE (AI-First) │
-
-│ ┌─────────────────────────────────────────────┐ │
-
-│ │ Chat/Task Interface (Primary - 60% screen) │ │
-
-│ │ Code Viewer (Secondary - 25% screen) │ │
-
-│ │ Browser Preview (Live - 15% screen) │ │
-
-│ └─────────────────────────────────────────────┘ │
-
-│ │ │
-
-│ ┌────────────────────┼─────────────────────────┐ │
-
-│ │ ORCHESTRATION LAYER│ │ │
-
-│ │ Multi-LLM Manager │ │ │
-
-│ │ ├─ Claude Sonnet (Primary) │ │
-
-│ │ ├─ GPT-4 (Secondary/Validation) │ │
-
-│ │ └─ Routing & Failover Logic │ │
-
-│ └─────────────────────────────────────────────┘ │
-
-│ │ │
-
-│ ┌────────────────────┼─────────────────────────┐ │
-
-│ │ INTELLIGENCE LAYER │ │ │
-
-│ │ Graph Neural Network (GNN) │ │
-
-│ │ ├─ Code Dependencies │ │
-
-│ │ ├─ External API Tracking │ │
-
-│ │ ├─ Data Flow Analysis │ │
-
-│ │ └─ Known Issues Database (LLM Failures) │ │
-
-│ │ │ │
-
-│ │ Vector Database (RAG) │ │
-
-│ │ ├─ Code Templates │ │
-
-│ │ ├─ Best Practices │ │
-
-│ │ ├─ Project Patterns │ │
-
-│ │ └─ Failure Pattern Library (Network Effect) │ │
-
-│ │ │ │
-
-│ │ Unlimited Context Engine │ │
-
-│ │ ├─ Token Counting & Management │ │
-
-│ │ ├─ Context Compression & Chunking │ │
-
-│ │ ├─ Hierarchical Context Assembly │ │
-
-│ │ └─ Adaptive Context Strategies │ │
-
-│ └─────────────────────────────────────────────┘ │
-
-│ │ │
-
-│ ┌────────────────────┼─────────────────────────┐ │
-
-│ │ VALIDATION LAYER │ │ │
-
-│ │ ├─ Testing Engine (pytest/jest) │ │
-
-│ │ ├─ Security Scanner (Semgrep + custom) │ │
-
-│ │ ├─ Browser Integration (CDP) │ │
-
-│ │ ├─ Dependency Validator (GNN) │ │
-
-│ │ └─ Agentic Validation Pipeline │ │
-
-│ │ │ │
-
-│ │ Agent State Machine │ │
-
-│ │ ├─ Code Generation → Validation Loop │ │
-
-│ │ ├─ Confidence Scoring & Auto-Retry │ │
-
-│ │ ├─ Failure Analysis & Pattern Extraction │ │
-
-│ │ └─ Self-Healing with Known Issues DB │ │
-
-│ └─────────────────────────────────────────────┘ │
-
-│ │ │
-
-│ ┌────────────────────┼─────────────────────────┐ │
-
-│ │ INTEGRATION LAYER │ │ │
-
-│ │ ├─ Git (MCP Protocol) │ │
-
-│ │ ├─ File System │ │
-
-│ │ └─ External APIs (Phase 2+) │ │
-
-│ └─────────────────────────────────────────────┘ │
-
-│ │
-
-└──────────────────────────────────────────────────────┘
+## Complete Architecture
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                           YANTRA PLATFORM                                    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │                    LAYER 1: USER INTERFACE (AI-FIRST)                  │ │
+│  ├────────────────────────────────────────────────────────────────────────┤ │
+│  │  • Chat/Task Interface (Primary - 60% screen)                          │ │
+│  │  • Code Viewer with Monaco Editor (Secondary - 25% screen)             │ │
+│  │  • Browser Preview with CDP (Live - 15% screen)                        │ │
+│  │  • Real-time WebSocket updates                                         │ │
+│  │  • SolidJS reactive UI, TailwindCSS styling                            │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+│                                    ↕                                         │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │              LAYER 2: ORCHESTRATION & COORDINATION                     │ │
+│  ├────────────────────────────────────────────────────────────────────────┤ │
+│  │  ┌─────────────────────────────────────────────────────────────────┐  │ │
+│  │  │  Unified Tool Interface (UTI)                                   │  │ │
+│  │  │  ├─ Protocol Router: MCP / LSP / DAP / Builtin                  │  │ │
+│  │  │  ├─ Tool Adapters: 45+ tools, 4 protocols                       │  │ │
+│  │  │  ├─ Consumer Abstraction: LLM Agent + Workflow Executor         │  │ │
+│  │  │  └─ Protocol Selection: Auto-routing by capability              │  │ │
+│  │  └─────────────────────────────────────────────────────────────────┘  │ │
+│  │  ┌─────────────────────────────────────────────────────────────────┐  │ │
+│  │  │  Multi-LLM Orchestration                                        │  │ │
+│  │  │  ├─ Primary: Claude Sonnet 4 (code generation, reasoning)       │  │ │
+│  │  │  ├─ Secondary: GPT-4 Turbo (validation, fallback)               │  │ │
+│  │  │  ├─ Routing: Cost optimization, capability-based selection      │  │ │
+│  │  │  ├─ Failover: Circuit breaker, retry with exponential backoff   │  │ │
+│  │  │  └─ Response Caching: Redis for repeated queries                │  │ │
+│  │  └─────────────────────────────────────────────────────────────────┘  │ │
+│  │  ┌─────────────────────────────────────────────────────────────────┐  │ │
+│  │  │  PDC State Machine                                              │  │ │
+│  │  │  ├─ Phase Transitions: Architect → Plan → Execute → Deploy     │  │ │
+│  │  │  ├─ State Persistence: SQLite with WAL mode                     │  │ │
+│  │  │  ├─ Rollback Support: Checkpoints at phase boundaries           │  │ │
+│  │  │  └─ Approval Gates: Human-in-loop for critical operations       │  │ │
+│  │  └─────────────────────────────────────────────────────────────────┘  │ │
+│  │  ┌─────────────────────────────────────────────────────────────────┐  │ │
+│  │  │  Team of Agents (Distributed Intelligence)                      │  │ │
+│  │  │  ├─ Architect Agent: Design, dependency planning                │  │ │
+│  │  │  ├─ Coding Agent: Code generation, pattern application          │  │ │
+│  │  │  ├─ Testing Agent: Test creation, validation orchestration      │  │ │
+│  │  │  ├─ Security Agent: Vulnerability scanning, auto-fix            │  │ │
+│  │  │  └─ Coordination: Message bus for agent communication           │  │ │
+│  │  └─────────────────────────────────────────────────────────────────┘  │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+│                                    ↕                                         │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │                   LAYER 3: INTELLIGENCE & REASONING                    │ │
+│  ├────────────────────────────────────────────────────────────────────────┤ │
+│  │  ┌─────────────────────────────────────────────────────────────────┐  │ │
+│  │  │  Dependency Graph (Code Intelligence) - petgraph                │  │ │
+│  │  │  ├─ AST Parsing: tree-sitter (Python, JS, Rust, Go, etc.)      │  │ │
+│  │  │  ├─ Graph Structure: Nodes (files/funcs/classes), Edges (deps) │  │ │
+│  │  │  ├─ Query Engine: <1ms dependency lookups                       │  │ │
+│  │  │  ├─ Incremental Updates: <50ms per file change                  │  │ │
+│  │  │  ├─ Impact Analysis: Transitive dependency traversal            │  │ │
+│  │  │  └─ Storage: In-memory (hot) + SQLite (persistence)             │  │ │
+│  │  └─────────────────────────────────────────────────────────────────┘  │ │
+│  │  ┌─────────────────────────────────────────────────────────────────┐  │ │
+│  │  │  Yantra Codex (AI Code Generation) - GraphSAGE GNN              │  │ │
+│  │  │  ├─ Neural Network: 1024-dim embeddings, 150M parameters        │  │ │
+│  │  │  ├─ Inference: 15ms (CPU), 5ms (GPU), ~600MB model              │  │ │
+│  │  │  ├─ Pattern Recognition: 978-dim problem features → code logic  │  │ │
+│  │  │  ├─ Confidence Scoring: 0.0-1.0 (triggers LLM review < 0.8)     │  │ │
+│  │  │  ├─ Continuous Learning: Learns from LLM corrections            │  │ │
+│  │  │  └─ Cost Optimization: 90% LLM call reduction (96% after 12mo) │  │ │
+│  │  └─────────────────────────────────────────────────────────────────┘  │ │
+│  │  ┌─────────────────────────────────────────────────────────────────┐  │ │
+│  │  │  Vector Database (RAG) - fastembed + redb                       │  │ │
+│  │  │  ├─ Code Templates: Pre-validated patterns                      │  │ │
+│  │  │  ├─ Best Practices: Language-specific idioms                    │  │ │
+│  │  │  ├─ Project Patterns: Learned from codebase                     │  │ │
+│  │  │  ├─ Failure Library: Known issues, LLM failure patterns         │  │ │
+│  │  │  └─ Semantic Search: <10ms retrieval for context assembly       │  │ │
+│  │  └─────────────────────────────────────────────────────────────────┘  │ │
+│  │  ┌─────────────────────────────────────────────────────────────────┐  │ │
+│  │  │  Context Assembly Engine                                        │  │ │
+│  │  │  ├─ Token Counting: Track context limits per LLM                │  │ │
+│  │  │  ├─ Hierarchical Assembly: Priority-based context inclusion     │  │ │
+│  │  │  ├─ Compression: Summarize low-priority context                 │  │ │
+│  │  │  ├─ Chunking: Split large operations across multiple calls      │  │ │
+│  │  │  └─ Adaptive Strategies: Dynamic context based on task type     │  │ │
+│  │  └─────────────────────────────────────────────────────────────────┘  │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+│                                    ↕                                         │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │                    LAYER 4: VALIDATION & SECURITY                      │ │
+│  ├────────────────────────────────────────────────────────────────────────┤ │
+│  │  ┌─────────────────────────────────────────────────────────────────┐  │ │
+│  │  │  5-Layer Security Framework (Prevention Stack)                  │  │ │
+│  │  │  ├─ Layer 1: Pre-Generation (Intent validation, context check)  │  │ │
+│  │  │  ├─ Layer 2: Generation-Time (Pattern safety, injection guards) │  │ │
+│  │  │  ├─ Layer 3: Post-Generation (AST validation, syntax check)     │  │ │
+│  │  │  ├─ Layer 4: Pre-Commit (Semgrep OWASP, secret scanning)        │  │ │
+│  │  │  └─ Layer 5: Runtime Monitoring (Execution safety, sandboxing)  │  │ │
+│  │  └─────────────────────────────────────────────────────────────────┘  │ │
+│  │  ┌─────────────────────────────────────────────────────────────────┐  │ │
+│  │  │  Testing Framework                                              │  │ │
+│  │  │  ├─ Unit Test Generation: pytest (Python), Jest (JavaScript)    │  │ │
+│  │  │  ├─ Integration Tests: End-to-end flow validation               │  │ │
+│  │  │  ├─ Coverage Analysis: 90%+ target enforcement                  │  │ │
+│  │  │  ├─ Test Execution: Parallel execution, <30s typical runtime    │  │ │
+│  │  │  ├─ Result Validation: 100% pass rate mandatory                 │  │ │
+│  │  │  └─ Mock UI Testing: Component isolation testing                │  │ │
+│  │  └─────────────────────────────────────────────────────────────────┘  │ │
+│  │  ┌─────────────────────────────────────────────────────────────────┐  │ │
+│  │  │  Browser Integration (Chrome DevTools Protocol)                 │  │ │
+│  │  │  ├─ Live Preview: Real-time UI rendering via chromiumoxide      │  │ │
+│  │  │  ├─ Visual Validation: Screenshot diffs, layout verification    │  │ │
+│  │  │  ├─ Interaction Testing: Automated user flow testing            │  │ │
+│  │  │  ├─ Console Monitoring: Runtime error detection                 │  │ │
+│  │  │  └─ Performance Metrics: Core Web Vitals tracking               │  │ │
+│  │  └─────────────────────────────────────────────────────────────────┘  │ │
+│  │  ┌─────────────────────────────────────────────────────────────────┐  │ │
+│  │  │  Dependency Validator                                           │  │ │
+│  │  │  ├─ GNN-Powered: Query dependency graph for conflicts           │  │ │
+│  │  │  ├─ Breaking Change Detection: Transitive impact analysis       │  │ │
+│  │  │  ├─ Circular Dependency Prevention: Pre-commit validation       │  │ │
+│  │  │  └─ External API Tracking: Monitor API dependencies             │  │ │
+│  │  └─────────────────────────────────────────────────────────────────┘  │ │
+│  │  ┌─────────────────────────────────────────────────────────────────┐  │ │
+│  │  │  Agentic Validation Pipeline                                    │  │ │
+│  │  │  ├─ Code Generation → Validation Loop                           │  │ │
+│  │  │  ├─ Confidence Scoring: Auto-retry logic based on confidence    │  │ │
+│  │  │  ├─ Failure Analysis: Extract patterns from failures            │  │ │
+│  │  │  ├─ Self-Healing: Auto-fix with Known Issues DB                 │  │ │
+│  │  │  └─ Escalation: Human approval for unresolved issues            │  │ │
+│  │  └─────────────────────────────────────────────────────────────────┘  │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+│                                    ↕                                         │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │                  LAYER 5: INTEGRATION & PERSISTENCE                    │ │
+│  ├────────────────────────────────────────────────────────────────────────┤ │
+│  │  ┌─────────────────────────────────────────────────────────────────┐  │ │
+│  │  │  Git Integration (MCP Protocol)                                 │  │ │
+│  │  │  ├─ Repository Operations: clone, commit, push, pull, branch    │  │ │
+│  │  │  ├─ Conflict Resolution: Auto-merge with GNN conflict detection │  │ │
+│  │  │  ├─ Commit Strategy: Atomic commits per logical change          │  │ │
+│  │  │  ├─ History Analysis: Blame, diff, log integration              │  │ │
+│  │  │  └─ Branch Management: Feature branch workflow automation       │  │ │
+│  │  └─────────────────────────────────────────────────────────────────┘  │ │
+│  │  ┌─────────────────────────────────────────────────────────────────┐  │ │
+│  │  │  File System Operations                                         │  │ │
+│  │  │  ├─ File Locking: SQLite-based distributed locking              │  │ │
+│  │  │  ├─ CRUD Operations: Create, read, update, delete with locking  │  │ │
+│  │  │  ├─ Watch Service: Real-time file change monitoring             │  │ │
+│  │  │  ├─ Conflict Prevention: Lock coordination across agents        │  │ │
+│  │  │  └─ Transaction Support: Rollback on validation failure         │  │ │
+│  │  └─────────────────────────────────────────────────────────────────┘  │ │
+│  │  ┌─────────────────────────────────────────────────────────────────┐  │ │
+│  │  │  4-Tier Data Storage Architecture                               │  │ │
+│  │  │  ├─ Tier 0: Cloud Storage (Optional, team coordination)         │  │ │
+│  │  │  ├─ Tier 1: In-Memory (Hot path: GNN queries, active state)     │  │ │
+│  │  │  ├─ Tier 2: Local SQLite (Persistent: graph, state, history)    │  │ │
+│  │  │  └─ Tier 3: File System (Cold: logs, backups, large artifacts)  │  │ │
+│  │  └─────────────────────────────────────────────────────────────────┘  │ │
+│  │  ┌─────────────────────────────────────────────────────────────────┐  │ │
+│  │  │  External Integrations (Post-MVP)                               │  │ │
+│  │  │  ├─ REST APIs: HTTP client with retry logic                     │  │ │
+│  │  │  ├─ WebSockets: Real-time external data streams                 │  │ │
+│  │  │  ├─ Third-Party Services: Slack, SendGrid, Stripe, etc.         │  │ │
+│  │  │  └─ Webhook Triggers: Event-driven workflow activation          │  │ │
+│  │  └─────────────────────────────────────────────────────────────────┘  │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
 
 ### Technology Stack
 
@@ -1259,6 +1482,39 @@ Total: 1,050 tokens for highly relevant context
 
 ## Comprehensive Agentic Capabilities Framework
 
+### ⚠️ CRITICAL: Protocol Architecture Reference
+
+**IMPORTANT:** All capabilities listed below MUST be implemented according to the **Unified Tool Interface (UTI) architecture** specified in:
+
+📄 **`docs/Research & specifications/*Yantra Unified Tool Interface.md`**
+
+The UTI specification defines:
+
+- **Protocol Selection:** Which capabilities use MCP, LSP, DAP, or Builtin
+- **Two Consumers, Two Protocols:** Editor (Monaco) uses LSP, Agent uses MCP + Builtin
+- **Comprehensive Capability Matrix:** 21+ categories with protocol decisions, fallback strategies, and implementation priorities
+- **Why Builtin vs MCP:** Core differentiators (GNN, Tree-sitter, Terminal, Browser) are Builtin; ecosystem services (Git, Database, Deployment) use MCP
+
+**Protocol Decision Framework (from UTI):**
+
+| Protocol    | When to Use                                                   | Examples                                |
+| ----------- | ------------------------------------------------------------- | --------------------------------------- |
+| **Builtin** | Core differentiator, performance-critical, security-critical  | File ops, Terminal, GNN, Tree-sitter    |
+| **MCP**     | Well-maintained community servers, platform-specific services | Git, GitHub, Database, Railway, Slack   |
+| **LSP**     | Real-time editor features ONLY (not exposed to Agent)         | Autocomplete, hover, diagnostics in IDE |
+| **DAP**     | Debugging-specific operations                                 | Breakpoints, step debugging, variables  |
+
+**Agent Access:** Agent uses UTI abstraction layer which routes to MCP + Builtin. LSP is used internally by Monaco editor but NOT exposed through UTI to the Agent.
+
+**Implementation Requirement:** When implementing any capability below, developers MUST:
+
+1. Consult UTI specification for protocol decision
+2. Use UTI adapter layer (not direct protocol calls)
+3. Follow fallback strategies defined in UTI
+4. Respect protocol boundaries (e.g., don't expose LSP to Agent)
+
+---
+
 ### Philosophy: The Four Pillars of Autonomous Development
 
 Yantra's agentic capabilities are organized into four fundamental pillars that mirror human developer capabilities:
@@ -1278,23 +1534,28 @@ Yantra's agentic capabilities are organized into four fundamental pillars that m
 
 **Purpose:** Gather comprehensive understanding of code, data, and environment
 
+**UTI Protocol Reference:** All capabilities in this section use protocols as defined in UTI specification.
+
 #### 1.1 File System Operations
 
-| Capability         | Tool/Terminal | MVP Status | Purpose                                                | Implementation                      |
-| ------------------ | ------------- | ---------- | ------------------------------------------------------ | ----------------------------------- |
-| `file_read`        | Tool          | ✅ DONE    | Read file contents with encoding detection             | `main.rs::read_file()`              |
-| `file_write`       | Tool          | ✅ DONE    | Create/overwrite files                                 | `main.rs::write_file()`             |
-| `file_edit`        | Tool          | 🔴 TODO    | Surgical edits (line range, search-replace, AST-based) | **NEW**                             |
-| `file_delete`      | Tool          | 🔴 TODO    | Remove files safely                                    | **NEW**                             |
-| `file_move`        | Tool          | 🔴 TODO    | Rename/move files with dependency updates              | **NEW**                             |
-| `file_copy`        | Tool          | 🔴 TODO    | Duplicate files                                        | **NEW**                             |
-| `directory_create` | Tool          | ✅ DONE    | Create directories recursively                         | Built-in                            |
-| `directory_list`   | Tool          | ✅ DONE    | List contents with filters                             | `main.rs::read_dir()`               |
-| `directory_tree`   | Tool          | 🔴 TODO    | Get full project structure                             | **NEW**                             |
-| `file_search`      | Tool          | 🔴 TODO    | Find files by name/pattern/glob                        | **NEW**                             |
-| `file_watch`       | Tool          | 🔴 TODO    | Monitor for changes (reactive agents)                  | **NEW** (use `notify` crate)        |
-| `docx_read`        | Tool          | 🔴 TODO    | Read Word documents                                    | **NEW** (use `docx-rs`)             |
-| `pdf_read`         | Tool          | 🔴 TODO    | Extract text from PDFs                                 | **NEW** (use `pdf-extract`/`lopdf`) |
+**Protocol:** **Builtin** (Primary) | MCP (Fallback via @modelcontextprotocol/server-filesystem)
+**Rationale:** File operations are core to everything. Must be fast, reliable, and under our control.
+
+| Capability         | Tool/Terminal | MVP Status | Purpose                                                | Implementation                                |
+| ------------------ | ------------- | ---------- | ------------------------------------------------------ | --------------------------------------------- |
+| `file_read`        | Tool          | ✅ DONE    | Read file contents with encoding detection             | `main.rs::read_file()` **[Builtin]**          |
+| `file_write`       | Tool          | ✅ DONE    | Create/overwrite files                                 | `main.rs::write_file()` **[Builtin]**         |
+| `file_edit`        | Tool          | 🔴 TODO    | Surgical edits (line range, search-replace, AST-based) | **NEW [Builtin]**                             |
+| `file_delete`      | Tool          | 🔴 TODO    | Remove files safely                                    | **NEW [Builtin]**                             |
+| `file_move`        | Tool          | 🔴 TODO    | Rename/move files with dependency updates              | **NEW [Builtin]**                             |
+| `file_copy`        | Tool          | 🔴 TODO    | Duplicate files                                        | **NEW [Builtin]**                             |
+| `directory_create` | Tool          | ✅ DONE    | Create directories recursively                         | Built-in **[Builtin]**                        |
+| `directory_list`   | Tool          | ✅ DONE    | List contents with filters                             | `main.rs::read_dir()` **[Builtin]**           |
+| `directory_tree`   | Tool          | 🔴 TODO    | Get full project structure                             | **NEW [Builtin]**                             |
+| `file_search`      | Tool          | 🔴 TODO    | Find files by name/pattern/glob                        | **NEW [Builtin]**                             |
+| `file_watch`       | Tool          | 🔴 TODO    | Monitor for changes (reactive agents)                  | **NEW [Builtin]** (use `notify` crate)        |
+| `docx_read`        | Tool          | 🔴 TODO    | Read Word documents                                    | **NEW [Builtin]** (use `docx-rs`)             |
+| `pdf_read`         | Tool          | 🔴 TODO    | Extract text from PDFs                                 | **NEW [Builtin]** (use `pdf-extract`/`lopdf`) |
 
 **Implementation Priority:**
 
@@ -1305,17 +1566,30 @@ Yantra's agentic capabilities are organized into four fundamental pillars that m
 
 #### 1.2 Code Intelligence (Tree-sitter Powered)
 
-| Capability           | Tool/Terminal | MVP Status | Purpose                                        | Implementation                  |
-| -------------------- | ------------- | ---------- | ---------------------------------------------- | ------------------------------- |
-| `parse_ast`          | Tool          | ✅ DONE    | Get AST for file/snippet                       | `gnn/parser.rs` (tree-sitter)   |
-| `get_symbols`        | Tool          | ✅ DONE    | Extract functions, classes, variables, imports | `gnn/parser.rs`                 |
-| `get_references`     | Tool          | 🔴 TODO    | Find all usages of a symbol                    | **NEW**                         |
-| `get_definition`     | Tool          | 🔴 TODO    | Jump to definition                             | **NEW**                         |
-| `get_scope`          | Tool          | 🔴 TODO    | Get scope context for a position               | **NEW**                         |
-| `get_diagnostics`    | Tool          | ✅ DONE    | Syntax errors, warnings                        | Integrated in parser            |
-| `semantic_search`    | Tool          | ✅ PARTIAL | Search code by meaning                         | GNN semantic layer (embeddings) |
-| `get_call_hierarchy` | Tool          | ✅ DONE    | Incoming/outgoing calls                        | GNN dependency tracking         |
-| `get_type_hierarchy` | Tool          | 🔴 TODO    | Class inheritance chains                       | **NEW**                         |
+| Capability       | Tool/Terminal | MVP Status | Purpose                                        | Implementation                |
+| ---------------- | ------------- | ---------- | ---------------------------------------------- | ----------------------------- |
+| `parse_ast`      | Tool          | ✅ DONE    | Get AST for file/snippet                       | `gnn/parser.rs` (tree-sitter) |
+| `get_symbols`    | Tool          | ✅ DONE    | Extract functions, classes, variables, imports | `gnn/parser.rs`               |
+| `get_references` | Tool          | 🔴 TODO    | Find all usages of a symbol                    | **NEW**                       |
+| `get_definition` | Tool          | 🔴 TODO    | Jump to definition                             | **NEW**                       |
+| `get_scope`      | Tool          | 🔴 TODO    | Get scope context for a position               | **NEW**                       |
+
+#### 1.2 Code Intelligence (Tree-sitter Powered)
+
+**Protocol:** **Builtin** (Primary via Tree-sitter) | MCP (Secondary via Pylance/rust-analyzer) | LSP (Editor-only, not exposed to Agent)
+**Rationale:** Tree-sitter is core differentiator. Fast, multi-language, works offline. MCP for advanced features when available.
+
+| Capability           | Tool/Terminal | MVP Status | Purpose                                        | Implementation                                |
+| -------------------- | ------------- | ---------- | ---------------------------------------------- | --------------------------------------------- |
+| `parse_ast`          | Tool          | ✅ DONE    | Get AST for file/snippet                       | `gnn/parser.rs` (tree-sitter) **[Builtin]**   |
+| `get_symbols`        | Tool          | ✅ DONE    | Extract functions, classes, variables, imports | `gnn/parser.rs` **[Builtin]**                 |
+| `get_references`     | Tool          | 🔴 TODO    | Find all usages of a symbol                    | **NEW [MCP/Builtin fallback]**                |
+| `get_definition`     | Tool          | 🔴 TODO    | Jump to definition                             | **NEW [MCP/Builtin fallback]**                |
+| `get_scope`          | Tool          | 🔴 TODO    | Get scope context for a position               | **NEW [Builtin]**                             |
+| `get_diagnostics`    | Tool          | ✅ DONE    | Syntax errors, warnings                        | Integrated in parser **[Builtin]**            |
+| `semantic_search`    | Tool          | ✅ PARTIAL | Search code by meaning                         | GNN semantic layer (embeddings) **[Builtin]** |
+| `get_call_hierarchy` | Tool          | ✅ DONE    | Incoming/outgoing calls                        | GNN dependency tracking **[Builtin]**         |
+| `get_type_hierarchy` | Tool          | 🔴 TODO    | Class inheritance chains                       | **NEW [MCP/Builtin fallback]**                |
 
 **Implementation Priority:**
 
@@ -1326,15 +1600,18 @@ Yantra's agentic capabilities are organized into four fundamental pillars that m
 
 #### 1.3 Dependency Graph & Impact Analysis
 
-| Capability               | Tool/Terminal | MVP Status | Purpose                           | Implementation                       |
-| ------------------------ | ------------- | ---------- | --------------------------------- | ------------------------------------ |
-| `build_dependency_graph` | Tool          | ✅ DONE    | Generate full project graph       | `gnn/engine.rs` (10/10 features)     |
-| `get_dependents`         | Tool          | ✅ DONE    | What depends on X?                | `gnn/engine.rs::get_dependents()`    |
-| `get_dependencies`       | Tool          | ✅ DONE    | What does X depend on?            | `gnn/engine.rs::get_dependencies()`  |
-| `impact_analysis`        | Tool          | ✅ DONE    | If I change X, what breaks?       | `architecture/deviation_detector.rs` |
-| `find_cycles`            | Tool          | ✅ DONE    | Detect circular dependencies      | `gnn/engine.rs::detect_cycles()`     |
-| `get_module_boundaries`  | Tool          | 🔴 TODO    | Identify architectural layers     | **NEW**                              |
-| `cross_repo_deps`        | Tool          | 🔴 TODO    | External API/service dependencies | **NEW** (Phase 2)                    |
+**Protocol:** **Builtin** (Exclusive - Core Differentiator)
+**Rationale:** GNN-powered analysis is Yantra's core differentiator. petgraph data structure (not a neural network, historical naming).
+
+| Capability               | Tool/Terminal | MVP Status | Purpose                           | Implementation                                     |
+| ------------------------ | ------------- | ---------- | --------------------------------- | -------------------------------------------------- |
+| `build_dependency_graph` | Tool          | ✅ DONE    | Generate full project graph       | `gnn/engine.rs` (10/10 features) **[Builtin]**     |
+| `get_dependents`         | Tool          | ✅ DONE    | What depends on X?                | `gnn/engine.rs::get_dependents()` **[Builtin]**    |
+| `get_dependencies`       | Tool          | ✅ DONE    | What does X depend on?            | `gnn/engine.rs::get_dependencies()` **[Builtin]**  |
+| `impact_analysis`        | Tool          | ✅ DONE    | If I change X, what breaks?       | `architecture/deviation_detector.rs` **[Builtin]** |
+| `find_cycles`            | Tool          | ✅ DONE    | Detect circular dependencies      | `gnn/engine.rs::detect_cycles()` **[Builtin]**     |
+| `get_module_boundaries`  | Tool          | 🔴 TODO    | Identify architectural layers     | **NEW [Builtin]**                                  |
+| `cross_repo_deps`        | Tool          | 🔴 TODO    | External API/service dependencies | **NEW [Builtin]** (Phase 2)                        |
 
 **Implementation Priority:**
 
@@ -1344,15 +1621,20 @@ Yantra's agentic capabilities are organized into four fundamental pillars that m
 
 #### 1.4 Database Connections & Schema Intelligence
 
-| Capability   | Tool/Terminal | MVP Status | Purpose                                  | Implementation                                 |
-| ------------ | ------------- | ---------- | ---------------------------------------- | ---------------------------------------------- |
-| `db_connect` | **TOOL**      | 🔴 TODO    | Establish connection with pooling        | **NEW** `agent/database/connection_manager.rs` |
-| `db_query`   | **TOOL**      | 🔴 TODO    | Execute SELECT (read-only, validated)    | **NEW**                                        |
-| `db_execute` | **TOOL**      | 🔴 TODO    | Execute INSERT/UPDATE/DELETE (validated) | **NEW**                                        |
-| `db_schema`  | **TOOL**      | 🔴 TODO    | Get tables, columns, types, constraints  | **NEW**                                        |
-| `db_explain` | **TOOL**      | 🔴 TODO    | Query execution plan                     | **NEW**                                        |
-| `db_migrate` | **TOOL**      | 🔴 TODO    | Run migrations with rollback             | **NEW** `agent/database/migration_manager.rs`  |
-| `db_seed`    | **TOOL**      | 🔴 TODO    | Insert test data                         | **NEW**                                        |
+**Protocol:** **MCP** (Primary via DB-specific MCP servers) | Builtin (Fallback for SQLite)
+**Rationale:** Well-maintained MCP servers exist for major databases. Platform-specific, not core differentiator.
+
+| Capability   | Tool/Terminal | MVP Status | Purpose                                  | Implementation                                       |
+| ------------ | ------------- | ---------- | ---------------------------------------- | ---------------------------------------------------- |
+| `db_connect` | **TOOL**      | 🔴 TODO    | Establish connection with pooling        | **NEW [MCP]** `agent/database/connection_manager.rs` |
+| `db_query`   | **TOOL**      | 🔴 TODO    | Execute SELECT (read-only, validated)    | **NEW [MCP]**                                        |
+| `db_execute` | **TOOL**      | 🔴 TODO    | Execute INSERT/UPDATE/DELETE (validated) | **NEW [MCP]**                                        |
+| `db_schema`  | **TOOL**      | 🔴 TODO    | Get tables, columns, types, constraints  | **NEW [MCP]**                                        |
+| `db_explain` | **TOOL**      | 🔴 TODO    | Query execution plan                     | **NEW [MCP]**                                        |
+| `db_migrate` | **TOOL**      | 🔴 TODO    | Run migrations with rollback             | **NEW [MCP]** `agent/database/migration_manager.rs`  |
+| `db_seed`    | **TOOL**      | 🔴 TODO    | Insert test data                         | **NEW [MCP]**                                        |
+
+**MCP Servers:** Postgres MCP, MySQL MCP, SQLite MCP, MongoDB MCP servers
 
 **Why Tool (Not Terminal):**
 
@@ -1372,22 +1654,25 @@ Yantra's agentic capabilities are organized into four fundamental pillars that m
 
 **Supported Databases:**
 
-- PostgreSQL (via `tokio-postgres`)
-- MySQL (via `sqlx`)
-- SQLite (via `rusqlite` - already in use for GNN)
-- MongoDB (via `mongodb` crate)
-- Redis (via `redis` crate)
+- PostgreSQL (via MCP server or `tokio-postgres`)
+- MySQL (via MCP server or `sqlx`)
+- SQLite (via `rusqlite` - already in use for GNN) **[Builtin fallback]**
+- MongoDB (via MCP server or `mongodb` crate)
+- Redis (via MCP server or `redis` crate)
 
 #### 1.5 API Monitoring & Contract Validation
 
-| Capability              | Tool/Terminal | MVP Status | Purpose                       | Implementation                                    |
-| ----------------------- | ------------- | ---------- | ----------------------------- | ------------------------------------------------- |
-| `api_import_spec`       | **TOOL**      | 🔴 TODO    | Import OpenAPI/Swagger specs  | **NEW** `agent/api_monitor/spec_parser.rs`        |
-| `api_validate_contract` | **TOOL**      | 🔴 TODO    | Detect breaking API changes   | **NEW** `agent/api_monitor/contract_validator.rs` |
-| `api_health_check`      | **TOOL**      | 🔴 TODO    | Test endpoint availability    | **NEW**                                           |
-| `api_rate_limit_check`  | **TOOL**      | 🔴 TODO    | Track and predict rate limits | **NEW**                                           |
-| `api_mock`              | **TOOL**      | 🔴 TODO    | Create mock server from spec  | **NEW** (Phase 2)                                 |
-| `api_test`              | **TOOL**      | 🔴 TODO    | Test endpoint with assertions | **NEW** (Phase 2)                                 |
+**Protocol:** **MCP** (Primary for external APIs) | Builtin (HTTP client for health checks)
+**Rationale:** API-specific operations benefit from MCP ecosystem. Builtin HTTP client for basic health checks.
+
+| Capability              | Tool/Terminal | MVP Status | Purpose                       | Implementation                                          |
+| ----------------------- | ------------- | ---------- | ----------------------------- | ------------------------------------------------------- |
+| `api_import_spec`       | **TOOL**      | 🔴 TODO    | Import OpenAPI/Swagger specs  | **NEW [MCP]** `agent/api_monitor/spec_parser.rs`        |
+| `api_validate_contract` | **TOOL**      | 🔴 TODO    | Detect breaking API changes   | **NEW [MCP]** `agent/api_monitor/contract_validator.rs` |
+| `api_health_check`      | **TOOL**      | 🔴 TODO    | Test endpoint availability    | **NEW [Builtin HTTP]**                                  |
+| `api_rate_limit_check`  | **TOOL**      | 🔴 TODO    | Track and predict rate limits | **NEW [Builtin]**                                       |
+| `api_mock`              | **TOOL**      | 🔴 TODO    | Create mock server from spec  | **NEW [MCP]** (Phase 2)                                 |
+| `api_test`              | **TOOL**      | 🔴 TODO    | Test endpoint with assertions | **NEW [MCP]** (Phase 2)                                 |
 
 **Why Tool (Not Terminal):**
 
@@ -1405,13 +1690,16 @@ Yantra's agentic capabilities are organized into four fundamental pillars that m
 
 #### 1.6 Environment & System Resources
 
-| Capability            | Tool/Terminal | MVP Status | Purpose                      | Implementation                       |
-| --------------------- | ------------- | ---------- | ---------------------------- | ------------------------------------ |
-| `env_get` / `env_set` | Terminal      | ✅ DONE    | Environment variables        | Via terminal commands                |
-| `get_cpu_usage`       | Tool          | 🔴 TODO    | CPU metrics for optimization | **NEW** `agent/resources/monitor.rs` |
-| `get_memory_usage`    | Tool          | 🔴 TODO    | Memory stats                 | **NEW**                              |
-| `get_disk_usage`      | Tool          | 🔴 TODO    | Disk space monitoring        | **NEW**                              |
-| `should_throttle`     | Tool          | 🔴 TODO    | Adaptive resource management | **NEW**                              |
+**Protocol:** **Builtin** (Exclusive)
+**Rationale:** System resource monitoring is low-level, performance-critical. Must be fast and cross-platform.
+
+| Capability            | Tool/Terminal | MVP Status | Purpose                      | Implementation                                 |
+| --------------------- | ------------- | ---------- | ---------------------------- | ---------------------------------------------- |
+| `env_get` / `env_set` | Terminal      | ✅ DONE    | Environment variables        | Via terminal commands **[Builtin]**            |
+| `get_cpu_usage`       | Tool          | 🔴 TODO    | CPU metrics for optimization | **NEW [Builtin]** `agent/resources/monitor.rs` |
+| `get_memory_usage`    | Tool          | 🔴 TODO    | Memory stats                 | **NEW [Builtin]**                              |
+| `get_disk_usage`      | Tool          | 🔴 TODO    | Disk space monitoring        | **NEW [Builtin]**                              |
+| `should_throttle`     | Tool          | 🔴 TODO    | Adaptive resource management | **NEW [Builtin]**                              |
 
 **Implementation Priority:**
 
@@ -1443,14 +1731,17 @@ Yantra's agentic capabilities are organized into four fundamental pillars that m
 
 #### 3.1 Terminal & Shell Execution
 
-| Capability             | Tool/Terminal | MVP Status | Purpose                                          | Implementation                     |
-| ---------------------- | ------------- | ---------- | ------------------------------------------------ | ---------------------------------- |
-| `shell_exec`           | Tool          | ✅ DONE    | Run command, get output                          | `agent/terminal.rs` (391 lines)    |
-| `shell_exec_streaming` | Tool          | ✅ DONE    | Long-running with real-time output               | `terminal/executor.rs` (331 lines) |
-| `shell_background`     | Tool          | ✅ DONE    | Start background process                         | `terminal/pty_terminal.rs`         |
-| `shell_kill`           | Tool          | ✅ DONE    | Terminate process                                | Terminal management                |
-| `shell_interactive`    | Tool          | ✅ DONE    | Pseudo-TTY for interactive CLIs                  | PTY implementation                 |
-| Smart Terminal Reuse   | Tool          | ✅ DONE    | Detect idle terminals, reuse before creating new | Process detection                  |
+**Protocol:** **Builtin** (Exclusive - Security Critical)
+**Rationale:** Shell execution is security-critical. Must be under complete control with no third-party intermediaries.
+
+| Capability             | Tool/Terminal | MVP Status | Purpose                                          | Implementation                                   |
+| ---------------------- | ------------- | ---------- | ------------------------------------------------ | ------------------------------------------------ |
+| `shell_exec`           | Tool          | ✅ DONE    | Run command, get output                          | `agent/terminal.rs` (391 lines) **[Builtin]**    |
+| `shell_exec_streaming` | Tool          | ✅ DONE    | Long-running with real-time output               | `terminal/executor.rs` (331 lines) **[Builtin]** |
+| `shell_background`     | Tool          | ✅ DONE    | Start background process                         | `terminal/pty_terminal.rs` **[Builtin]**         |
+| `shell_kill`           | Tool          | ✅ DONE    | Terminate process                                | Terminal management **[Builtin]**                |
+| `shell_interactive`    | Tool          | ✅ DONE    | Pseudo-TTY for interactive CLIs                  | PTY implementation **[Builtin]**                 |
+| Smart Terminal Reuse   | Tool          | ✅ DONE    | Detect idle terminals, reuse before creating new | Process detection **[Builtin]**                  |
 
 **Status:** ✅ **100% COMPLETE** - Full terminal capabilities implemented
 
@@ -1708,30 +1999,249 @@ pub trait StatusEmitter {
 5. **🧠 Smart Resource Use:** Efficient terminal pool management
 6. **🎯 Trust:** Transparency builds user confidence in AI agent
 
-**Status:** 🔴 **NOT YET IMPLEMENTED** - Critical MVP feature (P0)  
-**Priority:** ⚡ **P0 - MVP BLOCKER**  
-**Effort:** ~6-8 hours implementation + testing  
+**Status:** 🔴 **NOT YET IMPLEMENTED** - Critical MVP feature (P0)
+**Priority:** ⚡ **P0 - MVP BLOCKER**
+**Effort:** ~6-8 hours implementation + testing
 **Dependencies:** Existing terminal infrastructure (already complete)
 
 ---
 
 #### 3.2 Git & Version Control
 
-| Capability             | Tool/Terminal | MVP Status | Purpose                                  | Implementation        |
-| ---------------------- | ------------- | ---------- | ---------------------------------------- | --------------------- |
-| `git_status`           | Terminal      | ✅ DONE    | Current state                            | Via terminal commands |
-| `git_diff`             | Terminal      | ✅ DONE    | Changes (staged, unstaged, between refs) | Via terminal commands |
-| `git_log`              | Terminal      | ✅ DONE    | Commit history                           | Via terminal commands |
-| `git_blame`            | Terminal      | ✅ DONE    | Line-by-line attribution                 | Via terminal commands |
-| `git_commit`           | Terminal      | ✅ DONE    | Create commit                            | Via terminal commands |
-| `git_branch`           | Terminal      | ✅ DONE    | Create/switch/list branches              | Via terminal commands |
-| `git_checkout`         | Terminal      | ✅ DONE    | Checkout files/branches                  | Via terminal commands |
-| `git_merge`            | Terminal      | ✅ DONE    | Merge branches                           | Via terminal commands |
-| `git_stash`            | Terminal      | ✅ DONE    | Stash/pop changes                        | Via terminal commands |
-| `git_reset`            | Terminal      | ✅ DONE    | Undo changes                             | Via terminal commands |
-| `git_resolve_conflict` | Tool          | 🔴 TODO    | AI-powered conflict resolution           | **NEW** (Post-MVP)    |
+**Protocol:** **MCP** (Primary via @modelcontextprotocol/server-git) | Builtin (Fallback via git2-rs)
+**Rationale:** Well-maintained MCP Git server exists. Platform-specific operations benefit from MCP. Builtin fallback ensures reliability.
+
+**Overview:**
+
+Git integration allows users to connect and authenticate once through natural language chat interaction. Agent helps set up Git configuration, handle authentication, and manage version control operations seamlessly.
+
+**Chat-Based Git Setup (MVP - Priority Feature):**
+
+Users connect to Git by typing in the chat panel. Agent guides them through authentication and setup:
+
+**User Experience:**
+
+```
+User: "Connect to GitHub"
+
+Agent: "I'll help you connect to GitHub. To proceed, I need:
+1. Your GitHub username
+2. Authentication method (Personal Access Token recommended)
+
+Which authentication method would you like to use?
+- Personal Access Token (recommended for security)
+- SSH key (if you have one configured)
+- GitHub CLI (if installed)"
+
+User: "Personal Access Token"
+
+Agent: "Great! Here's how to create a Personal Access Token:
+1. Go to GitHub Settings → Developer settings → Personal access tokens
+2. Click 'Generate new token (classic)'
+3. Select scopes: repo, workflow, write:packages
+4. Copy the token
+
+Once you have it, paste it here (it won't be displayed):"
+
+User: [pastes token]
+
+Agent: "✅ Token received. Testing connection...
+✅ Successfully authenticated as @username
+✅ Git configured with your email: user@example.com
+
+You're now connected! I can commit, push, pull, and manage branches for you.
+Your token is securely stored and encrypted."
+```
+
+**One-Time Authentication:**
+
+- User authenticates once per machine
+- Credentials securely stored in system keychain (macOS Keychain, Windows Credential Manager, Linux Secret Service)
+- Automatic token refresh for GitHub (when supported)
+- No re-authentication needed across sessions
+
+**Agent-Assisted Setup:**
+
+Agent handles all Git configuration:
+
+- Detects if Git is installed (installs if missing on user consent)
+- Configures user.name and user.email
+- Sets up credential helper for token storage
+- Tests connection and validates permissions
+- Guides user through any errors with clear instructions
+
+**Implementation:**
+
+| Capability             | Tool/Terminal | MVP Status | Purpose                                  | Implementation                                |
+| ---------------------- | ------------- | ---------- | ---------------------------------------- | --------------------------------------------- |
+| `git_setup`            | Tool          | ✅ MVP     | Chat-based Git configuration & auth      | **NEW [Builtin]** `agent/git_setup.rs`        |
+| `git_authenticate`     | Tool          | ✅ MVP     | Store credentials securely               | **NEW [Builtin]** Uses system keychain        |
+| `git_test_connection`  | Tool          | ✅ MVP     | Validate authentication works            | **NEW [Builtin]** Test fetch/push permissions |
+| `git_status`           | Terminal      | ✅ DONE    | Current state                            | Via terminal commands **[MCP/Builtin]**       |
+| `git_diff`             | Terminal      | ✅ DONE    | Changes (staged, unstaged, between refs) | Via terminal commands **[MCP/Builtin]**       |
+| `git_log`              | Terminal      | ✅ DONE    | Commit history                           | Via terminal commands **[MCP/Builtin]**       |
+| `git_blame`            | Terminal      | ✅ DONE    | Line-by-line attribution                 | Via terminal commands **[MCP/Builtin]**       |
+| `git_commit`           | Terminal      | ✅ DONE    | Create commit with auto-messages         | Via terminal commands **[MCP/Builtin]**       |
+| `git_push`             | Terminal      | ✅ DONE    | Push commits to remote                   | Via terminal commands **[MCP/Builtin]**       |
+| `git_pull`             | Terminal      | ✅ DONE    | Pull latest changes                      | Via terminal commands **[MCP/Builtin]**       |
+| `git_branch`           | Terminal      | ✅ DONE    | Create/switch/list branches              | Via terminal commands **[MCP/Builtin]**       |
+| `git_checkout`         | Terminal      | ✅ DONE    | Checkout files/branches                  | Via terminal commands **[MCP/Builtin]**       |
+| `git_merge`            | Terminal      | ✅ DONE    | Merge branches                           | Via terminal commands **[MCP/Builtin]**       |
+| `git_stash`            | Terminal      | ✅ DONE    | Stash/pop changes                        | Via terminal commands **[MCP/Builtin]**       |
+| `git_reset`            | Terminal      | ✅ DONE    | Undo changes                             | Via terminal commands **[MCP/Builtin]**       |
+| `git_clone`            | Terminal      | ✅ DONE    | Clone repository                         | Via terminal commands **[MCP/Builtin]**       |
+| `git_resolve_conflict` | Tool          | 🔴 TODO    | AI-powered conflict resolution           | **NEW [Builtin]** (Post-MVP)                  |
+
+**Git Setup Workflow:**
+
+```rust
+// src-tauri/src/agent/git_setup.rs
+
+pub struct GitSetupAgent {
+    terminal: Arc<TerminalManager>,
+    keychain: Arc<KeychainManager>,
+}
+
+impl GitSetupAgent {
+    pub async fn handle_git_connection_request(&self, chat_msg: &str) -> Result<ConversationResponse> {
+        // 1. Parse user intent
+        let intent = self.parse_intent(chat_msg)?; // "connect to github", "setup git", etc.
+
+        // 2. Check if Git is installed
+        if !self.is_git_installed().await? {
+            return Ok(ConversationResponse {
+                message: "Git is not installed. Would you like me to install it?".to_string(),
+                next_step: NextStep::AwaitConfirmation,
+            });
+        }
+
+        // 3. Check if already authenticated
+        if let Some(creds) = self.keychain.get_git_credentials(&intent.provider)? {
+            if self.test_connection(&creds).await.is_ok() {
+                return Ok(ConversationResponse {
+                    message: format!("✅ Already connected to {} as @{}",
+                                     intent.provider, creds.username),
+                    next_step: NextStep::Complete,
+                });
+            }
+        }
+
+        // 4. Guide user through authentication
+        let auth_methods = self.get_available_auth_methods(&intent.provider);
+        Ok(ConversationResponse {
+            message: self.format_auth_prompt(&intent.provider, &auth_methods),
+            next_step: NextStep::AwaitAuthMethod,
+        })
+    }
+
+    pub async fn handle_auth_token(&self, token: &str, provider: &str) -> Result<ConversationResponse> {
+        // 1. Validate token format
+        if !self.is_valid_token_format(token, provider) {
+            return Ok(ConversationResponse {
+                message: "❌ Invalid token format. Please try again.".to_string(),
+                next_step: NextStep::AwaitToken,
+            });
+        }
+
+        // 2. Test connection with token
+        let test_result = self.test_connection_with_token(token, provider).await?;
+
+        if !test_result.success {
+            return Ok(ConversationResponse {
+                message: format!("❌ Authentication failed: {}", test_result.error),
+                next_step: NextStep::AwaitToken,
+            });
+        }
+
+        // 3. Store credentials securely
+        self.keychain.store_git_credentials(provider, &GitCredentials {
+            username: test_result.username.clone(),
+            token: token.to_string(),
+            provider: provider.to_string(),
+        })?;
+
+        // 4. Configure Git
+        self.configure_git(&test_result.username, &test_result.email).await?;
+
+        // 5. Success response
+        Ok(ConversationResponse {
+            message: format!(
+                "✅ Successfully authenticated as @{}\n\
+                 ✅ Git configured with email: {}\n\
+                 ✅ Credentials securely stored\n\n\
+                 You're now connected! I can commit, push, pull, and manage branches for you.",
+                test_result.username, test_result.email
+            ),
+            next_step: NextStep::Complete,
+        })
+    }
+
+    async fn configure_git(&self, username: &str, email: &str) -> Result<()> {
+        // Set user.name
+        self.terminal.execute("git", vec!["config", "--global", "user.name", username]).await?;
+
+        // Set user.email
+        self.terminal.execute("git", vec!["config", "--global", "user.email", email]).await?;
+
+        // Set credential helper
+        #[cfg(target_os = "macos")]
+        self.terminal.execute("git", vec!["config", "--global", "credential.helper", "osxkeychain"]).await?;
+
+        #[cfg(target_os = "windows")]
+        self.terminal.execute("git", vec!["config", "--global", "credential.helper", "wincred"]).await?;
+
+        #[cfg(target_os = "linux")]
+        self.terminal.execute("git", vec!["config", "--global", "credential.helper", "libsecret"]).await?;
+
+        Ok(())
+    }
+}
+```
+
+**Secure Credential Storage:**
+
+```rust
+// src-tauri/src/security/keychain.rs
+
+pub struct KeychainManager {
+    service_name: String,
+}
+
+impl KeychainManager {
+    pub fn store_git_credentials(&self, provider: &str, creds: &GitCredentials) -> Result<()> {
+        #[cfg(target_os = "macos")]
+        {
+            // Use macOS Keychain
+            use security_framework::keychain::Keychain;
+            // Store encrypted token in keychain
+        }
+
+        #[cfg(target_os = "windows")]
+        {
+            // Use Windows Credential Manager
+            use winapi::um::wincred;
+            // Store encrypted token in credential manager
+        }
+
+        #[cfg(target_os = "linux")]
+        {
+            // Use libsecret (GNOME Keyring / KDE Wallet)
+            use secret_service::{SecretService, EncryptionType};
+            // Store encrypted token in secret service
+        }
+
+        Ok(())
+    }
+
+    pub fn get_git_credentials(&self, provider: &str) -> Result<Option<GitCredentials>> {
+        // Platform-specific retrieval
+        // Returns None if not found
+    }
+}
+```
 
 **Status:** ✅ Git operations work via terminal (100% functional)
+**MVP Addition:** ✅ Chat-based authentication and setup (Priority Feature)
 **Future:** 🔴 AI-powered conflict resolution tool (Post-MVP)
 
 ---
@@ -2819,101 +3329,124 @@ impl ProjectEnvironmentManager {
 | Project Env Manager   | `agent/project_environment_manager.rs` | ~250            | P1        | 3h      |
 | **TOTAL**             | **7 files**                            | **~1550 lines** | **P0+P1** | **19h** |
 
-**Status:** 🔴 **NOT YET IMPLEMENTED** - Critical MVP features (P0+P1)  
-**Priority:** ⚡ **P0 BLOCKERS + P1 HIGH** - Enterprise-grade dependency management  
+**Status:** 🔴 **NOT YET IMPLEMENTED** - Critical MVP features (P0+P1)
+**Priority:** ⚡ **P0 BLOCKERS + P1 HIGH** - Enterprise-grade dependency management
 **Dependencies:** Existing GNN infrastructure, terminal executor
 
 ---
 
 #### 3.3 Code Generation & Modification
 
-| Capability          | Tool/Terminal | MVP Status | Purpose                     | Implementation                            |
-| ------------------- | ------------- | ---------- | --------------------------- | ----------------------------------------- |
-| `generate_code`     | Tool          | ✅ DONE    | LLM-powered code generation | `llm/multi_llm_manager.rs` + orchestrator |
-| `auto_correct_code` | Tool          | ✅ DONE    | Fix architecture deviations | `architecture/deviation_detector.rs`      |
-| `refactor_code`     | Tool          | 🔴 TODO    | Automated refactoring       | **NEW** (Phase 3)                         |
+**Protocol:** **Builtin** (Primary - Core Differentiator)
+**Rationale:** Code generation orchestration with GNN, LLM, and validation pipeline is Yantra's core value. Must be under complete control.
+
+| Capability          | Tool/Terminal | MVP Status | Purpose                     | Implementation                                          |
+| ------------------- | ------------- | ---------- | --------------------------- | ------------------------------------------------------- |
+| `generate_code`     | Tool          | ✅ DONE    | LLM-powered code generation | `llm/multi_llm_manager.rs` + orchestrator **[Builtin]** |
+| `auto_correct_code` | Tool          | ✅ DONE    | Fix architecture deviations | `architecture/deviation_detector.rs` **[Builtin]**      |
+| `refactor_code`     | Tool          | 🔴 TODO    | Automated refactoring       | **NEW [Builtin]** (Phase 3)                             |
 
 **Status:** ✅ Code generation complete, 🔴 Advanced refactoring pending
 
 #### 3.4 Testing Execution
 
-| Capability          | Tool/Terminal | MVP Status | Purpose                             | Implementation                         |
-| ------------------- | ------------- | ---------- | ----------------------------------- | -------------------------------------- |
-| `test_run`          | Tool          | ✅ DONE    | Execute tests (file, suite, single) | `testing/test_generator.rs` + executor |
-| `test_run_affected` | Tool          | 🔴 TODO    | Run tests for changed code only     | **NEW** (use GNN)                      |
-| `test_coverage`     | Tool          | ✅ DONE    | Get coverage report                 | pytest-cov integration                 |
-| `test_generate`     | Tool          | ✅ DONE    | Auto-generate test cases            | `testing/test_generator.rs`            |
-| `test_debug`        | Tool          | 🔴 TODO    | Run test in debug mode              | **NEW** (Phase 2)                      |
-| `test_watch`        | Tool          | 🔴 TODO    | Continuous test runner              | **NEW** (Phase 2)                      |
-| `e2e_run`           | Tool          | 🔴 TODO    | Browser/integration tests           | **NEW** (CDP + Playwright)             |
+**Protocol:** **Builtin** (Exclusive - Core to "Never Breaks" Guarantee)
+**Rationale:** Testing is core to "never breaks" guarantee. Must integrate with GNN for affected test detection. Performance-critical.
+
+| Capability          | Tool/Terminal | MVP Status | Purpose                             | Implementation                                       |
+| ------------------- | ------------- | ---------- | ----------------------------------- | ---------------------------------------------------- |
+| `test_run`          | Tool          | ✅ DONE    | Execute tests (file, suite, single) | `testing/test_generator.rs` + executor **[Builtin]** |
+| `test_run_affected` | Tool          | 🔴 TODO    | Run tests for changed code only     | **NEW [Builtin]** (use GNN)                          |
+| `test_coverage`     | Tool          | ✅ DONE    | Get coverage report                 | pytest-cov integration **[Builtin]**                 |
+| `test_generate`     | Tool          | ✅ DONE    | Auto-generate test cases            | `testing/test_generator.rs` **[Builtin]**            |
+| `test_debug`        | Tool          | 🔴 TODO    | Run test in debug mode              | **NEW [Builtin with DAP]** (Phase 2)                 |
+| `test_watch`        | Tool          | 🔴 TODO    | Continuous test runner              | **NEW [Builtin]** (Phase 2)                          |
+| `e2e_run`           | Tool          | 🔴 TODO    | Browser/integration tests           | **NEW [Builtin]** (CDP + Playwright)                 |
 
 **Status:** ✅ Basic testing complete (6/6 features), 🔴 Advanced testing pending
 
 #### 3.5 Build & Compilation
 
-| Capability          | Tool/Terminal | MVP Status | Purpose                     | Implementation                                |
-| ------------------- | ------------- | ---------- | --------------------------- | --------------------------------------------- |
-| `build_project`     | Terminal      | ✅ DONE    | Full build                  | Via terminal (`cargo build`, `npm run build`) |
-| `build_incremental` | Terminal      | ✅ DONE    | Changed files only          | Via terminal                                  |
-| `build_check`       | Terminal      | ✅ DONE    | Type-check without emitting | Via terminal                                  |
-| `build_clean`       | Terminal      | ✅ DONE    | Clear artifacts             | Via terminal                                  |
-| `lint_run`          | Tool          | ✅ DONE    | Run linters                 | Security scanner includes linting             |
-| `lint_fix`          | Tool          | 🔴 TODO    | Auto-fix lint issues        | **NEW**                                       |
-| `format_code`       | Terminal      | ✅ DONE    | Apply formatters            | Via terminal (`rustfmt`, `prettier`)          |
+**Protocol:** **Builtin** (Primary via shell) | MCP (Optional for language-specific services)
+**Rationale:** Build orchestration needs to coordinate with dep graph, testing, deployment. Shell execution via Builtin is sufficient.
+
+| Capability          | Tool/Terminal | MVP Status | Purpose                     | Implementation                                              |
+| ------------------- | ------------- | ---------- | --------------------------- | ----------------------------------------------------------- |
+| `build_project`     | Terminal      | ✅ DONE    | Full build                  | Via terminal (`cargo build`, `npm run build`) **[Builtin]** |
+| `build_incremental` | Terminal      | ✅ DONE    | Changed files only          | Via terminal **[Builtin]**                                  |
+| `build_check`       | Terminal      | ✅ DONE    | Type-check without emitting | Via terminal **[Builtin]**                                  |
+| `build_clean`       | Terminal      | ✅ DONE    | Clear artifacts             | Via terminal **[Builtin]**                                  |
+| `lint_run`          | Tool          | ✅ DONE    | Run linters                 | Security scanner includes linting **[Builtin]**             |
+| `lint_fix`          | Tool          | 🔴 TODO    | Auto-fix lint issues        | **NEW [Builtin]**                                           |
+| `format_code`       | Terminal      | ✅ DONE    | Apply formatters            | Via terminal (`rustfmt`, `prettier`) **[Builtin]**          |
 
 **Status:** ✅ Build and lint via terminal works well
 
 #### 3.6 Package Management
 
-| Capability      | Tool/Terminal | MVP Status | Purpose                      | Implementation                      |
-| --------------- | ------------- | ---------- | ---------------------------- | ----------------------------------- |
-| `pkg_install`   | Tool          | ✅ DONE    | Add dependency               | `agent/dependencies.rs` (429 lines) |
-| `pkg_remove`    | Tool          | ✅ DONE    | Remove dependency            | `agent/dependencies.rs`             |
-| `pkg_update`    | Tool          | ✅ DONE    | Update dependencies          | `agent/dependencies.rs`             |
-| `pkg_list`      | Tool          | ✅ DONE    | List installed packages      | `agent/dependencies.rs`             |
-| `pkg_audit`     | Tool          | ✅ DONE    | Security vulnerability check | `security/scanner.rs`               |
-| `pkg_search`    | Tool          | 🔴 TODO    | Find packages in registry    | **NEW**                             |
-| `pkg_lock_sync` | Tool          | ✅ DONE    | Sync lockfile                | Via package manager commands        |
+**Protocol:** **Builtin** (Exclusive)
+**Rationale:** Package operations need shell execution. Audit can integrate with MCP vulnerability databases, but orchestration is Builtin.
+
+| Capability      | Tool/Terminal | MVP Status | Purpose                      | Implementation                                    |
+| --------------- | ------------- | ---------- | ---------------------------- | ------------------------------------------------- |
+| `pkg_install`   | Tool          | ✅ DONE    | Add dependency               | `agent/dependencies.rs` (429 lines) **[Builtin]** |
+| `pkg_remove`    | Tool          | ✅ DONE    | Remove dependency            | `agent/dependencies.rs` **[Builtin]**             |
+| `pkg_update`    | Tool          | ✅ DONE    | Update dependencies          | `agent/dependencies.rs` **[Builtin]**             |
+| `pkg_list`      | Tool          | ✅ DONE    | List installed packages      | `agent/dependencies.rs` **[Builtin]**             |
+| `pkg_audit`     | Tool          | ✅ DONE    | Security vulnerability check | `security/scanner.rs` **[Builtin]**               |
+| `pkg_search`    | Tool          | 🔴 TODO    | Find packages in registry    | **NEW [Builtin]**                                 |
+| `pkg_lock_sync` | Tool          | ✅ DONE    | Sync lockfile                | Via package manager commands **[Builtin]**        |
 
 **Status:** ✅ **100% COMPLETE** - Package management fully implemented
 
 #### 3.7 Deployment & Infrastructure
 
-| Capability          | Tool/Terminal | MVP Status | Purpose                               | Implementation                    |
-| ------------------- | ------------- | ---------- | ------------------------------------- | --------------------------------- |
-| `deploy_preview`    | Tool          | ✅ DONE    | Deploy to preview environment         | `agent/deployment.rs` (636 lines) |
-| `deploy_production` | Tool          | ✅ DONE    | Deploy to prod (with confirmation)    | `agent/deployment.rs`             |
-| `deploy_rollback`   | Tool          | ✅ DONE    | Revert deployment                     | `agent/deployment.rs`             |
-| `deploy_status`     | Tool          | ✅ DONE    | Check deployment state                | `agent/deployment.rs`             |
-| `deploy_logs`       | Tool          | ✅ DONE    | Fetch deployment logs                 | `agent/deployment.rs`             |
-| `infra_provision`   | Tool          | 🔴 TODO    | Create resources (Railway, AWS, etc.) | **NEW** (Phase 2)                 |
-| `container_build`   | Terminal      | ✅ DONE    | Build Docker image                    | Via `docker build`                |
-| `container_run`     | Terminal      | ✅ DONE    | Run container locally                 | Via `docker run`                  |
+**Protocol:** **MCP** (Primary for platform-specific services) | Builtin (Container operations via shell)
+**Rationale:** Platform-specific deployments (Railway, Vercel, AWS, GCP) benefit from MCP servers. Container operations via Docker CLI (Builtin).
+
+| Capability          | Tool/Terminal | MVP Status | Purpose                               | Implementation                              |
+| ------------------- | ------------- | ---------- | ------------------------------------- | ------------------------------------------- |
+| `deploy_preview`    | Tool          | ✅ DONE    | Deploy to preview environment         | `agent/deployment.rs` (636 lines) **[MCP]** |
+| `deploy_production` | Tool          | ✅ DONE    | Deploy to prod (with confirmation)    | `agent/deployment.rs` **[MCP]**             |
+| `deploy_rollback`   | Tool          | ✅ DONE    | Revert deployment                     | `agent/deployment.rs` **[MCP]**             |
+| `deploy_status`     | Tool          | ✅ DONE    | Check deployment state                | `agent/deployment.rs` **[MCP]**             |
+| `deploy_logs`       | Tool          | ✅ DONE    | Fetch deployment logs                 | `agent/deployment.rs` **[MCP]**             |
+| `infra_provision`   | Tool          | 🔴 TODO    | Create resources (Railway, AWS, etc.) | **NEW [MCP]** (Phase 2)                     |
+| `container_build`   | Terminal      | ✅ DONE    | Build Docker image                    | Via `docker build` **[Builtin]**            |
+| `container_run`     | Terminal      | ✅ DONE    | Run container locally                 | Via `docker run` **[Builtin]**              |
+
+**MCP Servers:** Railway MCP (custom), Vercel MCP, AWS MCP, GCP/Azure community servers
 
 **Status:** ✅ Deployment to Railway complete (5/5 features), 🔴 Multi-cloud pending
 
 #### 3.8 Browser Automation (CDP)
 
-| Capability               | Tool/Terminal | MVP Status | Purpose                 | Implementation                 |
-| ------------------------ | ------------- | ---------- | ----------------------- | ------------------------------ |
-| `browser_launch`         | Tool          | 🟡 PARTIAL | Start browser instance  | `browser/cdp.rs` (placeholder) |
-| `browser_navigate`       | Tool          | 🟡 PARTIAL | Go to URL               | `browser/cdp.rs`               |
-| `browser_click`          | Tool          | 🔴 TODO    | Click element           | **NEW**                        |
-| `browser_type`           | Tool          | 🔴 TODO    | Input text              | **NEW**                        |
-| `browser_screenshot`     | Tool          | 🔴 TODO    | Capture screen          | **NEW**                        |
-| `browser_select_element` | Tool          | 🔴 TODO    | Visual element picker   | **NEW** (Post-MVP)             |
-| `browser_evaluate`       | Tool          | 🔴 TODO    | Run JS in page context  | **NEW**                        |
-| `browser_network`        | Tool          | 🔴 TODO    | Intercept/mock requests | **NEW** (Post-MVP)             |
-| `browser_console`        | Tool          | 🔴 TODO    | Get console logs        | **NEW**                        |
+**Protocol:** **Builtin** (Exclusive - Core to Browser Product)
+**Rationale:** CDP integration is core to Yantra's browser validation. Must be fast, reliable, and under complete control.
+
+| Capability               | Tool/Terminal | MVP Status | Purpose                 | Implementation                               |
+| ------------------------ | ------------- | ---------- | ----------------------- | -------------------------------------------- |
+| `browser_launch`         | Tool          | 🟡 PARTIAL | Start browser instance  | `browser/cdp.rs` (placeholder) **[Builtin]** |
+| `browser_navigate`       | Tool          | 🟡 PARTIAL | Go to URL               | `browser/cdp.rs` **[Builtin]**               |
+| `browser_click`          | Tool          | 🔴 TODO    | Click element           | **NEW [Builtin]**                            |
+| `browser_type`           | Tool          | 🔴 TODO    | Input text              | **NEW [Builtin]**                            |
+| `browser_screenshot`     | Tool          | 🔴 TODO    | Capture screen          | **NEW [Builtin]**                            |
+| `browser_select_element` | Tool          | 🔴 TODO    | Visual element picker   | **NEW [Builtin]** (Post-MVP)                 |
+| `browser_evaluate`       | Tool          | 🔴 TODO    | Run JS in page context  | **NEW [Builtin]**                            |
+| `browser_network`        | Tool          | 🔴 TODO    | Intercept/mock requests | **NEW [Builtin]** (Post-MVP)                 |
+| `browser_console`        | Tool          | 🔴 TODO    | Get console logs        | **NEW [Builtin]**                            |
 
 **Status:** 🟡 25% complete (2/8 features) - CDP placeholder needs full implementation
 
 #### 3.9 HTTP & API Execution
 
-| Capability          | Tool/Terminal | MVP Status | Purpose                                    | Implementation                     |
-| ------------------- | ------------- | ---------- | ------------------------------------------ | ---------------------------------- |
-| `http_request`      | **TOOL**      | 🔴 TODO    | Make HTTP calls with retry/circuit breaker | **NEW** `agent/http_client/mod.rs` |
-| `websocket_connect` | Tool          | 🔴 TODO    | WebSocket client                           | **NEW** (Phase 2)                  |
+**Protocol:** **Builtin** (Primary) | MCP (Fallback for specific API integrations)
+**Rationale:** HTTP client with circuit breaker, retry, and rate limiting is infrastructure-level. Must be under control for reliability.
+
+| Capability          | Tool/Terminal | MVP Status | Purpose                                    | Implementation                               |
+| ------------------- | ------------- | ---------- | ------------------------------------------ | -------------------------------------------- |
+| `http_request`      | **TOOL**      | 🔴 TODO    | Make HTTP calls with retry/circuit breaker | **NEW [Builtin]** `agent/http_client/mod.rs` |
+| `websocket_connect` | Tool          | 🔴 TODO    | WebSocket client                           | **NEW [Builtin]** (Phase 2)                  |
 
 **Why Tool (Not Terminal via `curl`):**
 
@@ -2950,58 +3483,75 @@ impl ProjectEnvironmentManager {
 
 #### 5.1 Debugging
 
-| Capability         | Tool/Terminal | MVP Status | Purpose                    | Implementation    |
-| ------------------ | ------------- | ---------- | -------------------------- | ----------------- |
-| `debug_start`      | Tool          | 🔴 TODO    | Launch debugger            | **NEW** (Phase 2) |
-| `debug_breakpoint` | Tool          | 🔴 TODO    | Set/remove breakpoints     | **NEW**           |
-| `debug_step`       | Tool          | 🔴 TODO    | Step over/into/out         | **NEW**           |
-| `debug_continue`   | Tool          | 🔴 TODO    | Resume execution           | **NEW**           |
-| `debug_evaluate`   | Tool          | 🔴 TODO    | Eval expression in context | **NEW**           |
-| `debug_stack`      | Tool          | 🔴 TODO    | Get call stack             | **NEW**           |
-| `debug_variables`  | Tool          | 🔴 TODO    | Inspect variables          | **NEW**           |
+**Protocol:** **DAP** (Debug Adapter Protocol - Exclusive)
+**Rationale:** Debugging is handled by DAP (Debug Adapter Protocol), a separate protocol specifically for debugging operations.
+
+| Capability         | Tool/Terminal | MVP Status | Purpose                    | Implementation          |
+| ------------------ | ------------- | ---------- | -------------------------- | ----------------------- |
+| `debug_start`      | Tool          | 🔴 TODO    | Launch debugger            | **NEW [DAP]** (Phase 2) |
+| `debug_breakpoint` | Tool          | 🔴 TODO    | Set/remove breakpoints     | **NEW [DAP]**           |
+| `debug_step`       | Tool          | 🔴 TODO    | Step over/into/out         | **NEW [DAP]**           |
+| `debug_continue`   | Tool          | 🔴 TODO    | Resume execution           | **NEW [DAP]**           |
+| `debug_evaluate`   | Tool          | 🔴 TODO    | Eval expression in context | **NEW [DAP]**           |
+| `debug_stack`      | Tool          | 🔴 TODO    | Get call stack             | **NEW [DAP]**           |
+| `debug_variables`  | Tool          | 🔴 TODO    | Inspect variables          | **NEW [DAP]**           |
+
+**DAP Adapters:** Python (debugpy), Node.js (node-debug2), Rust (codelldb), Go (delve)
 
 **Status:** 🔴 Not implemented (Phase 2 - Post-MVP)
 
 #### 5.2 Documentation
 
-| Capability      | Tool/Terminal | MVP Status | Purpose                                | Implementation       |
-| --------------- | ------------- | ---------- | -------------------------------------- | -------------------- |
-| `docs_generate` | Tool          | ✅ DONE    | Generate from code (JSDoc, docstrings) | File Registry system |
-| `docs_search`   | Tool          | 🔴 TODO    | Search project docs                    | **NEW**              |
-| `docs_external` | Tool          | 🔴 TODO    | Fetch library documentation            | **NEW** (Phase 2)    |
+**Protocol:** **Builtin** (Primary) | MCP (Fallback for external doc fetching)
+**Rationale:** Documentation generation from code is core functionality. External doc fetching can use MCP for various sources.
+
+| Capability      | Tool/Terminal | MVP Status | Purpose                                | Implementation                     |
+| --------------- | ------------- | ---------- | -------------------------------------- | ---------------------------------- |
+| `docs_generate` | Tool          | ✅ DONE    | Generate from code (JSDoc, docstrings) | File Registry system **[Builtin]** |
+| `docs_search`   | Tool          | 🔴 TODO    | Search project docs                    | **NEW [Builtin]**                  |
+| `docs_external` | Tool          | 🔴 TODO    | Fetch library documentation            | **NEW [MCP]** (Phase 2)            |
 
 **Status:** ✅ Basic documentation system complete
 
 #### 5.3 Security
 
-| Capability         | Tool/Terminal | MVP Status | Purpose                      | Implementation                    |
-| ------------------ | ------------- | ---------- | ---------------------------- | --------------------------------- |
-| `security_scan`    | Tool          | ✅ DONE    | SAST analysis                | `security/scanner.rs` (512 lines) |
-| `secrets_detect`   | Tool          | ✅ DONE    | Find exposed credentials     | Integrated in scanner             |
-| `dependency_audit` | Tool          | ✅ DONE    | CVE check on packages        | Integrated in scanner             |
-| `secrets_manager`  | Tool          | 🔴 TODO    | Encrypted credential storage | **NEW** `agent/secrets/vault.rs`  |
+**Protocol:** **Builtin** (Primary for scanning) | MCP (Optional for vulnerability databases)
+**Rationale:** Security scanning is core to "never breaks" guarantee. SAST must be under control. MCP can augment with external CVE databases.
+
+| Capability         | Tool/Terminal | MVP Status | Purpose                      | Implementation                                  |
+| ------------------ | ------------- | ---------- | ---------------------------- | ----------------------------------------------- |
+| `security_scan`    | Tool          | ✅ DONE    | SAST analysis                | `security/scanner.rs` (512 lines) **[Builtin]** |
+| `secrets_detect`   | Tool          | ✅ DONE    | Find exposed credentials     | Integrated in scanner **[Builtin]**             |
+| `dependency_audit` | Tool          | ✅ DONE    | CVE check on packages        | Integrated in scanner **[Builtin]**             |
+| `secrets_manager`  | Tool          | 🔴 TODO    | Encrypted credential storage | **NEW [Builtin]** `agent/secrets/vault.rs`      |
 
 **Status:** ✅ Security scanning complete, 🔴 Secrets management pending
 
 #### 5.4 Architecture Visualization
 
-| Capability              | Tool/Terminal | MVP Status | Purpose                         | Implementation                       |
-| ----------------------- | ------------- | ---------- | ------------------------------- | ------------------------------------ |
-| `arch_diagram_generate` | Tool          | ✅ DONE    | Create visual from code         | Architecture View System (16/16)     |
-| `arch_validate`         | Tool          | ✅ DONE    | Check against constraints       | `architecture/deviation_detector.rs` |
-| `arch_suggest`          | Tool          | ✅ DONE    | Recommend improvements          | Impact analysis                      |
-| `arch_import`           | Tool          | ✅ DONE    | Import from MD/Mermaid/PlantUML | `project_initializer.rs`             |
+**Protocol:** **Builtin** (Exclusive - Core Differentiator)
+**Rationale:** Architecture visualization from GNN is Yantra's core differentiator. Must be completely under control.
+
+| Capability              | Tool/Terminal | MVP Status | Purpose                         | Implementation                                     |
+| ----------------------- | ------------- | ---------- | ------------------------------- | -------------------------------------------------- |
+| `arch_diagram_generate` | Tool          | ✅ DONE    | Create visual from code         | Architecture View System (16/16) **[Builtin]**     |
+| `arch_validate`         | Tool          | ✅ DONE    | Check against constraints       | `architecture/deviation_detector.rs` **[Builtin]** |
+| `arch_suggest`          | Tool          | ✅ DONE    | Recommend improvements          | Impact analysis **[Builtin]**                      |
+| `arch_import`           | Tool          | ✅ DONE    | Import from MD/Mermaid/PlantUML | `project_initializer.rs` **[Builtin]**             |
 
 **Status:** ✅ **100% COMPLETE** - Architecture system fully implemented
 
 #### 5.5 Context & Memory
 
-| Capability            | Tool/Terminal | MVP Status | Purpose                               | Implementation            |
-| --------------------- | ------------- | ---------- | ------------------------------------- | ------------------------- |
-| `context_add`         | Tool          | ✅ DONE    | Add to agent's working memory         | State machine persistence |
-| `context_search`      | Tool          | ✅ DONE    | Semantic search over codebase         | GNN semantic layer        |
-| `context_summarize`   | Tool          | ✅ DONE    | Compress context for token efficiency | Hierarchical assembly     |
-| `project_conventions` | Tool          | 🔴 TODO    | Get coding standards/patterns         | **NEW**                   |
+**Protocol:** **Builtin** (Exclusive - Core Differentiator)
+**Rationale:** Context assembly with hierarchical GNN is core to Yantra's intelligence. Must be completely under control.
+
+| Capability            | Tool/Terminal | MVP Status | Purpose                               | Implementation                          |
+| --------------------- | ------------- | ---------- | ------------------------------------- | --------------------------------------- |
+| `context_add`         | Tool          | ✅ DONE    | Add to agent's working memory         | State machine persistence **[Builtin]** |
+| `context_search`      | Tool          | ✅ DONE    | Semantic search over codebase         | GNN semantic layer **[Builtin]**        |
+| `context_summarize`   | Tool          | ✅ DONE    | Compress context for token efficiency | Hierarchical assembly **[Builtin]**     |
+| `project_conventions` | Tool          | 🔴 TODO    | Get coding standards/patterns         | **NEW [Builtin]**                       |
 
 **Status:** ✅ Context management mostly complete
 
@@ -3011,13 +3561,13 @@ impl ProjectEnvironmentManager {
 
 ### Implementation Status by Pillar
 
-| Pillar          | Total Capabilities | Implemented | Pending | Completion % |
-| --------------- | ------------------ | ----------- | ------- | ------------ |
-| 🔍 **PERCEIVE** | 47                 | 24          | 23      | 51%          |
-| 🧠 **REASON**   | 8                  | 8           | 0       | **100%** ✅  |
-| ⚡ **ACT**      | 56                 | 41          | 15      | 73%          |
-| 🔄 **LEARN**    | 7                  | 7           | 0       | **100%** ✅  |
-| **TOTAL**       | **118**            | **80**      | **38**  | **68%**      |
+| Pillar         | Total Capabilities | Implemented | Pending | Completion % |
+| -------------- | ------------------ | ----------- | ------- | ------------ |
+| 🔍**PERCEIVE** | 47                 | 24          | 23      | 51%          |
+| 🧠**REASON**   | 8                  | 8           | 0       | **100%** ✅  |
+| ⚡**ACT**      | 56                 | 41          | 15      | 73%          |
+| 🔄**LEARN**    | 7                  | 7           | 0       | **100%** ✅  |
+| **TOTAL**      | **118**            | **80**      | **38**  | **68%**      |
 
 ### Priority Breakdown
 
@@ -3043,17 +3593,191 @@ impl ProjectEnvironmentManager {
 
 ---
 
+## UTI Architecture Overview for agentic capabilities: Two Consumers, Two Protocols
+
+4.1 Overview
+
+The Unified Tool Interface (UTI) provides the agent with access to all capabilities required for autonomous development. This section consolidates the 21+ capability categories into a single table, grouped by protocol combinations and mapped to Preventive Development Cycle phases.
+
+**Key Design Principles:**
+
+- **Protocol Selection:** Builtin for core differentiators and performance-critical ops; MCP for ecosystem services; DAP for debugging
+- **Fallback Strategy:** Every capability has a backup protocol where feasible
+- **Phase Mapping:** Each capability is mapped to the PDC phase(s) where it's primarily used
+
+## The Need for UTI: Abstraction Layer
+
+The Unified Tool Interface (UTI) is Yantra's solution to this complexity. It provides a **single, consistent abstraction layer** that:
+
+1. **Normalizes Tool Access:** All capabilities exposed through a uniform API
+2. **Handles Protocol Differences:** Agent doesn't care if it's MCP, LSP, DAP, or Builtin
+3. **Smart Routing:** Automatically selects the right protocol/tool for each operation
+4. **Unified Auth:** Single authentication system for all external services
+5. **Consistent Error Handling:** Retry logic, fallbacks, circuit breakers built-in
+6. **Performance Optimization:** Caching, batching, connection pooling automatic
+
+**Source Files:**
+
+- UTI Specification: `docs/Research & specifications/*Yantra Unified Tool Interface.md`
+
+Visual Architecture:
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                              YANTRA                                   │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│  ┌─────────────────────────────────────────────────────────────────┐ │
+│  │                      MONACO EDITOR                              │ │
+│  │                           │                                     │ │
+│  │                      LSP Client                                 │ │
+│  │                           │                                     │ │
+│  │           ┌───────────────┼───────────────┐                     │ │
+│  │           ▼               ▼               ▼                     │ │
+│  │     Pylance(LSP)    rust-analyzer     tsserver                  │ │
+│  │     [Real-time autocomplete, hover, diagnostics]                │ │
+│  └─────────────────────────────────────────────────────────────────┘ │
+│                                                                       │
+│  ┌─────────────────────────────────────────────────────────────────┐ │
+│  │                      AI AGENT                                   │ │
+│  │                           │                                     │ │
+│  │              UNIFIED TOOL INTERFACE (UTI)                       │ │
+│  │                           │                                     │ │
+│  │           ┌───────────────┴───────────────┐                     │ │
+│  │           ▼                               ▼                     │ │
+│  │     MCP Adapter                    Builtin Adapter              │ │
+│  │           │                               │                     │ │
+│  │     ┌─────┴─────┐                   ┌─────┴─────┐               │ │
+│  │     ▼           ▼                   ▼           ▼               │ │
+│  │  Pylance     Git MCP             File Ops   Tree-sitter         │ │
+│  │   (MCP)     Postgres             Terminal   Dep Graph (GNN)     │ │
+│  │  GitHub     Railway              Browser    Code Search         │ │
+│  │  Linear     Slack                Testing    Architecture View   │ │
+│  └─────────────────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+## Protocol Selection Framework
+
+For each capability, UTI determines the protocol based on this decision matrix:
+
+| Question                                              | If YES →                                    |
+| ----------------------------------------------------- | ------------------------------------------- |
+| Does the editor need it in real-time while typing?    | **LSP** (Editor only, not exposed to agent) |
+| Is it a core differentiator we must control?          | **Builtin**                                 |
+| Is it performance-critical (<10ms required)?          | **Builtin**                                 |
+| Is it security-critical (command execution, secrets)? | **Builtin**                                 |
+| Does it need streaming output for progress?           | **Builtin** or MCP with streaming           |
+| Is there a well-maintained community MCP server?      | **MCP**                                     |
+| Is it platform-specific (deployment, monitoring)?     | **MCP**                                     |
+| Is it debugging-specific?                             | **DAP** (separate protocol)                 |
+
+---
+
+## Consolidated Capability Matrix
+
+**Table Columns:**
+
+- **Purpose:** CG (Code Generation), TS (Testing), DP (Deployment), MM (Monitor/Maintain)
+- **Category:** Functional grouping of capabilities
+- **Capabilities:** Representative capabilities in this category (not exhaustive)
+- **Primary Protocol:** Main protocol used
+- **Secondary Protocol:** Fallback protocol
+- **Example Tool(s):** Representative implementations or MCP servers
+- **PDC Phase:** Preventive Development Cycle phase(s) where used
+
+| Purpose   | Category                          | Capabilities (representative)                                                                                               | Primary Protocol  | Secondary Protocol | Example Tool(s)                                              | PDC Phase                           |
+| --------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ----------------- | ------------------ | ------------------------------------------------------------ | ----------------------------------- |
+| **CG**    | **File System (core ops)**        | file.read, file.write, file.edit, file.delete, file.move, directory.list, file.search, file.grep, file.watch                | **Builtin**       | MCP                | Local FS operations, @modelcontextprotocol/server-filesystem | 3 Execute                           |
+| **CG**    | **AST & Parsing**                 | ast.parse, ast.query, ast.edit, ast.symbols, ast.scope, ast.diff                                                            | **Builtin**       | —                  | Tree-sitter (multi-language)                                 | 1 Architect / 3 Execute             |
+| **CG/TS** | **Dependency Graph / GNN**        | depgraph.build, depgraph.query, depgraph.impact, depgraph.dependents, depgraph.cycles, depgraph.modules, depgraph.crossRepo | **Builtin**       | —                  | petgraph + GNN runtime (Yantra core)                         | 1 Architect / 2 Plan / 3 Execute    |
+| **CG/DP** | **Terminal / Shell**              | shell.exec, shell.execStreaming, shell.background, shell.kill, shell.env                                                    | **Builtin**       | —                  | Local shell (Approval Queue protected)                       | 3 Execute / 4 Deploy                |
+| **TS**    | **Testing (execution)**           | test.discover, test.run, test.runAffected, test.coverage, test.watch, test.generate, test.benchmark                         | **Builtin**       | —                  | pytest, jest, cargo test (invoked by Yantra)                 | 3 Execute                           |
+| **TS**    | **E2E / Browser Automation**      | e2e.run, browser.launch, browser.navigate, browser.click, browser.screenshot, browser.evaluate, browser.network             | **Builtin**       | —                  | CDP via chromiumoxide                                        | 3 Execute / 5 Monitor               |
+| **DP**    | **Build & Container**             | build.run, build.incremental, lint.run, lint.fix, format.run, container.build, container.push, container.run                | **Builtin**       | MCP                | Docker CLI, npm/cargo/pip (shell), Prettier/ESLint           | 3 Execute / 4 Deploy                |
+| **MM**    | **Security (scanning)**           | security.scan, security.secrets, security.audit, security.permissions                                                       | **Builtin**       | MCP                | Semgrep, Gitleaks, Bandit (builtin SAST)                     | 3 Execute / 4 Deploy                |
+| **CG/MM** | **Documentation & Viz**           | docs.generate, arch.diagram, arch.validate, viz.depgraph, viz.chart, viz.diff, viz.mermaid                                  | **Builtin**       | MCP                | Mermaid, Graphviz, Plotly (inline viz)                       | 1 Architect / 3 Execute / 5 Monitor |
+| **CG/MM** | **Package Management**            | pkg.install, pkg.remove, pkg.audit, pkg.outdated, pkg.lockSync                                                              | **Builtin**       | MCP                | npm/pip/cargo via shell + CVE MCP                            | 2 Plan / 3 Execute                  |
+| **MM**    | **Context & Memory**              | context.add, context.search, context.summarize, embeddings.generate, embeddings.search                                      | **Builtin**       | MCP                | Local embeddings (fastembed-rs), HNSW vector DB              | 2 Plan / 3 Execute                  |
+| **CG**    | **Code Intelligence (symbols)**   | code.symbols, code.definition, code.references, code.completion, code.hover, code.diagnostics, code.rename, code.format     | **MCP**           | Builtin/LSP        | Pylance (MCP), rust-analyzer, tsserver; Tree-sitter fallback | 1 Architect / 3 Execute             |
+| **CG**    | **Version Control (Git)**         | git.status, git.diff, git.commit, git.push, git.branch, git.merge, git.stash, git.log, git.blame                            | **MCP**           | Builtin            | @modelcontextprotocol/server-git, git2-rs fallback           | 3 Execute / 4 Deploy                |
+| **CG**    | **GitHub / Code Hosting**         | github.repos, github.issues, github.prs, github.actions, github.releases, github.search                                     | **MCP**           | —                  | @modelcontextprotocol/server-github                          | 3 Execute / 4 Deploy                |
+| **CG**    | **Database Access**               | db.connect, db.query, db.execute, db.schema, db.tables, db.migrate, db.seed                                                 | **MCP**           | —                  | Postgres/MySQL/SQLite/MongoDB MCP servers                    | 3 Execute / 5 Monitor               |
+| **TS**    | **Test Data & Seeding**           | db.seed, test.generate, api.mock                                                                                            | **MCP + Builtin** | —                  | DB MCP (seeding) + Builtin test generator                    | 2 Plan / 3 Execute                  |
+| **MM**    | **Monitoring & Observability**    | logs.tail, logs.search, metrics.query, traces.query, health.check, alerts.list, uptime.status                               | **MCP**           | Builtin            | Sentry, Prometheus, Datadog, PagerDuty MCPs                  | 5 Monitor / 4 Deploy                |
+| **MM**    | **Security (CVE & scanning)**     | security.deps, security.container                                                                                           | **MCP**           | Builtin            | Snyk MCP, Trivy MCP (container scanning)                     | 3 Execute / 4 Deploy                |
+| **DP**    | **Cloud Deploy & Infra**          | deploy.preview, deploy.production, deploy.rollback, deploy.status, deploy.logs, infra.provision, infra.destroy              | **MCP**           | Builtin            | Railway MCP, AWS MCP, GCP MCP, Vercel MCP                    | 4 Deploy                            |
+| **MM**    | **Collaboration & Notifications** | slack.send, slack.search, email.send, notion.query, notion.update, linear.issues, jira.issues                               | **MCP**           | —                  | Slack MCP, Notion MCP, Linear MCP, Jira MCP                  | 2 Plan / 3 Execute / 5 Monitor      |
+| **MM**    | **Debugging**                     | debug.launch, debug.attach, debug.breakpoint, debug.step, debug.evaluate, debug.variables, debug.stack                      | **DAP**           | —                  | debugpy (Python), node-debug2, codelldb (Rust), delve (Go)   | 3 Execute                           |
+| **CG**    | **HTTP / API**                    | http.request, http.graphql, api.importSpec, api.generateClient, api.test, websocket.connect                                 | **Builtin**       | MCP                | HTTP client (builtin), OpenAPI tools                         | 3 Execute / 5 Monitor               |
+
+### MCP Server Priority (from Section 3)
+
+**P0 (MVP):** Git, GitHub, Slack, Railway, Linear/Jira
+**P1 (High Value):** Sentry, PagerDuty, Notion, AWS/GCP
+**P2 (Nice to Have):** Figma, Datadog, CircleCI, Google Docs
+
+### Configuration
+
+All UTI tools are configured via `yantra.tools.yaml`:
+
+```yaml
+agent:
+  builtin:
+    enabled: true
+    features:
+      depgraph: true
+      treesitter: true
+      browser: true
+
+  mcp:
+    enabled: true
+    servers:
+      git:
+        package: '@modelcontextprotocol/server-git'
+      github:
+        package: '@modelcontextprotocol/server-github'
+        config:
+          token: '${GITHUB_TOKEN}'
+```
+
+---
+
 ## State Machine Architecture: Separation of Concerns
 
 ### Design Philosophy
 
-Yantra's agentic capabilities are implemented through **four specialized state machines**, each with a focused responsibility. This separation of concerns provides:
+Yantra's agentic capabilities are implemented through **four specialized state machines with Preventive Development Cycle**, each with a focused responsibility. This separation of concerns provides :
 
 1. **Clarity**: Each machine has a clear, single responsibility
 2. **Maintainability**: Changes to one machine don't affect others
 3. **Testability**: Each machine can be tested independently
 4. **Scalability**: Machines can run in parallel or be triggered independently
 5. **MVP Focus**: Build only what's needed, when needed
+6. **Parallel Processing**: States leverage concurrent execution whenever possible for performance
+
+### Parallel Processing Principles
+
+**Core Philosophy**: Yantra maximizes throughput by executing independent operations concurrently within and across state machines.
+
+**When to Apply Parallel Processing:**
+
+- **Independent Operations**: Tasks with no data dependencies can execute simultaneously
+- **Multiple Resources**: Different resources (files, APIs, browser tabs) can be accessed concurrently
+- **Batch Operations**: Multiple similar operations (e.g., testing multiple files, scanning multiple dependencies)
+- **I/O-Bound Tasks**: Network requests, file reads, API calls benefit from concurrent execution
+
+**Implementation Strategy:**
+
+- **Within States**: Use async/await with tokio for concurrent operations within a single state
+- **Across States**: Future enhancement - multiple state machines running simultaneously
+- **Resource Pooling**: Browser tab pool, HTTP connection pool, LLM request batching
+
+**Performance Benefits:**
+
+- Sequential: N tasks × T seconds = N\*T total time
+- Parallel: N tasks / P workers × T seconds ≈ (N/P)\*T total time (where P = parallelism factor)
+- Example: 4 web searches: 12s sequential → 4s parallel (3x faster)
 
 ### The Four State Machines
 
@@ -3063,21 +3787,105 @@ Yantra's agentic capabilities are implemented through **four specialized state m
 
 **States**:
 
+**Phase 1: Architecture & Design (PDC Phase 1)**
+
 - **ArchitectureGeneration**: Generate or import project architecture
 - **ArchitectureReview**: Wait for user approval of architecture (human-in-the-loop)
+  - Agent knows boundaries, won't generate violating code
+  - Agent will detect Circular dependencies, scaling bottlenecks
+  - Agent will flag single points of failure
+  - Agent will assess Security vulnerabilities by design - Security patterns enforced at architecture level
+  - ⚠️ **APPROVAL GATE**: User must approve architecture changes
+
+**Phase 2: Planning (PDC Phase 2 - Enhanced)**
+
+- **DependencyAssessment**: Assess the tools/package/techstack needed, analyze compatibility issues with version, do dry run validation, assess vulnerabilities with CVE db
+  - **Web Search Integration**: Agent MUST use web search for latest package info (LLM knowledge is static/outdated)
+    - Query official package registries (PyPI, npm, crates.io, Maven Central)
+    - Fetch latest versions, changelogs, migration guides, known issues
+    - Tools: MCP `@modelcontextprotocol/server-brave-search` or `@modelcontextprotocol/server-fetch`
+  - **RAG-Enhanced Resolution**: Use Vector DB to find similar past dependency conflicts and resolutions
+    - Query cached package documentation (from previous web searches)
+    - Retrieve compatibility matrices, known breaking changes
+    - Provide context to LLM: "Your training data ends {date}, use web search for current info"
+  - **Version-Level Tracking**: Store exact versions, version constraints, compatibility status in GNN
+  - **Conflict Detection**: Cross-reference requested packages with existing dependencies, detect version conflicts
+  - **⚡ Parallel Processing**:
+    - Check multiple dependencies simultaneously (parallel CVE lookups, version checks)
+    - Open multiple browser tabs for different package sources (PyPI, npm, docs, GitHub)
+    - Batch API calls to package registries
+    - Performance: N dependencies checked in ~O(1) time vs O(N) sequential
+- **TaskDecomposition**: Break feature into concrete tasks (DB changes, API endpoints, UI components, tests, docs)
+  - **⚡ Parallel Processing**: Analyze multiple feature aspects simultaneously (data model, API surface, UI requirements)
+- **DependencySequencing**: Use GNN to determine task order and identify dependencies between tasks
+  - **⚡ Parallel Processing**: Identify all independent task clusters that can execute in parallel
+- **ConflictCheck**: Check which files will be modified and show visibility of who's working on what
+  - **MVP**: Display active work visibility (which developer is working on which files)
+  - **Post-MVP**: File locking mechanism to prevent parallel edits
+  - **⚡ Parallel Processing**: Check multiple file locks/status simultaneously
+- **PlanGeneration**: Create executable plan with task list, time estimates, critical path analysis
+  - **⚡ Parallel Processing**: Calculate complexity estimates for multiple tasks concurrently
+- **PlanReview**: User reviews and approves execution plan (optional approval gate for complex features)
+  - ⚠️ **OPTIONAL APPROVAL GATE**: Required for features >5 tasks or multi-file changes
+- **EnvironmentSetup**: Setup the venv with all the techstack dependencies installed. Always use venv
+  - **⚡ Parallel Processing**: Install multiple independent packages simultaneously (parallel pip install)
+
+**Phase 3: Execution (PDC Phase 3)**
+
 - **ContextAssembly**: Gather hierarchical context from GNN
+  - **⚡ Parallel Processing**: Fetch multiple file contexts simultaneously, parallel GNN queries for different dependency levels
 - **CodeGeneration**: LLM generates code with full context
+  - **MVP**: Show which files are being modified in UI (active work indicator)
+  - **Post-MVP**: Explicit FileLockAcquisition state before code generation
+  - **⚡ Parallel Processing**: Generate multiple independent files/functions simultaneously with separate LLM calls
 - **DependencyValidation**: GNN checks for breaking changes
+  - **⚡ Parallel Processing**: Validate multiple dependency paths simultaneously, parallel impact analysis
 - **BrowserValidation**: Quick visual validation (renders, console errors, screenshots)
+  - **⚡ Parallel Processing**:
+    - Open multiple browser tabs for different pages/components
+    - Test multiple viewports simultaneously (desktop, mobile, tablet)
+    - Parallel screenshot capture for visual comparison
+    - Performance: 3-5 components × 10s = 30-50s sequential → 10-15s parallel
 - **SecurityScanning**: Semgrep + OWASP rules for vulnerability detection
+  - **⚡ Parallel Processing**:
+    - Scan multiple files simultaneously
+    - Run different security rules in parallel (Semgrep, secrets detection, CVE checks)
+    - Parallel analysis of multiple code patterns
+    - Performance: N files scanned in ~O(log N) time with parallel workers
+- **ConcurrencyValidation**: Race condition and deadlock detection (⚡ **PARALLEL SAFETY CHECK**)
+  - **Purpose**: Validate that parallel processing didn't introduce concurrency bugs
+  - **When**: After any code generation that uses async/await, threads, or parallel execution
+  - **Built-in Checks** (Agentic Flow - NOT just LLM reasoning):
+    - **Static Analysis**: Rust Clippy pedantic + thread safety lints, Python threading analyzer, JavaScript event loop analyzer
+    - **Pattern Detection**: Shared mutable state access, missing locks/semaphores, race-prone patterns (check-then-act)
+    - **GNN Analysis**: Identify data flow paths that could race, detect concurrent writes to same resource
+    - **Test Generation**: Automatically generate stress tests for concurrent code paths
+  - **LLM Role** (Supplementary):
+    - Explain detected race conditions to user
+    - Suggest fix strategies (add locks, use channels, immutable data)
+    - Generate fixed code with proper synchronization
+  - **Auto-Fix Strategy**:
+    - Level 1: Apply known patterns (e.g., add Mutex, use Arc, channel-based communication)
+    - Level 2: LLM generates fix with concurrency primitives
+    - Level 3: Sequential fallback if parallel execution is unsafe
+  - **Performance**: <5s (static analysis + GNN query)
+  - **⚡ Parallel Processing**: Analyze multiple code paths for race conditions simultaneously
 - **FixingIssues**: Auto-retry with fixes if validation fails
+  - **⚡ Parallel Processing**: Generate fixes for multiple independent issues simultaneously
 - **Complete**: Code ready for testing
+  - **Post-MVP**: Explicit FileLockRelease state after completion
 - **Failed**: Human intervention required
+  - **Post-MVP**: Explicit FileLockRelease state on failure
 
 **Entry Point**: User's natural language intent
 **Exit Point**: Generated code + confidence score
 **Trigger**: User submits task
-**Success Criteria**: Code passes GNN validation, security scan, no breaking changes
+**Success Criteria**: Code passes GNN validation, security scan, no breaking changes, visibility of active work
+
+**State Count**:
+
+- **MVP**: 17 states (Architecture: 4, Planning: 6, Execution: 7 - adds ConcurrencyValidation)
+- **Post-MVP**: 19 states (adds explicit FileLockAcquisition and FileLockRelease states)
 
 **Browser Validation Purpose (CodeGen)**:
 
@@ -3091,12 +3899,30 @@ Yantra's agentic capabilities are implemented through **four specialized state m
 
 **Performance Targets**:
 
-- Context assembly: <100ms
-- Code generation: 2-5s (LLM dependent)
-- GNN validation: <10ms
-- Browser validation: 5-10s
-- Security scan: <10s
-- Total cycle: <30s
+- Task decomposition: <500ms (GNN analysis)
+- Dependency sequencing: <100ms (graph traversal)
+- Conflict check: <50ms (active work lookup - MVP) / <50ms (lock table query - Post-MVP)
+- Plan generation: <200ms (estimation algorithm)
+- File lock acquisition: <10ms (Post-MVP - database transaction)
+- Context assembly: <100ms (with parallel GNN queries)
+- Code generation: 2-5s (LLM dependent, parallel for multiple files)
+- GNN validation: <10ms (with parallel dependency path validation)
+- Browser validation: 5-10s (single component) / 10-15s (parallel multi-component)
+- Security scan: <10s (with parallel file scanning)
+- Concurrency validation: <5s (static analysis + GNN race detection)
+- File lock release: <5ms (Post-MVP)
+- **Total cycle (MVP)**: <43s (adds concurrency validation: ~5s)
+- **Total cycle (Post-MVP)**: <45s (adds explicit lock acquisition/release: ~15ms)
+- **Parallel optimization**: ~30-40% faster with concurrent execution of independent operations
+
+**New Prevention Guarantees**:
+
+- ✅ **Explicit Planning**: All tasks identified before execution (PDC 2.1)
+- ✅ **Work Visibility (MVP)**: Show which developer is working on which files (PDC 3.3)
+- ✅ **Conflict Prevention (Post-MVP)**: File locks acquired before any edits (PDC 3.3)
+- ✅ **Dependency-Aware Execution**: Tasks executed in correct order (PDC 2.1)
+- ✅ **Resource Coordination (Post-MVP)**: No two developers edit same file (PDC 3.3)
+- ✅ **Concurrency Safety**: Race conditions detected and auto-fixed before testing (PDC 3.4 - NEW)
 
 #### 2. Testing State Machine (MVP)
 
@@ -3105,12 +3931,29 @@ Yantra's agentic capabilities are implemented through **four specialized state m
 **States**:
 
 - **TestGeneration**: Generate unit and E2E tests using LLM
+  - **⚡ Parallel Processing**: Generate tests for multiple files/modules simultaneously with parallel LLM calls
 - **EnvironmentSetup**: Create virtual environment, install dependencies
+  - **⚡ Parallel Processing**: Install multiple independent test dependencies simultaneously
 - **UnitTesting**: Run pytest/jest for function-level tests
+  - **⚡ Parallel Processing**:
+    - Run test files in parallel (pytest -n auto, jest --maxWorkers)
+    - Execute independent test suites simultaneously
+    - Performance: N test files × 5s = 5N sequential → ~N/4 parallel (4 workers)
 - **BrowserTesting**: Run E2E tests with Playwright (user interactions)
+  - **⚡ Parallel Processing**:
+    - Run multiple E2E test scenarios in parallel browsers
+    - Test different user flows simultaneously
+    - Parallel execution across different browser contexts
+    - Performance: M scenarios × 30s = 30M sequential → ~30M/P parallel (P = parallel browsers)
 - **IntegrationTesting**: Test API integrations and data flows
+  - **⚡ Parallel Processing**:
+    - Test multiple API endpoints simultaneously
+    - Parallel database connection tests
+    - Concurrent integration scenario execution
 - **CoverageAnalysis**: Measure test coverage percentage
+  - **⚡ Parallel Processing**: Analyze coverage for multiple modules concurrently
 - **FixingIssues**: Re-run tests after applying fixes
+  - **⚡ Parallel Processing**: Fix and re-test multiple independent failures simultaneously
 - **Complete**: All tests pass with adequate coverage
 - **Failed**: Tests failed after maximum retries
 
@@ -3131,12 +3974,13 @@ Yantra's agentic capabilities are implemented through **four specialized state m
 
 **Performance Targets**:
 
-- Test generation: 3-5s (LLM)
-- Environment setup: 10-20s
-- Unit tests: <30s for typical project
-- Browser E2E tests: 30-60s
-- Integration tests: 20-40s
-- Total cycle: <2 minutes
+- Test generation: 3-5s (LLM, parallel for multiple files)
+- Environment setup: 10-20s (with parallel dependency installation)
+- Unit tests: <30s for typical project (parallel execution with 4+ workers)
+- Browser E2E tests: 30-60s (sequential) / 15-30s (parallel with 2-3 browser contexts)
+- Integration tests: 20-40s (with parallel API/DB testing)
+- Total cycle: <2 minutes (with parallel optimizations)
+- **Parallel benefit**: ~40-50% faster with concurrent test execution
 
 **Auto-Trigger**: Yes - runs immediately after CodeGen completes
 **Manual Trigger**: Also available via UI button
@@ -3148,9 +3992,16 @@ Yantra's agentic capabilities are implemented through **four specialized state m
 **States**:
 
 - **PackageBuilding**: Create Docker image or build artifacts
+  - **⚡ Parallel Processing**: Build multiple layers/stages simultaneously (Docker multi-stage builds)
 - **ConfigGeneration**: Generate railway.json, Dockerfile, environment config
+  - **⚡ Parallel Processing**: Generate multiple config files simultaneously
 - **RailwayUpload**: Push code/image to Railway
+  - **⚡ Parallel Processing**: Parallel upload of multiple artifacts/layers
 - **HealthCheck**: Verify deployed service is responding
+  - **⚡ Parallel Processing**:
+    - Check multiple endpoints simultaneously
+    - Parallel health checks for different service components
+    - Concurrent smoke tests across multiple routes
 - **RollbackOnFailure**: Auto-rollback if health check fails
 - **Complete**: Service live and healthy
 - **Failed**: Deployment failed
@@ -3169,13 +4020,344 @@ Yantra's agentic capabilities are implemented through **four specialized state m
 
 **Performance Targets**:
 
-- Package building: 30-60s (Docker build)
-- Upload to Railway: 20-40s
-- Health check: 5-10s
+- Package building: 30-60s (Docker build with multi-stage parallel builds)
+- Upload to Railway: 20-40s (parallel artifact upload)
+- Health check: 5-10s (parallel endpoint checks)
 - Total deployment: <2 minutes
+- **Parallel benefit**: ~20-30% faster with concurrent operations
 
 **Auto-Trigger**: No - requires user approval for safety
 **Post-MVP**: Optional auto-deploy after tests pass
+
+---
+
+### Parallel Processing Implementation Guide
+
+#### Overview
+
+Yantra implements parallel processing at three levels:
+
+1. **State-Level Parallelism**: Within a single state, execute independent operations concurrently
+2. **Machine-Level Parallelism**: Multiple state machines running simultaneously (Post-MVP)
+3. **Cross-Machine Parallelism**: Different machines processing different features (Future)
+
+#### State-Level Parallel Processing Patterns
+
+**Pattern 1: Parallel Resource Access (Browser Tabs, API Calls)**
+
+```
+Example: DependencyAssessment State
+├─ Tab 1: PyPI official page → Extract version, release date
+├─ Tab 2: Changelog/release notes → Extract breaking changes
+├─ Tab 3: Migration documentation → Extract upgrade guide
+└─ Tab 4: GitHub issues → Extract known problems
+
+Consolidation: LLM synthesizes all information into recommendation
+Performance: 12s sequential → 4-5s parallel (60% reduction)
+```
+
+**Pattern 2: Parallel Validation (Security, Tests, Health Checks)**
+
+```
+Example: SecurityScanning State
+├─ Worker 1: Semgrep scan on files 1-10
+├─ Worker 2: Semgrep scan on files 11-20
+├─ Worker 3: Secrets detection (all files)
+└─ Worker 4: CVE database checks (all dependencies)
+
+Consolidation: Merge results, prioritize by severity
+Performance: N files × 1s = N sequential → N/4 parallel (with 4 workers)
+```
+
+**Pattern 3: Parallel Generation (Code, Tests, Configs)**
+
+```
+Example: CodeGeneration State
+├─ LLM Call 1: Generate model.py (independent file)
+├─ LLM Call 2: Generate controller.py (independent file)
+├─ LLM Call 3: Generate test_model.py (independent test)
+└─ LLM Call 4: Generate test_controller.py (independent test)
+
+Dependencies: Files with dependencies generated sequentially after independent ones
+Performance: 4 files × 5s = 20s sequential → ~10s parallel (2 concurrent LLM calls)
+```
+
+**Pattern 4: Parallel Testing (Unit, E2E, Integration)**
+
+```
+Example: UnitTesting State
+├─ Test Runner 1: tests/unit/test_auth.py
+├─ Test Runner 2: tests/unit/test_database.py
+├─ Test Runner 3: tests/unit/test_api.py
+└─ Test Runner 4: tests/unit/test_models.py
+
+Tool: pytest -n auto (uses pytest-xdist for parallel execution)
+Performance: 100 tests × 0.5s = 50s sequential → ~15s parallel (4 workers)
+```
+
+#### Implementation Technologies
+
+**Rust Async/Await (Tokio)**
+
+- Primary concurrency model for all parallel operations
+- Lightweight tasks (green threads) for high concurrency
+- Non-blocking I/O for network/file operations
+
+```rust
+// Example: Parallel browser tab execution
+async fn fetch_dependency_info(package: &str) -> Result<DependencyInfo> {
+    let (pypi_info, changelog, migration, issues) = tokio::join!(
+        fetch_pypi_page(package),       // Tab 1
+        fetch_changelog(package),        // Tab 2
+        fetch_migration_guide(package),  // Tab 3
+        fetch_github_issues(package),    // Tab 4
+    );
+
+    consolidate_results(pypi_info?, changelog?, migration?, issues?)
+}
+```
+
+**Connection Pooling**
+
+- HTTP connection pool for API calls (reduces connection overhead)
+- Database connection pool for concurrent queries
+- Browser context pool for parallel testing
+
+**Rate Limiting**
+
+- Respect API rate limits (e.g., GitHub, PyPI)
+- Backoff strategy for LLM calls (avoid 429 errors)
+- Circuit breaker pattern for failing services
+
+#### Parallel Processing Trade-offs
+
+| Operation Type           | Sequential Time | Parallel Time | Workers      | Trade-off                 |
+| ------------------------ | --------------- | ------------- | ------------ | ------------------------- |
+| Web Search (4 tabs)      | 12s             | 4-5s          | 4 tabs       | Memory: +400MB per tab    |
+| Security Scan (20 files) | 20s             | 5s            | 4 workers    | CPU: +300% during scan    |
+| Unit Tests (100 tests)   | 50s             | 15s           | 4 workers    | Memory: +200MB per worker |
+| E2E Tests (5 flows)      | 150s            | 50s           | 3 browsers   | Memory: +1GB per browser  |
+| LLM Code Gen (4 files)   | 20s             | 10s           | 2 concurrent | Cost: 2x API calls/min    |
+
+**Resource Limits (MVP)**:
+
+- Browser tabs: Max 5 concurrent (memory constraint)
+- Test workers: Max 4 concurrent (CPU constraint)
+- LLM calls: Max 3 concurrent (rate limit constraint)
+- File scanners: Max 4 concurrent (I/O constraint)
+
+**Monitoring Parallel Operations**:
+
+- Track resource usage (CPU, memory, network)
+- Log start/end timestamps for each parallel task
+- Detect and retry failed parallel operations
+- UI progress indicators show parallel task status
+
+#### When NOT to Use Parallel Processing
+
+1. **Data Dependencies**: Task B depends on Task A's output → Must be sequential
+2. **Resource Contention**: Same file being read/written → Use locks or sequential access
+3. **Small Operations**: Overhead > benefit (e.g., <10ms operations)
+4. **Rate Limited APIs**: Would trigger rate limits → Use sequential with delays
+5. **Stateful Operations**: Order matters (e.g., database migrations) → Sequential only
+
+#### Concurrency Safety Validation (Built-in Protection)
+
+**Problem**: Parallel processing can introduce race conditions, deadlocks, and data races if not properly managed.
+
+**Solution**: Automated concurrency validation as part of the agentic flow (ConcurrencyValidation state).
+
+**Three-Layer Detection Strategy:**
+
+**Layer 1: Static Analysis (Automated - No LLM Required)**
+
+```
+Language-Specific Linters:
+├─ Rust: cargo clippy --all -- -D warnings (thread safety built into type system)
+│  └─ Detects: Send/Sync violations, missing Mutex, Arc misuse
+├─ Python: threading analyzer (Python 3.12+)
+│  └─ Detects: GIL contention, shared mutable state, missing locks
+└─ JavaScript: ESLint concurrency rules
+   └─ Detects: Promise race conditions, callback hell, async/await misuse
+
+Pattern Detection (Semgrep custom rules):
+├─ Shared mutable state without locks
+├─ Check-then-act patterns (time-of-check-time-of-use)
+├─ Missing synchronization on concurrent writes
+└─ Circular wait conditions (potential deadlocks)
+```
+
+**Layer 2: GNN Data Flow Analysis (Automated - No LLM Required)**
+
+```
+GNN Queries:
+├─ Find all paths between concurrent writes to same variable
+├─ Detect read-write conflicts across async boundaries
+├─ Identify shared resources accessed from multiple threads/tasks
+└─ Calculate happens-before relationships
+
+Example Race Detection:
+┌──────────────────────────────────────────────────────────┐
+│ Thread 1: read counter → increment → write counter       │
+│ Thread 2: read counter → increment → write counter       │
+│                                                           │
+│ GNN detects: Both threads read same variable without lock│
+│ Race condition: Lost updates (counter++ not atomic)      │
+└──────────────────────────────────────────────────────────┘
+```
+
+**Layer 3: Stress Test Generation (Automated - LLM Assisted)**
+
+````
+Automatically generate tests that:
+├─ Run concurrent operations 1000+ times
+├─ Use different thread/task interleavings
+├─ Introduce random delays to expose races
+└─ Assert on invariants (e.g., counter == expected_value)
+
+Example Generated Test (Python):
+```python
+def test_concurrent_counter_race():
+    counter = Counter()  # Class being tested
+    threads = [Thread(target=counter.increment) for _ in range(100)]
+    for t in threads: t.start()
+    for t in threads: t.join()
+    assert counter.value == 100  # Should fail if race exists
+````
+
+```
+
+**Auto-Fix Strategy (Tiered Approach):**
+
+```
+
+Level 1: Pattern-Based Auto-Fix (No LLM - Fast)
+├─ Detected: Shared mutable state without lock
+│ └─ Fix: Wrap in Mutex<T> (Rust) or threading.Lock (Python)
+├─ Detected: Check-then-act pattern
+│ └─ Fix: Use atomic operations or lock entire section
+└─ Detected: Missing Arc for shared data
+└─ Fix: Wrap in Arc<Mutex<T>> for cross-thread sharing
+
+Level 2: LLM-Assisted Fix (With Context - Smart)
+├─ Provide LLM with:
+│ ├─ Detected race condition explanation
+│ ├─ Code snippet with race
+│ ├─ GNN data flow paths showing conflict
+│ └─ Language-specific synchronization primitives
+├─ LLM generates:
+│ ├─ Fixed code with proper locks/channels/atomics
+│ ├─ Explanation of fix strategy
+│ └─ Test case to verify fix
+└─ Agent validates fix with stress tests
+
+Level 3: Sequential Fallback (Safe Default)
+├─ If parallel execution cannot be made safe:
+│ ├─ Rewrite parallel code as sequential
+│ ├─ Add TODO comment explaining why
+│ └─ Log performance regression for future optimization
+└─ Guarantee: Code always works correctly, even if slower
+
+```
+
+**Integration with State Machine:**
+
+```
+
+CodeGeneration State
+↓
+(generates parallel code)
+↓
+DependencyValidation State
+↓
+BrowserValidation State
+↓
+SecurityScanning State
+↓
+ConcurrencyValidation State ← NEW (Mandatory for parallel code)
+├─ Static analysis (<1s)
+├─ GNN race detection (<2s)
+├─ Stress test generation (<2s)
+└─ Auto-fix if issues found
+↓
+(all validations pass)
+↓
+Complete State
+
+```
+
+**Performance Impact:**
+- Static analysis: ~1s (parallel execution of linters)
+- GNN analysis: ~2s (parallel data flow queries)
+- Test generation: ~2s (LLM generates stress tests)
+- **Total: ~5s** (acceptable overhead for safety guarantee)
+- Only runs if code uses async/await, threads, or parallel patterns
+
+**Skip Conditions (Optimization):**
+- No async/await keywords detected
+- No threading/multiprocessing imports
+- No tokio::spawn or similar parallel primitives
+- Pure sequential code → Skip validation (0s overhead)
+
+**User Experience:**
+```
+
+[Agent]: "Analyzing parallel code for race conditions..."
+[Agent]: "⚠️ Detected potential race: Counter incremented without lock"
+[Agent]: "🔧 Auto-fixing: Adding Mutex to protect shared state"
+[Agent]: "✅ Fix validated with 1000 concurrent operations"
+[Agent]: "⏱️ Concurrency validation: 4.2s"
+
+```
+
+**Why This is Agentic Flow, Not Just LLM:**
+
+1. **Deterministic Checks**: Static analysis and GNN queries don't depend on LLM reasoning
+2. **Fast**: Most issues caught by rule-based systems (<2s)
+3. **Reliable**: Known patterns detected 100% of the time (not probabilistic)
+4. **LLM as Assistant**: Only used for complex fixes and explanations
+5. **Always Safe**: Sequential fallback guarantees correctness
+
+**Comparison: Agentic Flow vs LLM-Only:**
+
+| Aspect | Agentic Flow (Our Approach) | LLM-Only Approach |
+|--------|----------------------------|-------------------|
+| Speed | <5s (static + GNN + LLM) | 10-20s (LLM reasoning) |
+| Reliability | High (rule-based detection) | Medium (LLM might miss patterns) |
+| Coverage | 100% (deterministic rules) | 70-90% (LLM dependent) |
+| Explainability | Precise (shows exact race) | Vague ("might have race") |
+| Auto-fix | 3-tier (pattern → LLM → fallback) | LLM-only (no guaranteed fix) |
+| Cost | Low (mostly static analysis) | High (large LLM prompts) |
+
+**Future Enhancements:**
+- Dynamic race detection (ThreadSanitizer, Valgrind integration)
+- Record-replay debugging for non-deterministic races
+- Formal verification for critical sections (TLA+, model checking)
+- ML-based race prediction from code patterns
+
+---
+
+#### Future Enhancements (Post-MVP)
+
+**Machine-Level Parallelism**:
+
+- CodeGen + Testing machines running simultaneously on different features
+- Deploy machine running while CodeGen works on next feature
+- Maintenance machine continuously monitoring while other machines work
+
+**Cross-Machine Parallelism**:
+
+- Multiple developers, multiple features, all machines working concurrently
+- Cluster agent architecture (master-servant pattern)
+- Git coordination branch for conflict-free parallel work
+
+**Advanced Parallel Patterns**:
+
+- Map-reduce for large codebases (analyze 1000+ files)
+- Stream processing for continuous monitoring
+- Distributed execution across multiple machines
+
+---
 
 #### 4. Maintenance State Machine (Post-MVP)
 
@@ -3184,14 +4366,35 @@ Yantra's agentic capabilities are implemented through **four specialized state m
 **States**:
 
 - **LiveMonitoring**: Continuous monitoring of production errors and performance
+  - **⚡ Parallel Processing**:
+    - Monitor multiple services/endpoints simultaneously
+    - Parallel log aggregation from multiple sources
+    - Concurrent metric collection across service fleet
 - **BrowserValidation**: Monitor real user browser sessions for errors
+  - **⚡ Parallel Processing**:
+    - Track multiple user sessions concurrently
+    - Parallel session replay processing
+    - Concurrent error pattern detection across users
 - **ErrorAnalysis**: Pattern detection in production errors
+  - **⚡ Parallel Processing**:
+    - Analyze multiple error types simultaneously
+    - Parallel pattern matching across error logs
+    - Concurrent root cause analysis for different error classes
 - **IssueDetection**: Identify root causes using error patterns
+  - **⚡ Parallel Processing**: Query multiple data sources simultaneously (logs, metrics, traces)
 - **AutoFixGeneration**: Generate fix using LLM + historical patterns
+  - **⚡ Parallel Processing**: Generate multiple fix candidates simultaneously, evaluate in parallel
 - **FixValidation**: Test fix in staging using CodeGen + Testing machines
+  - **⚡ Parallel Processing**: Leverages parallel processing from CodeGen and Testing machines
 - **CICDPipeline**: Automated deployment of validated fix
+  - **⚡ Parallel Processing**: Leverages parallel processing from Deployment machine
 - **VerificationCheck**: Confirm issue is resolved in production
+  - **⚡ Parallel Processing**:
+    - Check error rates across multiple regions simultaneously
+    - Parallel verification across different service instances
+    - Concurrent user impact assessment
 - **LearningUpdate**: Update knowledge base with new patterns
+  - **⚡ Parallel Processing**: Update multiple knowledge stores concurrently (Vector DB, documentation, metrics)
 - **Active**: Normal monitoring state
 - **Incident**: Active incident being handled
 
@@ -3222,15 +4425,323 @@ Yantra's agentic capabilities are implemented through **four specialized state m
 
 **Performance Targets**:
 
-- Error detection: Real-time (<1s)
-- Pattern analysis: <5s
-- Fix generation: 10-30s (LLM)
-- Fix validation: 2-3 minutes (full test suite)
-- Deployment: 1-2 minutes
+- Error detection: Real-time (<1s, parallel monitoring across services)
+- Pattern analysis: <5s (parallel pattern matching)
+- Fix generation: 10-30s (LLM, parallel candidate generation)
+- Fix validation: 2-3 minutes (full test suite with parallel execution)
+- Deployment: 1-2 minutes (parallel deployment pipeline)
+- Verification: <30s (parallel checks across regions)
 - Total MTTR (Mean Time To Repair): <5 minutes for known patterns
+- **Parallel benefit**: ~50-60% faster incident resolution with concurrent operations
 
 **MVP Status**: NOT in MVP - design complete, implementation post-MVP
 **Rationale**: Focus MVP on working code generation/testing/deployment first
+
+---
+
+---
+
+## Preventive Development Cycle ↔ State Machine Reconciliation
+
+### Executive Summary
+
+The **Preventive Development Cycle (PDC)** defines Yantra's **preventive philosophy** and **what** to prevent at each phase. The **State Machines** provide the **concrete implementation architecture** that executes the PDC through specific states, transitions, and validation checkpoints.
+
+**Reconciliation Document Reference**: `docs/Research & specifications/*Preventive Development Cycle.md` (1,244 lines)
+
+**🆕 Recent Enhancements (December 2025):**
+
+- Added 6 explicit Planning states for PDC Phase 2 (TaskDecomposition, DependencySequencing, ConflictCheck, PlanGeneration, PlanReview, EnvironmentSetup)
+- **MVP Approach**: Work visibility for conflict minimization (show who's working on what files)
+- **Post-MVP**: Explicit File Lock states (FileLockAcquisition, FileLockRelease) for conflict prevention
+- Code Generation state count: MVP: 16 states, Post-MVP: 18 states (+50% from original 12)
+- Added optional PlanReview approval gate for complex features (>5 tasks)
+- Total cycle time: MVP: <38s, Post-MVP: <40s (planning overhead: ~850ms, locking overhead: ~15ms)
+- Added prevention guarantee 3.5: Plans are Explicit and Validated
+- **⚡ Parallel Processing**: All state machines leverage concurrent execution for 30-60% performance improvement
+  - Web search: 4 tabs in parallel (12s → 4-5s)
+  - Security scanning: 4 workers in parallel (20s → 5s)
+  - Test execution: 4 workers in parallel (50s → 15s)
+  - Browser E2E: 3 browsers in parallel (150s → 50s)
+
+**Strategic Decision - MVP vs Post-MVP Locking:**
+
+- **MVP Focus**: Show visibility of active work (which developer works on which files) via UI indicators
+- **Rationale**: Visibility enables team coordination without complex locking infrastructure
+- **Post-MVP**: Explicit file locking states with GNN-aware dependency locks for complete conflict prevention
+- **Benefit**: Ship faster with practical conflict minimization, add enforcement layer later
+
+**Key Integration Points:**
+
+| Integration Layer  | PDC Element              | State Machine Element                                         | Reconciliation Strategy                                                                         |
+| ------------------ | ------------------------ | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| **Philosophy**     | Prevention over reaction | Fail-fast state transitions                                   | Violations detected at state boundaries, not after completion                                   |
+| **Architecture**   | 5 PDC Phases             | 4 State Machines                                              | Phases 1-3 map to CodeGen+Testing, Phase 4 to Deployment, Phase 5 to Maintenance                |
+| **Validation**     | 6-layer bug prevention   | Multi-state validation pipeline                               | Each layer maps to specific state with <10ms-60s execution time                                 |
+| **Approval**       | Human-in-loop gates      | ArchitectureReview, PlanReview (optional), Complete states 🆕 | 3 approval gates at critical state boundaries (architecture, plan for complex features, deploy) |
+| **Traceability**   | Full audit trail         | Session linking across machines                               | Each session stores parent session ID, full lineage from intent to production                   |
+| **Recovery**       | Rollback on failure      | State persistence + checkpoints                               | SQLite persistence at state boundaries, resume from last checkpoint                             |
+| **Performance** ⚡ | Fast execution           | Parallel processing within states                             | Independent operations executed concurrently (30-60% faster) using Tokio async/await            |
+
+**Design Decision**: PDC phases don't map 1:1 to state machines. Instead, **PDC checks are distributed across states** for optimal performance and granular prevention.
+
+**Example (MVP)**: PDC Phase 3 "Execute" spans **13 states** across 2 machines (CodeGen: 6 states, Testing: 7 states) to enable fail-fast validation and parallel execution.
+
+---
+
+### Quick Reference: PDC Phases → State Machines
+
+```
+
+PDC Phase 1: ARCHITECT/DESIGN
+└─> CodeGen States: ArchitectureGeneration, ArchitectureReview (⚠️ approval gate), DependencyAssessment, ContextAssembly
+└─> Prevents: Boundary violations, circular deps, incompatible versions, security by design
+└─> Approval Gate: ArchitectureReview (mandatory human-in-loop)
+
+PDC Phase 2: PLAN (🆕 ENHANCED - 6 states)
+└─> CodeGen States: TaskDecomposition, DependencySequencing, ConflictCheck, PlanGeneration, PlanReview (⚠️ optional approval), EnvironmentSetup
+└─> Prevents: Missing tasks, wrong sequencing, scope creep, environment errors
+└─> MVP Prevention: Work visibility (show who's working on what files)
+└─> Post-MVP Prevention: File conflicts (explicit locking mechanism)
+└─> Approval Gate: PlanReview (optional for >5 tasks or multi-file changes)
+└─> New Prevention: Explicit planning prevents unbounded work
+
+PDC Phase 3: EXECUTE
+└─> CodeGen States (MVP): ContextAssembly, CodeGeneration (with work visibility), DependencyValidation,
+BrowserValidation, SecurityScanning, FixingIssues
+└─> Prevents: Syntax/type/logic errors, breaking changes, security issues
+└─> Work Visibility: UI shows which files are being modified and by whom
+└─> Auto-triggers Testing Machine on Complete
+└─> CodeGen States (Post-MVP): FileLockAcquisition, ContextAssembly, CodeGeneration, DependencyValidation,
+BrowserValidation, SecurityScanning, FixingIssues, FileLockRelease
+└─> Additional Prevention: Explicit file locks prevent merge conflicts before they happen
+└─> Testing States: TestGeneration, EnvironmentSetup, UnitTesting, BrowserTesting, IntegrationTesting, CoverageAnalysis, FixingIssues
+└─> Prevents: Regression bugs, missing coverage, integration failures
+└─> Quality Gate: All tests must pass (no human approval, blocks progress)
+
+PDC Phase 4: DEPLOY
+└─> Deployment States: PackageBuilding, ConfigGeneration, RailwayUpload, HealthCheck, RollbackOnFailure
+└─> Prevents: Broken deploys, environment mismatches, partial deployments
+└─> Approval Gate: Manual trigger for safety (human approval required)
+
+PDC Phase 5: MONITOR/MAINTAIN (Post-MVP)
+└─> Maintenance States: LiveMonitoring, BrowserValidation, ErrorAnalysis, IssueDetection, AutoFixGeneration, FixValidation, CICDPipeline, VerificationCheck, LearningUpdate
+└─> Prevents: Prolonged outages, repeated incidents, manual delays
+└─> Self-Healing: MTTR <5 min for known patterns, auto-trigger CodeGen+Testing+Deployment for fixes
+
+```
+
+**Key Relationships:**
+
+- 📊 **1 PDC Phase** → **1-9 States** (granular prevention) 🆕 increased from 1-7
+- ⚡ **1 State** → **Multiple PDC Checks** (efficient execution)
+- 🔗 **4 State Machines** → **5 PDC Phases** (distributed intelligence)
+- ⚠️ **3 Approval Gates** → **Architecture + Plan (optional) + Deployment** 🆕 added Plan approval
+- ✅ **10 Prevention Guarantees** → **MVP: 24 States / Post-MVP: 26 States** 🆕 increased from 17, adds ConcurrencyValidation
+  - MVP: Work visibility + concurrency validation (17 CodeGen + 7 Testing = 24 non-overlapping)
+  - Post-MVP: Adds FileLockAcquisition and FileLockRelease states (19 CodeGen + 7 Testing = 26 non-overlapping)
+
+---
+
+### Overview
+
+The **Preventive Development Cycle (PDC)** is the conceptual framework that defines **what** Yantra prevents and **how** it prevents problems at each phase. The **State Machines** are the **implementation architecture** that executes the PDC through concrete states and transitions.
+
+**Relationship**: PDC phases map to State Machine execution flows with specific preventive checks at each state.
+
+### Phase-to-Machine Mapping
+
+| PDC Phase               | State Machine(s)                                              | Purpose                                          | Key Prevention                                                                                    |
+| ----------------------- | ------------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| **1. Architect/Design** | Code Generation (states 1-4)                                  | Validate architecture before code                | Boundary violations, circular deps, security by design                                            |
+| **2. Plan**             | Code Generation (states 5-10) 🆕 Enhanced                     | Executable plan prevents implementation problems | Missing tasks, wrong sequencing, scope creep; MVP: work visibility, Post-MVP: locks               |
+| **3. Execute**          | Code Generation (states 11-16 MVP / 11-18 Post-MVP) + Testing | Write correct code with tests                    | MVP: work visibility, syntax/type/logic errors; Post-MVP: adds explicit merge conflict prevention |
+| **4. Deploy**           | Deployment Machine (states 1-5)                               | Safe, validated, recoverable deployments         | Broken code deploys, environment mismatches, partial deployments                                  |
+| **5. Monitor/Maintain** | Maintenance Machine (states 1-11) Post-MVP                    | Detect and heal before users notice              | Prolonged outages, repeated incidents, manual delays                                              |
+
+---
+
+### Detailed State-by-State PDC Integration
+
+#### Code Generation State Machine → PDC Phases 1-3
+
+| State                                 | PDC Phase    | PDC Sub-Phase                   | Prevents                                                              | Tools/Checks                                                                                                                                                                           |
+| ------------------------------------- | ------------ | ------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **ArchitectureGeneration**            | 1. Architect | 1.1 Architecture Alignment      | Module boundary violations, circular dependencies                     | GNN dependency graph, Architecture View, module boundaries                                                                                                                             |
+| **ArchitectureReview**                | 1. Architect | 1.5 Architecture Sign-off       | Unauthorized changes, lost decision context                           | Approval Queue (⚠️ mandatory human approval), ADR generator, audit trail                                                                                                               |
+| **DependencyAssessment**              | 1. Architect | 1.2 Tech Stack Alignment        | Incompatible versions, duplicate functionality, license conflicts     | npm/pip/cargo registry (MCP), CVE database, license checker; **Web search** (latest package docs, LLM knowledge static); **RAG** (Vector DB for conflict resolution, cached solutions) |
+| **ContextAssembly**                   | 1. Architect | 1.3 Existing Code Analysis      | Reinventing functionality, inconsistent patterns, missing context     | Semantic embeddings, tree-sitter, GNN                                                                                                                                                  |
+| **TaskDecomposition** 🆕              | 2. Plan      | 2.1 Execution Plan (tasks)      | Missing tasks, unbounded work, unclear scope                          | GNN-based feature decomposition (<500ms)                                                                                                                                               |
+| **DependencySequencing** 🆕           | 2. Plan      | 2.1 Execution Plan (ordering)   | Wrong task order, dependency violations, parallel conflicts           | GNN graph traversal, topological sort (<100ms)                                                                                                                                         |
+| **ConflictCheck** 🆕                  | 2. Plan      | 2.1 Execution Plan (visibility) | Parallel edit conflicts, work coordination issues                     | MVP: Active work lookup (<50ms); Post-MVP: File lock table query (<50ms)                                                                                                               |
+| **PlanGeneration** 🆕                 | 2. Plan      | 2.1 Execution Plan (finalize)   | Unclear scope, no estimates, unprioritized work                       | Estimation algorithm, complexity analysis (<200ms)                                                                                                                                     |
+| **PlanReview** 🆕                     | 2. Plan      | 2.3 Plan Sign-off               | Misaligned expectations, scope disagreements, over-complexity         | Approval Queue (⚠️ optional for >5 tasks or multi-file changes)                                                                                                                        |
+| **EnvironmentSetup**                  | 2. Plan      | 2.1 Execution Plan (prep)       | Environment configuration errors, missing dependencies                | Virtual environment setup, dependency installer, version validator                                                                                                                     |
+| **FileLockAcquisition** 🆕 (Post-MVP) | 3. Execute   | 3.3 Prevent Conflicts (before)  | Merge conflicts, parallel edit conflicts, lost work                   | Database transaction, GNN-aware lock acquisition (<10ms)                                                                                                                               |
+| **CodeGeneration**                    | 3. Execute   | 3.1 Code Generation             | Syntax errors (tree-sitter), type errors (LSP), style issues (linter) | Multi-LLM, tree-sitter, LSP, pattern extractor; MVP: UI shows active work                                                                                                              |
+| **DependencyValidation**              | 3. Execute   | 3.2 Prevent Bugs (Layer 6)      | Breaking changes to dependents, ripple effects                        | GNN impact analysis (<10ms)                                                                                                                                                            |
+| **BrowserValidation**                 | 3. Execute   | 3.1 Code Validation             | Visual regressions, console errors, network failures                  | Chrome CDP, screenshot capture (5-10s)                                                                                                                                                 |
+| **SecurityScanning**                  | 3. Execute   | 3.4 Prevent Security Issues     | SQL injection, XSS, secrets in code, vulnerabilities                  | Semgrep, OWASP rules, secrets detector (Gitleaks)                                                                                                                                      |
+| **ConcurrencyValidation** 🆕          | 3. Execute   | 3.4 Prevent Concurrency Bugs    | Race conditions, deadlocks, data races from parallel execution        | Static analysis (Clippy, threading analyzer), GNN data flow analysis, stress test generation (<5s); Auto-fix with locks/atomics or sequential fallback                                 |
+| **FixingIssues**                      | 3. Execute   | 3.2 Prevent Bugs (auto-retry)   | Issues from previous validations                                      | Auto-retry with LLM-generated fixes                                                                                                                                                    |
+| **FileLockRelease** 🆕 (Post-MVP)     | 3. Execute   | 3.3 Prevent Conflicts (after)   | Stale locks, resource leaks, blocked parallel work                    | Lock release transaction (<5ms)                                                                                                                                                        |
+| **Complete**                          | 3. Execute   | 3.7 Feature Sign-off (partial)  | Incomplete features                                                   | Confidence score, validation passed; Post-MVP: locks released                                                                                                                          |
+| **Failed**                            | 3. Execute   | 3.7 Feature Sign-off (blocked)  | Quality shortcuts                                                     | Human intervention required; Post-MVP: locks released                                                                                                                                  |
+
+#### Testing State Machine → PDC Phase 3 (continued)
+
+| State                  | PDC Phase  | PDC Sub-Phase                     | Prevents                                                                 | Tools/Checks                                      |
+| ---------------------- | ---------- | --------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------- |
+| **TestGeneration**     | 3. Execute | 3.5 Auto Unit & Integration Tests | Missing test coverage, untested edge cases                               | LLM test generation, pattern-based test templates |
+| **EnvironmentSetup**   | 3. Execute | 3.1 Code Validation (prep)        | Environment inconsistencies, missing test dependencies                   | Virtual environment, test fixtures                |
+| **UnitTesting**        | 3. Execute | 3.2 Prevent Bugs (Layer 4)        | Logic errors, edge case failures, function behavior                      | pytest/jest/cargo test (<30s)                     |
+| **BrowserTesting**     | 3. Execute | 3.2 Prevent Bugs (E2E)            | User workflow failures, integration issues, UI bugs                      | Playwright E2E tests (30-60s)                     |
+| **IntegrationTesting** | 3. Execute | 3.2 Prevent Bugs (Layer 5)        | Component interaction failures, API contract violations, database issues | Integration test suite (20-40s)                   |
+| **CoverageAnalysis**   | 3. Execute | 3.5 Auto Tests (validation)       | Insufficient test coverage, gaps in validation                           | pytest-cov, coverage threshold (>80%)             |
+| **FixingIssues**       | 3. Execute | 3.1 Code Generation (retry)       | Test failures                                                            | Re-run tests after applying fixes                 |
+| **Complete**           | 3. Execute | 3.7 Feature Sign-off (tests pass) | Quality gates not met                                                    | 100% tests pass, coverage >80%                    |
+| **Failed**             | 3. Execute | 3.7 Feature Sign-off (blocked)    | Tests failed after max retries                                           | Human intervention required                       |
+
+#### Deployment State Machine → PDC Phase 4
+
+| State                 | PDC Phase | PDC Sub-Phase                      | Prevents                                       | Tools/Checks                                           |
+| --------------------- | --------- | ---------------------------------- | ---------------------------------------------- | ------------------------------------------------------ |
+| **PackageBuilding**   | 4. Deploy | 4.1 Pre-Deploy Validation (prep)   | Broken build artifacts, missing dependencies   | Docker build, artifact compilation (30-60s)            |
+| **ConfigGeneration**  | 4. Deploy | 4.1 Pre-Deploy Validation (config) | Environment mismatches, missing configuration  | railway.json, Dockerfile, env vars validation          |
+| **RailwayUpload**     | 4. Deploy | 4.2 Auto Deploy                    | Manual deploy errors, inconsistent deployments | Railway API (MCP), atomic upload (20-40s)              |
+| **HealthCheck**       | 4. Deploy | 4.1 Pre-Deploy Validation (canary) | Deploying broken code, service unavailable     | HTTP health check (5-10s), smoke tests                 |
+| **RollbackOnFailure** | 4. Deploy | 4.2 Auto Deploy (safety)           | Partial deployments, prolonged outages         | Automatic rollback to last known good version          |
+| **Complete**          | 4. Deploy | 4.3 Deploy Sign-off                | Unauthorized deploys, lost history             | Live Railway URL, health status confirmed, audit trail |
+| **Failed**            | 4. Deploy | 4.3 Deploy Sign-off (blocked)      | Deploy failures                                | Deployment failed, human intervention required         |
+
+#### Maintenance State Machine → PDC Phase 5 (Post-MVP)
+
+| State                 | PDC Phase  | PDC Sub-Phase                      | Prevents                                             | Tools/Checks                                                               |
+| --------------------- | ---------- | ---------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------- |
+| **LiveMonitoring**    | 5. Monitor | 5.1 Self-Healing (detect)          | Prolonged outages, undetected issues                 | Sentry (MCP), Datadog (MCP), real-time error tracking                      |
+| **BrowserValidation** | 5. Monitor | 5.1 Self-Healing (user impact)     | Silent user-facing failures, performance degradation | Real User Monitoring (RUM), session replay, browser error tracking         |
+| **ErrorAnalysis**     | 5. Monitor | 5.1 Self-Healing (classify)        | Repeated incidents, unknown root causes              | Pattern matching, severity classification, error correlation               |
+| **IssueDetection**    | 5. Monitor | 5.1 Self-Healing (diagnose)        | Misdiagnosed issues, wasted effort                   | Root cause analysis, dependency graph queries, historical pattern matching |
+| **AutoFixGeneration** | 5. Monitor | 5.1 Self-Healing (fix)             | Manual intervention delays, human error              | LLM fix generation, pattern-based solutions, historical fixes              |
+| **FixValidation**     | 5. Monitor | 5.1 Self-Healing (validate)        | Deploying broken fixes, introducing new bugs         | Run through CodeGen + Testing machines (full validation, 2-3 min)          |
+| **CICDPipeline**      | 5. Monitor | 5.1 Self-Healing (deploy)          | Manual deploy delays, inconsistent fixes             | Automated CI/CD pipeline (1-2 min)                                         |
+| **VerificationCheck** | 5. Monitor | 5.1 Self-Healing (verify)          | Fix didn't work, issue persists                      | Error rate monitoring, production verification                             |
+| **LearningUpdate**    | 5. Monitor | 5.1 Self-Healing (learn & prevent) | Repeated incidents, knowledge loss                   | Update Yantra Codex, add monitoring, create post-incident report           |
+| **Active**            | 5. Monitor | Normal operation                   | Silent failures, degradation                         | Continuous monitoring, proactive detection                                 |
+| **Incident**          | 5. Monitor | 5.1 Self-Healing (active)          | Prolonged outages, manual escalation                 | Active incident handling, auto-escalation if unresolved                    |
+
+---
+
+### PDC Prevention Guarantees → State Machine Implementation
+
+#### Guarantee 1: Architecture is Respected
+
+**PDC**: Phase 1.1 Architecture Alignment
+**State Machines**:
+
+- CodeGen: **ArchitectureGeneration** + **ArchitectureReview**
+- Implementation: GNN enforces boundaries, detects cycles, Agent won't generate violating code
+- Approval Gate: Human-in-loop approval required before proceeding
+
+#### Guarantee 2: Tech Stack is Consistent
+
+**PDC**: Phase 1.2 Tech Stack Alignment
+**State Machines**:
+
+- CodeGen: **DependencyAssessment**
+- Implementation: Check CVE database, validate versions, detect duplicates, verify licenses
+- Blocks: Addition of incompatible/vulnerable dependencies before installation
+
+#### Guarantee 3: Requirements are Clear
+
+**PDC**: Phase 1.4 Feature Extraction
+**State Machines**:
+
+- CodeGen: **ContextAssembly** (includes requirement analysis)
+- Implementation: NLP extraction from PRDs/Notion/Slack, clarification dialogue before generation
+- Prevents: Ambiguous requirements, missing edge cases, scope creep
+
+#### Guarantee 3.5: Plans are Explicit and Validated 🆕
+
+**PDC**: Phase 2.1 Execution Plan + Phase 2.3 Plan Sign-off
+**State Machines**:
+
+- CodeGen: **TaskDecomposition**, **DependencySequencing**, **ConflictCheck**, **PlanGeneration**, **PlanReview** (optional approval)
+- Implementation: GNN-based task breakdown, topological sorting, work visibility (MVP) or lock queries (Post-MVP), complexity estimation
+- Prevents: Missing tasks, wrong task order, unbounded work, scope disagreements
+- Approval Gate: Optional PlanReview for >5 tasks or multi-file changes ensures alignment before execution
+
+#### Guarantee 4: Code is Correct
+
+**PDC**: Phase 3.2 Prevent Bugs (6 layers)
+**State Machines**:
+
+- CodeGen: **CodeGeneration** (tree-sitter, LSP), **DependencyValidation** (GNN), **BrowserValidation** (CDP), **SecurityScanning** (Semgrep)
+- Testing: **UnitTesting**, **BrowserTesting**, **IntegrationTesting**
+- Implementation: Multi-layer validation before commit, affected tests run automatically
+
+#### Guarantee 5: Conflicts are Minimized (MVP) / Impossible (Post-MVP)
+
+**PDC**: Phase 3.3 Prevent Merge Conflicts
+**State Machines**:
+
+- **MVP**: **ConflictCheck** (planning) + **CodeGeneration** (with work visibility in UI)
+  - Implementation: Show which developer is working on which files, active work indicators
+  - Result: Developers can coordinate to avoid parallel edits on same files
+- **Post-MVP**: **FileLockAcquisition** (before edits) + **FileLockRelease** (after completion) - Explicit States
+  - Implementation: Dependency-aware locking via GNN, one task per person, lock table enforced by system
+  - Result: Merge conflicts prevented by design, not resolved; explicit state transitions make locking auditable
+
+#### Guarantee 6: Security is Built-in
+
+**PDC**: Phase 3.4 Prevent Security Issues (5 layers)
+**State Machines**:
+
+- CodeGen: **DependencyAssessment** (CVE check), **SecurityScanning** (Semgrep, secrets detection)
+- Implementation: Block vulnerable dependencies, scan code patterns, detect secrets pre-commit
+- Testing: Security-specific tests generated automatically
+
+#### Guarantee 7: Documentation is Accurate
+
+**PDC**: Phase 1.6 + 3.6 Automated Documentation
+**State Machines**:
+
+- CodeGen: Documentation generated post-**Complete** state
+- Implementation: Generated from Architecture View, code analysis, ADRs, always current
+- Prevents: Outdated docs, doc drift from reality
+
+#### Guarantee 8: Deployments are Safe
+
+**PDC**: Phase 4.1 + 4.2 Pre-Deploy Validation + Auto Deploy
+**State Machines**:
+
+- Deployment: **PackageBuilding**, **ConfigGeneration**, **HealthCheck**, **RollbackOnFailure**
+- Implementation: Full test suite passes, config validated, health checks, atomic rollback
+- Prevents: Deploying broken code, environment mismatches, partial deployments
+
+#### Guarantee 9: Systems Self-Heal
+
+**PDC**: Phase 5.1 Self-Healing
+**State Machines**:
+
+- Maintenance (Post-MVP): **ErrorAnalysis** → **AutoFixGeneration** → **FixValidation** → **CICDPipeline** → **VerificationCheck**
+- Implementation: Detect (<1s), analyze (<5s), fix (10-30s), validate (2-3min), deploy (1-2min), verify
+- Result: Mean Time To Repair (MTTR) < 5 minutes for known patterns
+
+#### Guarantee 10: Concurrency is Safe 🆕
+
+**PDC**: Phase 3.4 Prevent Concurrency Bugs
+**State Machines**:
+
+- CodeGen: **ConcurrencyValidation** (after SecurityScanning, before FixingIssues)
+- Implementation:
+  - Static analysis (Clippy, threading analyzers) detects unsafe patterns
+  - GNN data flow analysis identifies race conditions
+  - Stress test generation validates concurrent code paths
+  - Three-tier auto-fix: Pattern-based → LLM-assisted → Sequential fallback
+- Prevents: Race conditions, deadlocks, data races from parallel execution
+- Guarantee: Code either passes concurrency validation OR falls back to safe sequential execution
+- Performance: <5s validation overhead (only for code using parallelism)
 
 ---
 
@@ -3239,45 +4750,49 @@ Yantra's agentic capabilities are implemented through **four specialized state m
 #### Sequential Flow (Default)
 
 ```
+
 User Intent
-    ↓
+↓
 ┌─────────────────────┐
-│ CodeGen Machine     │ → Generated Code + Confidence Score
+│ CodeGen Machine │ → Generated Code + Confidence Score
 └─────────────────────┘
-    ↓ (auto-trigger)
+↓ (auto-trigger)
 ┌─────────────────────┐
-│ Testing Machine     │ → Test Results + Coverage
+│ Testing Machine │ → Test Results + Coverage
 └─────────────────────┘
-    ↓ (manual approval)
+↓ (manual approval)
 ┌─────────────────────┐
-│ Deployment Machine  │ → Live Railway URL
+│ Deployment Machine │ → Live Railway URL
 └─────────────────────┘
-    ↓ (continuous)
+↓ (continuous)
 ┌─────────────────────┐
 │ Maintenance Machine │ → Self-Healing Loop
 └─────────────────────┘
+
 ```
 
 #### With Failures and Retries
 
 ```
+
 User Intent
-    ↓
+↓
 CodeGen Machine
-    ↓ (SUCCESS)
+↓ (SUCCESS)
 Testing Machine
-    ↓ (FAILED)
+↓ (FAILED)
 Testing Machine (retry with fixes)
-    ↓ (SUCCESS)
+↓ (SUCCESS)
 Deployment Machine (user approves)
-    ↓ (SUCCESS)
+↓ (SUCCESS)
 Maintenance Machine (continuous monitoring)
-    ↓ (ERROR DETECTED)
+↓ (ERROR DETECTED)
 Maintenance Machine (auto-fix)
-    ↓ (trigger CodeGen + Testing)
+↓ (trigger CodeGen + Testing)
 Deployment Machine (auto-deploy fix)
-    ↓ (VERIFIED)
+↓ (VERIFIED)
 Maintenance Machine (back to monitoring)
+
 ```
 
 #### Session Linking
@@ -3296,6 +4811,328 @@ Machines can be triggered independently:
 - **Re-run tests** without regenerating code (Testing machine only)
 - **Re-deploy** without re-running tests (Deployment machine only)
 - **Manual fix** can trigger Testing then Deployment (skip CodeGen)
+
+---
+
+### PDC-to-State-Machine Visual Flow
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PREVENTIVE DEVELOPMENT CYCLE │
+│ (What to Prevent + When to Prevent) │
+└─────────────────────────────────────────────────────────────────────────────┘
+↓
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PDC PHASE 1: ARCHITECT/DESIGN (Prevention: Architecture Violations) │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 1.1 Architecture Alignment → [ArchitectureGeneration State] │
+│ 1.2 Tech Stack Alignment → [DependencyAssessment State] │
+│ 1.3 Existing Code Analysis → [ContextAssembly State] │
+│ 1.4 Feature Extraction → [ContextAssembly State] │
+│ 1.5 Architecture Sign-off → [ArchitectureReview State] ⚠️ APPROVAL GATE │
+│ 1.6 Auto Documentation → [Complete State] → Doc Generation │
+└─────────────────────────────────────────────────────────────────────────────┘
+↓
+┌───────────────────────┐
+│ CODE GENERATION STATE │
+│ MACHINE 1 │
+└───────────────────────┘
+↓
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PDC PHASE 2: PLAN (Prevention: Missing Tasks, Wrong Sequencing, Conflicts) 🆕│
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 2.1 Execution Plan → [TaskDecomposition State] 🆕 │
+│ → [DependencySequencing State] 🆕 │
+│ → [ConflictCheck State] 🆕 │
+│ → [PlanGeneration State] 🆕 │
+│ → [EnvironmentSetup State] │
+│ 2.2 Progress Tracking → [All States] → Real-time status updates │
+│ 2.3 Plan Sign-off → [PlanReview State] ⚠️ OPTIONAL APPROVAL GATE 🆕 │
+│ (triggered for >5 tasks or multi-file changes) │
+└─────────────────────────────────────────────────────────────────────────────┘
+↓
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PDC PHASE 3: EXECUTE (Prevention: Bugs, Conflicts, Security Issues) │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 3.3 Prevent Conflicts → MVP: [CodeGeneration State with Work Visibility]│
+│ • UI shows which developer is working on which files (active indicators) │
+│ • Developers coordinate manually to avoid parallel edits │
+│ → Post-MVP: [FileLockAcquisition State] 🆕 │
+│ • Dependency-aware locks, GNN-based lock acquisition enforced by system │
+│ 3.1 Code Generation + Tests → [CodeGeneration State] │
+│ • Layer 1: Syntax → Tree-sitter validation │
+│ • Layer 2: Types → LSP type checking │
+│ • Layer 3: Patterns → Linter (style, common bugs) │
+│ 3.2 Prevent Bugs → [DependencyValidation State] │
+│ • Layer 4: Logic → Generated with code │
+│ • Layer 5: Integration → To be run in Testing Machine │
+│ • Layer 6: Impact → GNN dependency graph checks │
+│ 3.4 Prevent Security → [SecurityScanning State] │
+│ • Layer 1: Dependencies → Already checked in DependencyAssessment │
+│ • Layer 2: Code Patterns → Semgrep, OWASP rules │
+│ • Layer 3: Secrets → Gitleaks detection │
+│ • Layer 4: Security Tests → Generated with unit tests │
+│ • Layer 5: Static Analysis → Semgrep, Bandit │
+│ 3.3 Prevent Conflicts → Post-MVP: [FileLockRelease State] 🆕 │
+│ • Release all locks on Complete or Failed, prevent resource leaks │
+│ 3.5 Auto Tests → [TestGeneration State] (next machine) │
+│ 3.6 Implementation Docs → [Complete State] → Doc Generation │
+│ 3.7 Feature Sign-off → [Complete State] ⚠️ QUALITY GATE │
+└─────────────────────────────────────────────────────────────────────────────┘
+↓
+┌───────────────────────┐
+│ TESTING STATE │
+│ MACHINE 2 │
+└───────────────────────┘
+↓
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 3.5 Auto Tests (continued) → [Testing Machine States] │
+│ • TestGeneration → LLM generates unit, integration, E2E tests │
+│ • EnvironmentSetup → Isolated test environment │
+│ • UnitTesting → pytest/jest/cargo test (Layer 4 validation) │
+│ • BrowserTesting → Playwright E2E tests (user workflows) │
+│ • IntegrationTesting → API/DB integration tests (Layer 5 validation) │
+│ • CoverageAnalysis → Ensure >80% coverage │
+│ • Complete → All tests pass ✅ │
+└─────────────────────────────────────────────────────────────────────────────┘
+↓
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PDC PHASE 4: DEPLOY (Prevention: Broken Deploys, Environment Mismatches) │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 4.1 Pre-Deploy Validation → [PackageBuilding, ConfigGeneration States] │
+│ • Test suite check → Already passed in Testing Machine │
+│ • Security scan → Already done in CodeGen Machine │
+│ • Config check → Environment variables, secrets validation │
+│ • Migration check → Database migration validation │
+│ • Canary tests → HealthCheck State │
+│ 4.2 Auto Deploy → [RailwayUpload State] │
+│ • Atomic deployment, same process every time │
+│ 4.3 Deploy Sign-off → [Complete State] ⚠️ APPROVAL GATE + AUDIT │
+│ • User approval required (manual trigger for safety) │
+└─────────────────────────────────────────────────────────────────────────────┘
+↓
+┌───────────────────────┐
+│ DEPLOYMENT STATE │
+│ MACHINE 3 │
+└───────────────────────┘
+↓
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PDC PHASE 5: MONITOR/MAINTAIN (Prevention: Outages, Repeated Incidents) │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 5.1 Self-Healing → [Maintenance Machine States] (Post-MVP) │
+│ • LiveMonitoring → Detect issues in real-time (<1s) │
+│ • BrowserValidation → Real User Monitoring (RUM), session replay │
+│ • ErrorAnalysis → Pattern matching, severity classification │
+│ • IssueDetection → Root cause analysis, dependency graph queries │
+│ • AutoFixGeneration → LLM generates fix (10-30s) │
+│ • FixValidation → Run through CodeGen + Testing (2-3min) │
+│ • CICDPipeline → Automated deployment of fix (1-2min) │
+│ • VerificationCheck → Confirm error rate drops │
+│ • LearningUpdate → Update Yantra Codex, add monitoring │
+│ • Active/Incident → Continuous monitoring or active healing │
+│ Result: MTTR < 5 minutes for known patterns │
+└─────────────────────────────────────────────────────────────────────────────┘
+↓
+┌───────────────────────┐
+│ MAINTENANCE STATE │
+│ MACHINE 4 │
+│ (❌ Post-MVP) │
+└───────────────────────┘
+
+````
+
+**Key Symbols:**
+
+- ⚠️ **APPROVAL GATE**: Human-in-loop approval required before proceeding
+- ⚠️ **QUALITY GATE**: Automated checks must pass (no human approval, but blocks progress)
+- ✅ **CHECKPOINT**: State completion milestone
+
+**State Machine Advantages for PDC Execution:**
+
+1. **Granular Prevention**: Each state implements specific PDC checks
+2. **Fail-Fast**: Violations detected immediately at state boundaries
+3. **Rollback Points**: Can rollback to previous state if validation fails
+4. **Audit Trail**: Every PDC check is logged with timestamps
+5. **Parallel Execution**: Multiple PDC phases can run concurrently (future)
+6. **Recovery**: Crash recovery at state boundaries, not mid-check
+
+---
+
+---
+
+### Implementation Guide: PDC in State Machines
+
+#### For Developers Implementing State Machine Logic
+
+**When implementing a new state, ask these PDC questions:**
+
+1. **What does this state prevent?** (PDC principle)
+   - Example: `DependencyValidation` prevents breaking changes to dependent code
+2. **Which PDC phase does this belong to?** (Architecture alignment)
+   - Phases 1-2 → CodeGen Machine
+   - Phase 3 → CodeGen + Testing Machines
+   - Phase 4 → Deployment Machine
+   - Phase 5 → Maintenance Machine
+3. **What validations must pass before state exit?** (Fail-fast principle)
+   - Example: `SecurityScanning` must have zero critical vulnerabilities
+4. **Where are the approval gates?** (Human-in-loop)
+   - Architecture changes → `ArchitectureReview` state (approval required)
+   - Deployment → `Complete` state in Deployment machine (approval required)
+5. **What's the rollback strategy?** (Recovery)
+   - State must save checkpoint data before executing risky operations
+   - State must define rollback logic if validation fails
+
+**State Implementation Template:**
+
+```rust
+// Example: SecurityScanning state in CodeGen machine
+impl State for SecurityScanning {
+    fn enter(&mut self, context: &mut Context) -> Result<()> {
+        // 1. What does this prevent? (PDC 3.4 Prevent Security Issues)
+        context.log("Preventing: SQL injection, XSS, secrets in code, vulnerabilities");
+
+        // 2. Checkpoint before risky operation (rollback support)
+        context.save_checkpoint("before_security_scan")?;
+
+        // 3. Execute preventive checks
+        let semgrep_results = run_semgrep_scan(&context.generated_code)?;
+        let secrets_found = detect_secrets(&context.generated_code)?;
+        let cve_issues = check_dependencies_for_cves(&context.dependencies)?;
+
+        // 4. Fail-fast validation
+        if has_critical_issues(&semgrep_results, &secrets_found, &cve_issues) {
+            context.log_error("Critical security issues found");
+            return Err(StateError::SecurityValidationFailed);
+        }
+
+        // 5. Store results for audit trail
+        context.store_security_results(semgrep_results, secrets_found, cve_issues);
+
+        Ok(())
+    }
+
+    fn exit_condition(&self, context: &Context) -> Option<NextState> {
+        // Proceed to FixingIssues if any issues, or Complete if clean
+        if context.has_security_issues() {
+            Some(NextState::FixingIssues)
+        } else {
+            Some(NextState::Complete)
+        }
+    }
+
+    fn on_failure(&mut self, context: &mut Context, error: StateError) -> Result<NextState> {
+        // Rollback to checkpoint
+        context.rollback_to_checkpoint("before_security_scan")?;
+
+        // Transition to FixingIssues with error context
+        context.store_error(error);
+        Ok(NextState::FixingIssues)
+    }
+}
+````
+
+#### For Developers Adding PDC Checks
+
+**When adding a new preventive check (from PDC document):**
+
+1. **Identify the PDC phase and sub-phase**
+   - Example: PDC 1.2 Tech Stack Alignment → Check incompatible library versions
+2. **Find or create the appropriate state**
+   - If check fits existing state → Add to that state's validation
+   - If check is substantial → Create new state (e.g., `LicenseValidation`)
+3. **Determine tool/protocol (refer to UTI)**
+   - Builtin: Core differentiators, performance-critical
+   - MCP: External services, well-maintained servers
+   - Reference: UTI specification for protocol decisions
+4. **Add performance target**
+   - Define expected execution time (e.g., <10ms, <1s, <30s)
+   - Add to performance targets table in state machine section
+5. **Update reconciliation table**
+   - Add row to "Detailed State-by-State PDC Integration" table above
+   - Document what this check prevents
+
+**Example: Adding "License Conflict Detection" (PDC 1.2)**
+
+```rust
+// Step 1: Identified as PDC Phase 1.2 Tech Stack Alignment
+// Step 2: Fits in DependencyAssessment state
+// Step 3: Builtin (license checker) per UTI specification
+// Step 4: Performance target: <100ms
+
+impl State for DependencyAssessment {
+    fn enter(&mut self, context: &mut Context) -> Result<()> {
+        // Existing checks...
+        let version_compat = check_version_compatibility(...)?;
+        let cve_issues = check_cves(...)?;
+
+        // NEW: License conflict detection (PDC 1.2)
+        let license_conflicts = self.check_license_compatibility(&context.requested_package)?;
+        if !license_conflicts.is_empty() {
+            context.log_warning("License conflicts detected");
+            context.recommend_alternatives(&license_conflicts);
+            return Err(StateError::LicenseConflict(license_conflicts));
+        }
+
+        Ok(())
+    }
+
+    fn check_license_compatibility(&self, package: &Package) -> Vec<LicenseConflict> {
+        // Implementation: Check if package license conflicts with existing licenses
+        // Performance: <100ms
+        // Prevents: Adding GPL package to MIT project, incompatible LGPL usage
+    }
+}
+```
+
+#### For Users Understanding the System
+
+**What happens when I submit a task:**
+
+1. **PDC Phase 1: Architect** → States: ArchitectureGeneration, ArchitectureReview, DependencyAssessment
+   - System validates your request against architecture
+   - Checks if tech stack additions are safe
+   - You approve architecture (if changes needed)
+   - **Prevention**: Wrong patterns, circular dependencies, incompatible libraries
+2. **PDC Phase 2: Plan** → State: EnvironmentSetup
+   - System creates execution plan
+   - Sets up isolated environment
+   - **Prevention**: Missing dependencies, environment issues
+3. **PDC Phase 3: Execute** → States: CodeGeneration, DependencyValidation, BrowserValidation, SecurityScanning, TestGeneration, UnitTesting, BrowserTesting, IntegrationTesting
+   - System generates code with multi-layer validation
+   - Tests generated and executed automatically
+   - **Prevention**: Bugs, breaking changes, security issues, conflicts
+4. **PDC Phase 4: Deploy** → States: PackageBuilding, ConfigGeneration, RailwayUpload, HealthCheck
+   - You approve deployment (manual trigger)
+   - System deploys with health checks
+   - Auto-rollback if issues detected
+   - **Prevention**: Broken deployments, environment mismatches
+5. **PDC Phase 5: Monitor** → States: LiveMonitoring, ErrorAnalysis, AutoFixGeneration, FixValidation, CICDPipeline (Post-MVP)
+   - System monitors production continuously
+   - Auto-fixes issues before you notice
+   - **Prevention**: Prolonged outages, repeated incidents
+
+**Visual Progress**: Three progress bars show state machine progress in real-time
+
+#### Common Questions
+
+**Q: Why are PDC phases split across multiple states?**
+A: Granular states enable fail-fast validation. Example: PDC Phase 3 "Execute" has 12 states to catch issues early (syntax errors in 5ms before attempting type checking).
+
+**Q: Can I skip states?**
+A: No, for safety. All preventive checks must run. However, you can re-trigger individual machines (e.g., re-run tests without regenerating code).
+
+**Q: What happens if a state fails?**
+A: State transitions to `FixingIssues` (CodeGen/Testing) or `RollbackOnFailure` (Deployment). System auto-retries with fixes. If auto-fix fails, human intervention required.
+
+**Q: How do I trace a production error back to code generation?**
+A: Session linking: `maintenance_session.deployment_id` → `deployment_session.test_session_id` → `test_session.codegen_session_id` → `codegen_session.user_intent`
+
+**Q: Where do approval gates exist?**
+A: Two places:
+
+1. **ArchitectureReview** state (if architecture changes proposed)
+2. **Deployment Complete** state (manual trigger for safety)
 
 ---
 
@@ -4770,7 +6607,7 @@ pub fn validate_dependencies(
 
 - Many vulnerabilities have standard fixes
 - SQL injection → Use parameterized queries
-- XSS → Escape user input
+- XSS → Escape user inputv
 - Apply fix + re-scan automatically
 
 **Performance Target:** <10s
@@ -6548,6 +8385,287 @@ export interface InteractionModeStore {
 
 ---
 
+## User Experience & Interface Design (MVP Phase 1)
+
+### Overview
+
+**Design Philosophy:** Minimal UX with AI-first interaction model
+
+Yantra follows a **space-optimized, keyboard-first** user experience design that prioritizes content over controls. The interface is built around the principle that AI (via chat) is the primary interface, not buttons and menus.
+
+**Reference Document:** See `UX.md` (root directory) for complete user experience guide including:
+
+- Design philosophy and rationale
+- Detailed UI component specifications
+- User workflows and interactions
+- Keyboard shortcuts and efficiency features
+- Visual design guidelines
+- Future enhancements roadmap
+
+### Core UX Principles
+
+1. **Space Optimization** - Every pixel counts
+   - Controls take minimal space (40px top bar, inline settings)
+   - Content maximized (chat, editor, terminal take 90%+ screen)
+   - No unnecessary panels or toolbars
+
+2. **Single-Line Layouts** - Inline controls where possible
+   - LLM settings: provider dropdown + API key + status (one line)
+   - Terminal toggle: single button with visual state
+   - No dedicated settings windows unless absolutely necessary
+
+3. **Visual Indicators** - Small, clear, unobtrusive
+   - Status dots (green/red/yellow, 2px)
+   - Pulsing animations for active states
+   - Hover tooltips for detailed info
+
+4. **Auto-Save** - Reduce explicit save actions
+   - LLM settings auto-save on blur
+   - Code auto-saves on edit (debounced)
+   - Terminal history persists across sessions
+
+5. **Keyboard-First** - Power users efficiency
+   - Cmd+` toggle terminal
+   - Cmd+B toggle file tree
+   - All major actions have shortcuts
+
+6. **Progressive Disclosure** - Show details on demand
+   - API settings collapsed by default
+   - Terminal hidden until needed
+   - Dependency graph available but not intrusive
+
+### Main Interface Layout
+
+**3-Panel Design:**
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│  YANTRA          [🚀 Auto Mode]  [Provider ▼] [●] [⚙️]       │ ← 40px Top Bar
+├──────────┬───────────────────────────────┬────────────────────┤
+│          │                               │                    │
+│  File    │         Chat Panel            │    Code Editor     │
+│  Tree    │      (AI Interaction)         │  (Monaco Editor)   │
+│  (256px) │        Primary UX             │   Transparency     │
+│          │                               │                    │
+│  [📁]    │ ┌─────────────────────────┐   │ ┌────────────────┐ │
+│  [📄]    │ │ User: Add login page    │   │ │ // Generated   │ │
+│  [📂]    │ │                         │   │ │ // Code here   │ │
+│          │ │ Agent: I'll create...   │   │ │                │ │
+│          │ │ ✅ Created auth.py      │   │ │ def login():   │ │
+│          │ │ ✅ Added tests          │   │ │   ...          │ │
+│          │ └─────────────────────────┘   │ └────────────────┘ │
+│          │ [Type your request...]  [Send]│                    │
+├──────────┴───────────────────────────────┴────────────────────┤
+│  $ Terminal (Toggle: Cmd+`)                                    │ ← Hidden by default
+│  > npm run dev                                                 │
+│  Server running on http://localhost:3000                       │
+└────────────────────────────────────────────────────────────────┘
+```
+
+### Key UI Components
+
+#### Top Bar (40px Fixed Height)
+
+- **YANTRA** branding (bright white, prominent)
+- **Mode Indicator:** 🚀 Auto | 🧭 Guided (always visible, clickable)
+- **LLM Settings:** Provider dropdown + API key input + status dot (inline, one line)
+- **Settings Icon:** ⚙️ for additional configuration
+
+#### File Tree Panel (Left, 256px default)
+
+- Collapsible/expandable folders
+- File type icons
+- Real-time updates during code generation
+- Drag-to-resize width
+- Toggle visibility: Cmd+B
+
+#### Chat Panel (Center, Primary)
+
+- Primary interaction surface (60% of screen)
+- Conversational AI interface
+- Real-time agent activity indicators
+- Task queue visibility (expandable)
+- Progress indicators for long operations
+- Code snippets with syntax highlighting
+- Copy-to-clipboard buttons
+
+#### Code Editor Panel (Right, 25% of screen)
+
+- Monaco editor integration
+- Syntax highlighting for multiple languages
+- Real-time updates during generation
+- Read-only mode with option to edit
+- Tab management for multiple files
+- Git diff view integration
+
+#### Terminal Panel (Bottom, Hidden by Default)
+
+- Toggle: Cmd+` keyboard shortcut
+- Multiple terminal sessions
+- Output streaming in real-time
+- Command history persistence
+- Background process detection
+- Resize by dragging divider
+
+### New UI Features (November 29, 2025)
+
+#### 1. Dual-Theme System
+
+- **Dark Blue Theme** (default): Professional coding aesthetic
+- **Bright White Theme**: High contrast for accessibility
+- Toggle via top bar button
+- Theme persists across sessions
+
+#### 2. Status Indicator
+
+- Real-time agent activity visualization
+- States: Idle (gray) | Thinking (yellow pulse) | Working (blue pulse) | Success (green) | Error (red)
+- Click to expand task queue
+- Non-intrusive (small dot in top bar)
+
+#### 3. Task Queue Panel
+
+- Expandable panel showing all active tasks
+- Priority levels and dependencies
+- Progress bars for each task
+- Estimated completion times
+- Cancel/pause controls
+
+#### 4. Panel Expansion System
+
+- Any panel can expand to full screen
+- Quick toggle buttons on panel headers
+- Smooth CSS animations (300ms)
+- Keyboard shortcuts for expansion
+
+#### 5. Resizable Panels
+
+- All dividers are draggable
+- Smooth cursor control during drag
+- Minimum/maximum width constraints
+- Double-click divider to reset to default
+- Widths persist across sessions
+
+### Visual Design System
+
+**Colors:**
+
+- Background: `#1a1b26` (dark blue) or `#ffffff` (bright white)
+- Text: `#c0caf5` (light blue) or `#24292e` (dark gray)
+- Accent: `#7aa2f7` (bright blue)
+- Success: `#9ece6a` (green)
+- Error: `#f7768e` (red)
+- Warning: `#e0af68` (yellow)
+
+**Typography:**
+
+- UI Text: Inter, 14px
+- Code: JetBrains Mono, 13px
+- Headings: Inter Semibold
+
+**Spacing:**
+
+- Base unit: 8px
+- Small: 4px
+- Medium: 16px
+- Large: 24px
+
+**Status Indicators:**
+
+- Size: 8px diameter
+- Colors: Green (active/ready), Red (error), Yellow (warning), Gray (idle)
+- Animation: Pulse effect (1.5s duration) for active states
+
+### User Workflows
+
+**Typical User Session:**
+
+1. **Launch Yantra** → File tree loads, chat ready
+2. **Open Project** → Click "Open Folder", select directory
+3. **Wait for Analysis** → Progress indicator (5-30 seconds)
+4. **Chat Interaction** → Type request in chat input
+5. **Agent Works** → Status indicator shows activity
+6. **Review Generated Code** → Code appears in editor panel
+7. **Monitor Progress** → Terminal shows test output (if visible)
+8. **Approve/Iterate** → Continue chat conversation
+
+**Error Handling:**
+
+- **LLM API Errors:** Red message in chat with "Retry" button
+- **File System Errors:** Toast notification with actions
+- **Test Failures:** Red box in chat with "Fix Automatically" button
+- **Validation Errors:** Inline warnings with suggested fixes
+
+**Progress Indicators:**
+
+- **Long Operations:** Spinner + text + time estimate
+- **Background Operations:** Non-blocking with completion toast
+- **Multi-step Tasks:** Progress bar with step indicators
+
+### Keyboard Shortcuts
+
+| Shortcut           | Action                   |
+| ------------------ | ------------------------ |
+| `Cmd/Ctrl + ~`     | Toggle Terminal          |
+| `Cmd/Ctrl + B`     | Toggle File Tree         |
+| `Cmd/Ctrl + ,`     | Open Settings            |
+| `Cmd/Ctrl + K`     | Clear Chat               |
+| `Cmd/Ctrl + Enter` | Send Message             |
+| `Cmd/Ctrl + ←/→`   | Navigate Tabs            |
+| `Cmd/Ctrl + W`     | Close Tab                |
+| `Cmd/Ctrl + F`     | Find in Code             |
+| `Esc`              | Cancel Current Operation |
+
+### Accessibility Features
+
+- High contrast themes
+- Keyboard navigation for all functions
+- Screen reader support
+- Adjustable font sizes
+- Clear focus indicators
+- ARIA labels on all interactive elements
+
+### Performance Targets
+
+- UI interactions: <100ms response time
+- Panel resize: 60fps smooth animation
+- Theme switching: Instant (<50ms)
+- Code rendering: <200ms for files up to 10,000 lines
+- Terminal output: Real-time streaming with no lag
+
+### Implementation Status
+
+- ✅ 3-panel layout with resizable dividers
+- ✅ Top bar with mode indicator
+- ✅ LLM settings inline component
+- ✅ Terminal toggle (Cmd+`)
+- ✅ File tree with drag-to-resize
+- ✅ Chat interface with real-time updates
+- ✅ Monaco editor integration
+- ✅ Dual-theme system
+- ✅ Status indicator with task queue
+- ✅ Panel expansion system
+- ✅ Keyboard shortcuts
+- 🔄 Settings modal (in progress)
+- ⚪ Dependency graph visualization (post-MVP)
+- ⚪ Architecture view (post-MVP)
+
+### Future Enhancements
+
+See `UX.md` for detailed roadmap including:
+
+- Multiple terminal tabs
+- Dependency graph view
+- Workflow automation UI
+- Plugin system UI
+- Collaborative mode indicators
+- Voice commands
+- Advanced code visualization
+
+**For complete UX specifications, design rationale, user flows, and detailed component documentation, refer to `UX.md` in the root directory.**
+
+---
+
 ## Browser Integration with Chrome DevTools Protocol (CDP)
 
 ### Overview
@@ -8161,7 +10279,7 @@ Consultation: Consultant LLM provides insight
     ↓
 Attempt 3: Primary regenerates with consultant's insight
     ↓
-    ✅ Success or ❌ Escalate to human
+    ✅ Success or try again
 ```
 
 **Trigger Logic:**
@@ -9506,7 +11624,7 @@ impl FailureTracker {
 
 ### 4. Automatic Revert After Failed Attempts
 
-**Requirement:** After each failed try, revert to the prior working checkpoint automatically.
+**Requirement:** After 2 failed try, revert to the prior working checkpoint automatically.
 
 **Revert Strategy:**
 
@@ -9627,121 +11745,6 @@ After 3 Failures → Escalate to User:
 │                                                │
 │ Your choice:                                   │
 └────────────────────────────────────────────────┘
-```
-
----
-
-### 5. User Escalation After 3 Failures
-
-**Requirement:** After 3 failed tries, ask user for input.
-
-**Escalation UI:**
-
-```typescript
-// src-ui/components/FailureEscalation.tsx
-
-interface FailureEscalationProps {
-  attempts: FailureAttempt[];
-  lastWorkingCheckpoint: CheckpointSummary;
-  suggestedActions: RecoveryAction[];
-}
-
-export function FailureEscalation(props: FailureEscalationProps) {
-  return (
-    <div class="failure-escalation">
-      <h2>⚠️ Need Your Help</h2>
-
-      <div class="failure-summary">
-        <p>I've attempted {props.attempts.length} times and couldn't succeed.</p>
-
-        <div class="attempts-list">
-          {props.attempts.map((attempt, i) => (
-            <div class="attempt">
-              <span class="attempt-number">Attempt {i + 1}:</span>
-              <span class="error-message">{attempt.error_message}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div class="current-state">
-        <p>✅ Current State: Reverted to last working checkpoint</p>
-        <CheckpointCard checkpoint={props.lastWorkingCheckpoint} />
-      </div>
-
-      <div class="recovery-options">
-        <h3>What would you like me to do?</h3>
-        {props.suggestedActions.map((action) => (
-          <ActionButton action={action} />
-        ))}
-      </div>
-    </div>
-  );
-}
-```
-
----
-
-### 6. LLM Hot-Swapping
-
-**Requirement:** If user has multiple LLM APIs, ask if they want to try with a different LLM.
-
-**Implementation:**
-
-```rust
-// src-tauri/src/llm/hot_swap.rs
-
-pub struct LLMHotSwap {
-    available_llms: Vec<LLMProvider>,
-    current_llm: String,
-    failure_tracker: FailureTracker,
-}
-
-impl LLMHotSwap {
-    /// Suggest LLM switch after failures
-    pub fn suggest_llm_switch(&self) -> Option<LLMProvider> {
-        // If current LLM failed 3 times, suggest alternative
-        if self.failure_tracker.count() >= 3 {
-            self.available_llms.iter()
-                .find(|llm| llm.name != self.current_llm)
-                .cloned()
-        } else {
-            None
-        }
-    }
-
-    /// Switch to different LLM
-    pub async fn switch_llm(&mut self, new_llm: LLMProvider) -> Result<(), String> {
-        self.current_llm = new_llm.name.clone();
-        self.failure_tracker.reset();  // Reset failure count with new LLM
-        Ok(())
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct LLMProvider {
-    pub name: String,              // "Claude", "GPT-4", "Qwen"
-    pub api_key: String,
-    pub capabilities: Vec<String>,  // "code_generation", "reasoning", etc.
-}
-```
-
-**LLM Switch UI:**
-
-```
-Agent: "I've failed 3 times with Claude Sonnet 4.
-
-I noticed you have GPT-4 Turbo configured as well.
-
-Would you like me to try again with GPT-4? It may have
-different strengths for this type of problem.
-
-Options:
-1️⃣  Yes, try GPT-4 Turbo
-2️⃣  No, stick with Claude (get more specific guidance)
-3️⃣  Try Qwen Coder (specialized for code)
-
-Your choice:"
 ```
 
 ---
@@ -9874,7 +11877,7 @@ Search web? (yes/no)"
    - Tests pass
    - Checkpoint becomes "last working"
 
-2. **Single Failure + Auto-Recovery**
+2. **Two Failures + Auto-Recovery**
    - Create checkpoint
    - Make code change
    - Tests fail
@@ -9882,23 +11885,15 @@ Search web? (yes/no)"
    - Retry with fix
    - Tests pass ✅
 
-3. **3 Failures + User Escalation**
+3. **2 Failures + LLM conulting mode**
    - Create checkpoint
    - Attempt 1: Fail → Revert → Retry
    - Attempt 2: Fail → Revert → Retry
-   - Attempt 3: Fail → Revert → Escalate to user
-   - User provides guidance
+   - LLM consulting mode
    - Retry with user input
    - Tests pass ✅
 
-4. **LLM Hot-Swap**
-   - 3 failures with Claude
-   - Suggest GPT-4 switch
-   - User approves
-   - Retry with GPT-4
-   - Tests pass ✅
-
-5. **One-Click Restore from UI**
+4. **One-Click Restore from UI**
    - User clicks "Restore" on checkpoint
    - System reverts all files instantly
    - GNN state restored
@@ -12031,14 +14026,14 @@ critical_files = [
 
 **Target Performance:**
 
-| Metric                 | Single Agent | 3 Agents      | 10 Agents      |
-| ---------------------- | ------------ | ------------- | -------------- | --- |
-| **Codebase Size**      | 10k LOC      | 50k LOC       | 100k+ LOC      |
-| **Concurrent Tasks**   | 1            | 3             | 10             |
-| **Context Build Time** | <500ms       | <800ms        | <1.5s          |
-| **Conflict Detection** | N/A          | <10ms         | <20ms          |
-| **Commit Frequency**   | Every task   | Every 3 tasks | Every 10 tasks |
-| **Cost per Feature**   | $0.20        | $0.25         | $0.35          |     |
+| Metric                 | Single Agent | 3 Agents      | 10 Agents      |     |     |     |     |
+| ---------------------- | ------------ | ------------- | -------------- | --- | --- | --- | --- | --- |
+| **Codebase Size**      | 10k LOC      | 50k LOC       | 100k+ LOC      |     |     |     |     |
+| **Concurrent Tasks**   | 1            | 3             | 10             |     |     |     |     |
+| **Context Build Time** | <500ms       | <800ms        | <1.5s          |     |     |     |     |
+| **Conflict Detection** | N/A          | <10ms         | <20ms          |     |     |     |     |
+| **Commit Frequency**   | Every task   | Every 3 tasks | Every 10 tasks |     |     |     |     |
+| **Cost per Feature**   | $0.20        | $0.25         | $0.35          |     |     |     |     |     |
 
 **Optimization Strategies:**
 
@@ -14914,14 +16909,35 @@ Agent: [Begins implementation, adds to Changes tab in real-time]
 
 #### Documentation Panels Requirements
 
+**Overview:**
+
+The Documentation Panels provide real-time visibility into project features, decisions, changes, and plans. All four tabs support multi-user synchronization, automatic extraction from multiple sources, and intelligent Agent management.
+
+**4 Tabs:**
+
+- 📋 **Features** - What you're building (auto-extracted from docs, chat, code, external tools)
+- 💡 **Decisions** - Why you chose specific approaches (approval audit trail)
+- 📝 **Changes** - What files were modified (complete audit trail)
+- 🎯 **Plan** - Tasks organized by milestones (persistent project plan)
+
+**Multi-User Synchronization (ALL 4 TABS):**
+
+When multiple users work on the same project:
+
+- All users see the same view in real-time
+- Updates synchronize instantly across all connected clients
+- WebSocket-based real-time updates
+- Conflict-free replicated data types (CRDTs) for eventual consistency
+- Optimistic UI updates with server confirmation
+
 **Search Functionality (ALL 4 TABS):**
 
 - Real-time filtering as user types
 - Search scope:
-  - **Features:** Title + description
-  - **Decisions:** Context + decision + rationale
+  - **Features:** Title + description + source attribution
+  - **Decisions:** Context + decision + rationale + alternatives
   - **Changes:** Description + file names
-  - **Plan:** Task titles
+  - **Plan:** Task titles + dependencies + milestone names
 - Performance target: <10ms for 100 items, <50ms for 1000 items
 - Empty state message when no results: "No [X] found matching '[query]'"
 - Clear search on tab switch (UX consistency)
@@ -14939,14 +16955,304 @@ Icon: 🔍 emoji prefix (no SVG overhead)
 
 **Natural Language Explanations:**
 
-Each tab MUST include a brief explanation of where data comes from:
+Each tab MUST include a brief explanation of where data comes from and key features:
 
-- **Features:** "Features are automatically extracted from your chat conversations. As you describe what you want to build, Yantra identifies and tracks features, updating their status as implementation progresses."
-- **Decisions:** "Critical technical decisions are logged here with full context. Each decision includes why it was made, what alternatives were considered, and the rationale behind the choice."
-- **Changes:** "Complete audit trail of all code changes. Track what files were added, modified, or deleted, along with timestamps and descriptions."
-- **Plan:** "Your project plan with tasks organized by milestones. Dependencies are tracked automatically, and tasks requiring your input are highlighted."
+- **Features:** "Features are automatically extracted from your documentation, chat conversations, and code files. Agent monitors external tools like Notion for feature updates. Status updates in real-time as implementation progresses, with accurate completion tracking. All team members see the same synchronized view."
 
-**Purpose:** Reduce user confusion, set expectations for automation, explain empty states.
+- **Decisions:** "Critical technical decisions are logged here with full context to serve as an approval audit trail. Each decision includes why it was made, what alternatives were considered, and the rationale behind the choice. Timestamps show when Agent proposed and when user approved. All team members see the same synchronized view."
+
+- **Changes:** "Complete audit trail of all code changes. Track what files were added, modified, or deleted, along with timestamps and descriptions. All team members see the same synchronized view."
+
+- **Plan:** "Your project plan with tasks organized by milestones. Agent confirms milestones and prioritization before starting work. Dependencies are tracked automatically, and tasks requiring your input are highlighted. The plan persists across sessions and all team members see the same synchronized view."
+
+**Purpose:** Reduce user confusion, set expectations for automation and multi-user sync, explain empty states, clarify Agent's role.
+
+---
+
+#### Features Tab - Detailed Requirements
+
+**Purpose:** Automatically extract and track features from multiple sources with accurate completion tracking.
+
+**Feature Extraction Sources:**
+
+1. **Documentation Files (MVP):**
+   - Markdown files (README.md, docs/\*.md)
+   - Project documentation
+   - Technical specifications
+   - Parser: CommonMark/GFM with heading detection
+2. **Chat Conversations (MVP):**
+   - User requests: "Add user authentication"
+   - Natural language requirements
+   - Feature discussions
+   - NLP: LLM-based intent extraction
+3. **Code Files (MVP):**
+   - Existing implementations
+   - Code comments and docstrings
+   - Function/class definitions
+   - Parser: Tree-sitter with semantic analysis
+
+4. **External Tools:**
+   - **Notion (MVP):** Extract features from Notion pages via Notion API
+   - **Confluence (Post-MVP):** Extract features from Confluence spaces
+   - **Linear (Post-MVP):** Import issues and feature requests
+
+**Completion Tracking (Accurate & Automated):**
+
+Agent tracks feature completion by monitoring:
+
+- **Code generation:** Files created/modified
+- **Test pass rates:** Unit/integration tests passing
+- **Integration status:** Dependencies satisfied
+- **Deployment status:** Code deployed to target environment
+
+Features automatically move through status:
+
+- ⏳ **Planned** (0% complete) → 🔄 **In Progress** (1-99% complete) → ✅ **Done** (100% complete)
+
+**Completion Calculation:**
+
+```rust
+pub fn calculate_feature_completion(feature: &Feature, gnn: &GNNEngine) -> f32 {
+    let total_tasks = feature.required_files.len() + feature.required_tests.len();
+    let completed_files = feature.required_files.iter()
+        .filter(|f| gnn.file_exists(f) && gnn.file_has_no_errors(f))
+        .count();
+    let completed_tests = feature.required_tests.iter()
+        .filter(|t| gnn.test_exists(t) && gnn.test_passes(t))
+        .count();
+
+    ((completed_files + completed_tests) as f32 / total_tasks as f32) * 100.0
+}
+```
+
+**Data Model:**
+
+```rust
+pub struct Feature {
+    pub id: Uuid,
+    pub title: String,
+    pub description: String,
+    pub source: FeatureSource, // Chat | Docs | Code | Notion | Confluence | Linear
+    pub status: FeatureStatus,  // Planned | InProgress | Done
+    pub completion_percentage: f32,
+    pub required_files: Vec<PathBuf>,
+    pub required_tests: Vec<String>,
+    pub dependencies: Vec<Uuid>, // Other feature IDs
+    pub extracted_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+pub enum FeatureSource {
+    Chat { message_id: String },
+    Docs { file_path: PathBuf, line_number: usize },
+    Code { file_path: PathBuf, function_name: String },
+    Notion { page_id: String, workspace_id: String },
+    Confluence { page_id: String, space_key: String },
+    Linear { issue_id: String, team_id: String },
+}
+```
+
+**UI Display:**
+
+```
+┌─────────────────────────────────────────────┐
+│ 📋 Add User Authentication        ✅ Done   │
+│ JWT tokens with bcrypt password hash        │
+│ Extracted from: Chat conversation           │
+│ Completion: 100% (Tests passing)            │
+│ Files: auth.py, test_auth.py (2/2)          │
+└─────────────────────────────────────────────┘
+```
+
+---
+
+#### Decisions Tab - Detailed Requirements
+
+**Purpose:** Document all project decisions with full context to serve as an approval audit trail.
+
+**Decision Sources:**
+
+- Chat conversations with user
+- Technical choices made during implementation
+- Architecture decisions
+- Technology selections (database, framework, libraries)
+- Design pattern choices
+- Trade-offs and alternatives considered
+
+**MVP: Approval Audit View**
+
+For MVP, the Decisions tab serves as the **Approver Audit View**:
+
+- All critical decisions logged with timestamps
+- Full context showing why decision was made
+- User approval/confirmation captured
+- Alternatives considered documented
+- Complete audit trail for compliance/governance
+
+**Decision Logging Workflow:**
+
+1. Agent encounters decision point during implementation
+2. Agent analyzes options using LLM + GNN context
+3. Agent proposes recommendation with full context
+4. Decision logged in Decisions tab (status: ⏳ Pending Approval)
+5. User reviews in chat and approves/modifies
+6. Approval captured with timestamp (status: ✅ Approved)
+7. All team members see updated decision instantly via WebSocket
+
+**Data Model:**
+
+```rust
+pub struct Decision {
+    pub id: Uuid,
+    pub title: String,
+    pub context: String,           // Why decision needed
+    pub decision: String,          // What was chosen
+    pub alternatives: Vec<Alternative>, // Options considered
+    pub rationale: String,         // Why this choice
+    pub proposed_at: DateTime<Utc>,
+    pub proposed_by: Actor,        // Agent | User
+    pub approved_at: Option<DateTime<Utc>>,
+    pub approved_by: Option<String>, // User ID
+    pub status: DecisionStatus,    // Pending | Approved | Rejected
+    pub impact: ImpactLevel,       // Low | Medium | High | Critical
+}
+
+pub struct Alternative {
+    pub name: String,
+    pub pros: Vec<String>,
+    pub cons: Vec<String>,
+    pub reason_rejected: String,
+}
+```
+
+**UI Display:**
+
+```
+┌─────────────────────────────────────────────┐
+│ Use PostgreSQL over MySQL                   │
+│ 👤 User Approved ✅                          │
+│                                             │
+│ Context:                                    │
+│ Need JSONB support for flexible schema      │
+│                                             │
+│ Decision:                                   │
+│ PostgreSQL 14+ with JSONB columns           │
+│                                             │
+│ Alternatives Considered:                    │
+│ • MySQL 8.0 - Limited JSON support          │
+│ • MongoDB - No ACID guarantees              │
+│                                             │
+│ Rationale:                                  │
+│ Better JSON performance, native support,    │
+│ full ACID compliance for critical data      │
+│                                             │
+│ Nov 28, 2025 10:30 AM - Agent proposed     │
+│ Nov 28, 2025 10:32 AM - User approved      │
+└─────────────────────────────────────────────┘
+```
+
+---
+
+#### Plan Tab - Detailed Requirements
+
+**Purpose:** Create and maintain a persistent project-level plan that Agent methodically executes and tracks.
+
+**Plan Creation Process:**
+
+1. Agent analyzes requirements from chat/docs/code
+2. Agent breaks down into tasks with dependencies
+3. Agent organizes tasks by milestones
+4. **Agent proposes plan to user for confirmation**
+5. **User confirms/modifies milestones and prioritization**
+6. Agent begins execution only after user approval
+
+**Plan Persistence:**
+
+- **Project-level plan** stored in SQLite database
+- Plan survives application restarts
+- Task status preserved and updated continuously
+- Historical task data maintained for audit trail
+- Milestone completion tracked over time
+
+**Sub-Task Tracking:**
+
+Agent can dynamically add sub-tasks to track:
+
+- Implementation steps (e.g., "Create database schema")
+- Testing requirements (e.g., "Write unit tests for auth")
+- Code review checkpoints (e.g., "Review security implementation")
+- Deployment stages (e.g., "Deploy to staging")
+- Documentation updates (e.g., "Update API docs")
+
+**Data Model:**
+
+```rust
+pub struct Plan {
+    pub id: Uuid,
+    pub project_id: Uuid,
+    pub milestones: Vec<Milestone>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+pub struct Milestone {
+    pub id: Uuid,
+    pub name: String,
+    pub priority: Priority,        // High | Medium | Low
+    pub tasks: Vec<Task>,
+    pub depends_on: Vec<Uuid>,     // Other milestone IDs
+    pub status: MilestoneStatus,   // NotStarted | InProgress | Complete
+    pub completion_percentage: f32,
+}
+
+pub struct Task {
+    pub id: Uuid,
+    pub title: String,
+    pub status: TaskStatus,        // Pending | InProgress | Complete | Blocked
+    pub depends_on: Vec<Uuid>,     // Other task IDs
+    pub sub_tasks: Vec<SubTask>,
+    pub requires_user_action: bool,
+    pub user_action_prompt: Option<String>,
+    pub blocker_reason: Option<String>,
+    pub started_at: Option<DateTime<Utc>>,
+    pub completed_at: Option<DateTime<Utc>>,
+}
+
+pub struct SubTask {
+    pub id: Uuid,
+    pub title: String,
+    pub status: TaskStatus,
+}
+```
+
+**UI Display:**
+
+```
+┌─────────────────────────────────────────────┐
+│ 🎯 MVP Milestone (Priority: High)           │
+│ Status: 2/5 tasks complete (40%)            │
+│                                             │
+│ ┌─────────────────────────────────────────┐ │
+│ │ 🔄 Implement User Authentication    🔄  │ │
+│ │ In Progress: Started Nov 28, 11:00 AM   │ │
+│ │ Depends on: Database layer              │ │
+│ │ Sub-tasks:                              │ │
+│ │   ✅ JWT token generation               │ │
+│ │   🔄 Password hashing (in progress)     │ │
+│ │   ⏳ Login endpoint (pending)           │ │
+│ │   ⏳ Registration endpoint (pending)    │ │
+│ └─────────────────────────────────────────┘ │
+│                                             │
+│ ┌─────────────────────────────────────────┐ │
+│ │ ⏳ Add File Upload Functionality    ⏳  │ │
+│ │ Depends on: Auth, S3 bucket setup       │ │
+│ │ [👤 User Action Required - Click]      │ │
+│ │ Action: Confirm S3 bucket configuration │ │
+│ └─────────────────────────────────────────┘ │
+└─────────────────────────────────────────────┘
+```
+
+---
 
 **Spacing Requirements (Minimal UI):**
 
@@ -14968,6 +17274,16 @@ Font sizes:             14px/12px → 12px/11px  14-17%
 - Plan task titles: `break-words` class (prevents horizontal overflow)
 - File paths: `truncate` with ellipsis for paths > 40 characters
 - Dependencies: `truncate` when > 3 dependencies, show "+N more" indicator
+
+**Implementation Files:**
+
+- `src-tauri/src/documentation_panels/features_extractor.rs` (NEW, ~400 lines)
+- `src-tauri/src/documentation_panels/decisions_logger.rs` (NEW, ~300 lines)
+- `src-tauri/src/documentation_panels/plan_manager.rs` (NEW, ~500 lines)
+- `src-tauri/src/documentation_panels/changes_tracker.rs` (EXISTS, enhance)
+- `src-ui/components/DocumentationPanels.tsx` (EXISTS, enhance with multi-user sync)
+
+---
 
 #### Chat Panel Requirements
 
