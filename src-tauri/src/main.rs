@@ -61,6 +61,20 @@ fn write_file(path: String, content: String) -> Result<FileOperationResult, Stri
         .map_err(|e| format!("Failed to write file: {}", e))
 }
 
+/// Edit file with surgical precision
+#[tauri::command]
+fn edit_file(request: agent::file_editor::FileEditRequest) -> Result<agent::file_editor::FileEditResult, String> {
+    let editor = agent::file_editor::FileEditor::new(false);
+    editor.apply_edit(request)
+}
+
+/// Preview file edit without applying (dry run)
+#[tauri::command]
+fn preview_file_edit(request: agent::file_editor::FileEditRequest) -> Result<agent::file_editor::FileEditResult, String> {
+    let editor = agent::file_editor::FileEditor::new(true);
+    editor.apply_edit(request)
+}
+
 /// List directory contents
 #[tauri::command]
 fn read_dir(path: String) -> Result<Vec<FileEntry>, String> {
@@ -1241,6 +1255,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             read_file,
             write_file,
+            edit_file,
+            preview_file_edit,
             read_dir,
             path_exists,
             get_file_info,

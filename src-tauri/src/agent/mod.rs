@@ -45,6 +45,7 @@ pub mod monitoring;
 pub mod task_queue;
 pub mod database;
 pub mod http_client;
+pub mod file_editor;
 
 // Re-export key types (many not yet used but part of public API)
 #[allow(unused_imports)]
