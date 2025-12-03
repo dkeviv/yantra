@@ -1,7 +1,7 @@
 // Architecture View System - Main Module
 // Purpose: Coordinate architecture storage, types, and operations
 // Created: November 27, 2025
-// Updated: November 28, 2025 - Added generator and analyzer modules
+// Updated: December 3, 2025 - Added refactoring safety analyzer
 
 pub mod types;
 pub mod storage;
@@ -9,6 +9,7 @@ pub mod commands;
 pub mod deviation_detector;
 pub mod generator;
 pub mod analyzer;
+pub mod refactoring;
 
 pub use types::*;
 pub use storage::ArchitectureStorage;
@@ -18,6 +19,10 @@ pub use deviation_detector::{
     ImpactAnalysis, RiskLevel, ChangeScope
 };
 pub use generator::ArchitectureGenerator;
+pub use refactoring::{
+    RefactoringSafetyAnalyzer, RefactoringChange, BreakingChangeAnalysis,
+    ChangeType, DependencyImpact, RiskLevel as RefactoringRiskLevel
+};
 pub use analyzer::ArchitectureAnalyzer;
 
 use std::path::PathBuf;
