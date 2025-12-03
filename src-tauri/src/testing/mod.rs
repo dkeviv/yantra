@@ -6,12 +6,18 @@ pub mod generator;
 pub mod runner;
 pub mod executor;
 pub mod retry;
+pub mod executor_js;
+pub mod generator_js;
 
 // Re-export key types from executor (for GraphSAGE learning loop)
 pub use executor::{PytestExecutor, TestExecutionResult, TestFailureInfo};
 
 // Re-export key types from retry (for autonomous retry logic)
 pub use retry::{RetryExecutor, RetryResult, RetryStrategy};
+
+// Re-export JavaScript/TypeScript testing types
+pub use executor_js::{JestExecutor, JestExecutionResult, JestFailureInfo};
+pub use generator_js::{JestGenerator, JestGeneratorConfig};
 
 // Re-export key types from runner (legacy test runner)
 #[allow(unused_imports)]
