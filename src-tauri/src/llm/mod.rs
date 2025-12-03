@@ -1,7 +1,7 @@
 // File: src-tauri/src/llm/mod.rs
 // Purpose: Multi-LLM orchestration module for code generation
 // Dependencies: reqwest, tokio, serde
-// Last Updated: November 29, 2025
+// Last Updated: December 3, 2025
 
 pub mod claude;
 pub mod openai;
@@ -11,9 +11,16 @@ pub mod gemini;
 pub mod orchestrator;
 pub mod prompts;
 pub mod context;
+pub mod context_depth;
 pub mod config;
 pub mod tokens;
 pub mod models;
+
+// Re-export 4-level context types
+pub use context_depth::{
+    assemble_4_level_context, FourLevelContext, ContextItem as DepthContextItem,
+    ContextConfig, ContextStats,
+};
 
 use serde::{Deserialize, Serialize};
 
