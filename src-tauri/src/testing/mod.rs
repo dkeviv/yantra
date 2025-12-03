@@ -1,13 +1,17 @@
 // File: src-tauri/src/testing/mod.rs
 // Purpose: Testing module for test generation and execution
-// Last Updated: November 25, 2025
+// Last Updated: December 3, 2025
 
 pub mod generator;
 pub mod runner;
 pub mod executor;
+pub mod retry;
 
 // Re-export key types from executor (for GraphSAGE learning loop)
 pub use executor::{PytestExecutor, TestExecutionResult, TestFailureInfo};
+
+// Re-export key types from retry (for autonomous retry logic)
+pub use retry::{RetryExecutor, RetryResult, RetryStrategy};
 
 // Re-export key types from runner (legacy test runner)
 #[allow(unused_imports)]
