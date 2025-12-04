@@ -867,6 +867,138 @@ fn db_migrate_down(migrations_dir: String, version: u32) -> Result<agent::databa
     executor.migrate_down(version)
 }
 
+// API Health & Rate Limit commands
+
+/// Check API health
+#[tauri::command]
+async fn api_health_check(endpoint: String) -> Result<agent::api_health::HealthCheckResult, String> {
+    let mut monitor = agent::api_health::HealthMonitor::new();
+    Ok(monitor.check_health(&endpoint).await)
+}
+
+/// Get API uptime
+#[tauri::command]
+fn api_get_uptime(
+    endpoint: String,
+) -> Result<f32, String> {
+    // TODO: Integrate with global HealthMonitor state
+    Ok(0.0)
+}
+
+/// Record API request for rate limiting
+#[tauri::command]
+fn api_record_request(endpoint: String) -> Result<(), String> {
+    // TODO: Integrate with global RateLimitTracker state
+    Ok(())
+}
+
+/// Get rate limit info
+#[tauri::command]
+fn api_get_rate_limit(endpoint: String) -> Result<Option<agent::api_health::RateLimitInfo>, String> {
+    // TODO: Integrate with global RateLimitTracker state
+    Ok(None)
+}
+
+// Environment Snapshot & Validation commands
+
+/// Create environment snapshot
+#[tauri::command]
+fn env_create_snapshot(project_path: String) -> Result<agent::environment::EnvironmentSnapshot, String> {
+    use agent::environment::SnapshotManager;
+    use std::path::Path;
+    
+    let path = Path::new(&project_path);
+    let manager = SnapshotManager::new(path);
+    manager.create_snapshot(path)
+}
+
+/// Rollback to snapshot
+#[tauri::command]
+fn env_rollback(project_path: String) -> Result<(), String> {
+    use agent::environment::SnapshotManager;
+    use std::path::Path;
+    
+    let path = Path::new(&project_path);
+    let manager = SnapshotManager::new(path);
+    let snapshot = manager.load_latest_snapshot()?;
+    manager.rollback(&snapshot, path)
+}
+
+/// Validate environment
+#[tauri::command]
+fn env_validate(project_path: String) -> Result<agent::environment::ValidationResult, String> {
+    use agent::environment::EnvironmentValidator;
+    use std::path::Path;
+    
+    Ok(EnvironmentValidator::validate(Path::new(&project_path)))
+}
+
+/// Set secret
+#[tauri::command]
+fn secrets_set(key: String, value: String, description: Option<String>) -> Result<(), String> {
+    use agent::secrets::SecretsManager;
+    use std::path::PathBuf;
+    
+    // TODO: Get vault path and encryption key from config
+    let vault_path = PathBuf::from(".yantra/secrets.json");
+    let encryption_key: [u8; 32] = [0u8; 32]; // TODO: Generate/load proper key
+    
+    let manager = SecretsManager::new(vault_path, &encryption_key);
+    manager.set_secret(&key, &value, description)
+}
+
+/// Get secret
+#[tauri::command]
+fn secrets_get(key: String) -> Result<String, String> {
+    use agent::secrets::SecretsManager;
+    use std::path::PathBuf;
+    
+    let vault_path = PathBuf::from(".yantra/secrets.json");
+    let encryption_key: [u8; 32] = [0u8; 32]; // TODO: Generate/load proper key
+    
+    let manager = SecretsManager::new(vault_path, &encryption_key);
+    manager.get_secret(&key)
+}
+
+/// Delete secret
+#[tauri::command]
+fn secrets_delete(key: String) -> Result<(), String> {
+    use agent::secrets::SecretsManager;
+    use std::path::PathBuf;
+    
+    let vault_path = PathBuf::from(".yantra/secrets.json");
+    let encryption_key: [u8; 32] = [0u8; 32]; // TODO: Generate/load proper key
+    
+    let manager = SecretsManager::new(vault_path, &encryption_key);
+    manager.delete_secret(&key)
+}
+
+/// List all secret keys
+#[tauri::command]
+fn secrets_list() -> Result<Vec<String>, String> {
+    use agent::secrets::SecretsManager;
+    use std::path::PathBuf;
+    
+    let vault_path = PathBuf::from(".yantra/secrets.json");
+    let encryption_key: [u8; 32] = [0u8; 32]; // TODO: Generate/load proper key
+    
+    let manager = SecretsManager::new(vault_path, &encryption_key);
+    manager.list_secrets()
+}
+
+/// Get secret metadata
+#[tauri::command]
+fn secrets_metadata(key: String) -> Result<agent::secrets::SecretMetadata, String> {
+    use agent::secrets::SecretsManager;
+    use std::path::PathBuf;
+    
+    let vault_path = PathBuf::from(".yantra/secrets.json");
+    let encryption_key: [u8; 32] = [0u8; 32]; // TODO: Generate/load proper key
+    
+    let manager = SecretsManager::new(vault_path, &encryption_key);
+    manager.get_metadata(&key)
+}
+
 // Add Decision command (continuing from documentation)
 
 /// Add a new decision
@@ -1778,6 +1910,21 @@ fn main() {
             db_get_migrations,
             db_migrate_up,
             db_migrate_down,
+            // API health & rate limits
+            api_health_check,
+            api_get_uptime,
+            api_record_request,
+            api_get_rate_limit,
+            // Environment snapshot & validation
+            env_create_snapshot,
+            env_rollback,
+            env_validate,
+            // Secrets management
+            secrets_set,
+            secrets_get,
+            secrets_delete,
+            secrets_list,
+            secrets_metadata,
             // Browser automation commands
             browser_launch,
             browser_navigate,
