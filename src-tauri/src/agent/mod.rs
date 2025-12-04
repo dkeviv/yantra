@@ -56,6 +56,9 @@ pub mod intelligent_executor;
 pub mod api_health;
 pub mod environment;
 pub mod secrets;
+pub mod document_readers;
+pub mod affected_tests;
+pub mod multi_project;
 
 // Re-export key types (many not yet used but part of public API)
 #[allow(unused_imports)]

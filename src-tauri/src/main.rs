@@ -999,6 +999,100 @@ fn secrets_metadata(key: String) -> Result<agent::secrets::SecretMetadata, Strin
     manager.get_metadata(&key)
 }
 
+/// Read DOCX file
+#[tauri::command]
+fn read_docx(file_path: String) -> Result<agent::document_readers::DocumentContent, String> {
+    use agent::document_readers::DocxReader;
+    use std::path::Path;
+    
+    DocxReader::read(Path::new(&file_path))
+}
+
+/// Read PDF file
+#[tauri::command]
+fn read_pdf(file_path: String) -> Result<agent::document_readers::DocumentContent, String> {
+    use agent::document_readers::PdfReader;
+    use std::path::Path;
+    
+    PdfReader::read(Path::new(&file_path))
+}
+
+/// Find affected tests
+#[tauri::command]
+fn find_affected_tests(
+    changed_files: Vec<String>,
+    strategy: String,
+) -> Result<agent::affected_tests::TestImpactAnalysis, String> {
+    use agent::affected_tests::{AffectedTestsRunner, FilterStrategy};
+    use crate::gnn::GraphNeuralNetwork;
+    use std::path::PathBuf;
+    
+    // TODO: Get GNN from global state
+    let gnn = GraphNeuralNetwork::new("project".to_string());
+    let runner = AffectedTestsRunner::new(gnn, String::new());
+    
+    let paths: Vec<PathBuf> = changed_files.iter().map(PathBuf::from).collect();
+    let filter_strategy = match strategy.as_str() {
+        "direct" => FilterStrategy::Direct,
+        "transitive" => FilterStrategy::Transitive,
+        _ => FilterStrategy::Full,
+    };
+    
+    runner.find_affected_tests(&paths, filter_strategy)
+}
+
+/// Register project
+#[tauri::command]
+fn register_project(
+    project_id: String,
+    project_path: String,
+    language: String,
+) -> Result<agent::multi_project::ProjectConfig, String> {
+    use agent::multi_project::MultiProjectManager;
+    use std::path::PathBuf;
+    
+    let projects_dir = PathBuf::from(".yantra/projects");
+    let manager = MultiProjectManager::new(projects_dir);
+    
+    manager.register_project(&project_id, PathBuf::from(project_path), &language)
+}
+
+/// List all projects
+#[tauri::command]
+fn list_projects() -> Result<Vec<agent::multi_project::ProjectConfig>, String> {
+    use agent::multi_project::MultiProjectManager;
+    use std::path::PathBuf;
+    
+    let projects_dir = PathBuf::from(".yantra/projects");
+    let manager = MultiProjectManager::new(projects_dir);
+    
+    manager.list_projects()
+}
+
+/// Activate project
+#[tauri::command]
+fn activate_project(project_id: String) -> Result<agent::multi_project::ProjectEnvironment, String> {
+    use agent::multi_project::MultiProjectManager;
+    use std::path::PathBuf;
+    
+    let projects_dir = PathBuf::from(".yantra/projects");
+    let manager = MultiProjectManager::new(projects_dir);
+    
+    manager.activate_project(&project_id)
+}
+
+/// Check project conflicts
+#[tauri::command]
+fn check_project_conflicts(project1: String, project2: String) -> Result<Vec<String>, String> {
+    use agent::multi_project::MultiProjectManager;
+    use std::path::PathBuf;
+    
+    let projects_dir = PathBuf::from(".yantra/projects");
+    let manager = MultiProjectManager::new(projects_dir);
+    
+    manager.check_conflicts(&project1, &project2)
+}
+
 // Add Decision command (continuing from documentation)
 
 /// Add a new decision
@@ -1925,6 +2019,16 @@ fn main() {
             secrets_delete,
             secrets_list,
             secrets_metadata,
+            // Document readers
+            read_docx,
+            read_pdf,
+            // Affected tests
+            find_affected_tests,
+            // Multi-project isolation
+            register_project,
+            list_projects,
+            activate_project,
+            check_project_conflicts,
             // Browser automation commands
             browser_launch,
             browser_navigate,
