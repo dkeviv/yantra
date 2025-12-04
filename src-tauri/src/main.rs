@@ -592,6 +592,83 @@ fn file_search(request: agent::file_ops::FileSearchRequest) -> Result<Vec<agent:
     agent::file_ops::search_files(request)
 }
 
+// Command classification
+
+/// Classify a command for execution strategy
+#[tauri::command]
+fn classify_command(command: String) -> agent::command_classifier::CommandClassification {
+    agent::command_classifier::CommandClassifier::classify(&command)
+}
+
+// Status tracking commands
+
+/// Register a new task for progress tracking
+#[tauri::command]
+async fn status_register_task(
+    status_emitter: tauri::State<'_, Arc<tokio::sync::Mutex<agent::status_emitter::StatusEmitter>>>,
+    task_id: String,
+    task_name: String,
+) -> Result<(), String> {
+    let emitter = status_emitter.lock().await;
+    emitter.register_task(task_id, task_name).await;
+    Ok(())
+}
+
+/// Update task progress
+#[tauri::command]
+async fn status_update_progress(
+    status_emitter: tauri::State<'_, Arc<tokio::sync::Mutex<agent::status_emitter::StatusEmitter>>>,
+    task_id: String,
+    progress_percent: f64,
+    current_step: Option<String>,
+) -> Result<(), String> {
+    let emitter = status_emitter.lock().await;
+    emitter.update_progress(&task_id, progress_percent, current_step).await;
+    Ok(())
+}
+
+/// Get task progress
+#[tauri::command]
+async fn status_get_progress(
+    status_emitter: tauri::State<'_, Arc<tokio::sync::Mutex<agent::status_emitter::StatusEmitter>>>,
+    task_id: String,
+) -> Result<Option<agent::status_emitter::TaskProgress>, String> {
+    let emitter = status_emitter.lock().await;
+    Ok(emitter.get_task_progress(&task_id).await)
+}
+
+/// Get all tasks
+#[tauri::command]
+async fn status_get_all_tasks(
+    status_emitter: tauri::State<'_, Arc<tokio::sync::Mutex<agent::status_emitter::StatusEmitter>>>,
+) -> Result<Vec<agent::status_emitter::TaskProgress>, String> {
+    let emitter = status_emitter.lock().await;
+    Ok(emitter.get_all_tasks().await)
+}
+
+/// Complete a task
+#[tauri::command]
+async fn status_complete_task(
+    status_emitter: tauri::State<'_, Arc<tokio::sync::Mutex<agent::status_emitter::StatusEmitter>>>,
+    task_id: String,
+) -> Result<(), String> {
+    let emitter = status_emitter.lock().await;
+    emitter.complete_task(&task_id).await;
+    Ok(())
+}
+
+/// Fail a task
+#[tauri::command]
+async fn status_fail_task(
+    status_emitter: tauri::State<'_, Arc<tokio::sync::Mutex<agent::status_emitter::StatusEmitter>>>,
+    task_id: String,
+    error_message: String,
+) -> Result<(), String> {
+    let emitter = status_emitter.lock().await;
+    emitter.fail_task(&task_id, error_message).await;
+    Ok(())
+}
+
 // Add Decision command (continuing from documentation)
 
 /// Add a new decision
@@ -1423,12 +1500,16 @@ fn main() {
     let db_manager = Arc::new(tokio::sync::Mutex::new(
         agent::database::DatabaseManager::new().expect("Failed to initialize database manager")
     ));
+    
+    // Initialize status emitter
+    let status_emitter = Arc::new(tokio::sync::Mutex::new(agent::status_emitter::StatusEmitter::new()));
 
     tauri::Builder::default()
         .menu(menu)
         .manage(terminal_manager)
         .manage(arch_state)
         .manage(db_manager)
+        .manage(status_emitter)
         .on_menu_event(|event| {
             handle_menu_event(event);
         })
@@ -1508,6 +1589,15 @@ fn main() {
             file_move,
             directory_tree,
             file_search,
+            // Command classification
+            classify_command,
+            // Status tracking commands
+            status_register_task,
+            status_update_progress,
+            status_get_progress,
+            status_get_all_tasks,
+            status_complete_task,
+            status_fail_task,
             // Test Coverage commands
             get_test_coverage,
             get_affected_tests,

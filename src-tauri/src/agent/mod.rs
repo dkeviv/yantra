@@ -47,6 +47,8 @@ pub mod database;
 pub mod http_client;
 pub mod file_editor;
 pub mod file_ops;
+pub mod command_classifier;
+pub mod status_emitter;
 
 // Re-export key types (many not yet used but part of public API)
 #[allow(unused_imports)]
