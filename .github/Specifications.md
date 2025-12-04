@@ -2671,6 +2671,13 @@ impl TerminalExecutor {
 
 **Principle:** GNN must track **version-level dependencies** (not just package names) for accurate impact analysis and conflict detection. Each version is a separate node.
 
+**Post-MVP Priorities (Dependency Tracking Extensions):**
+
+- **P1 Post-MVP:** External API Tracking (API endpoints as nodes, track API calls across services)
+- **P1 Post-MVP:** User → File Tracking (team collaboration, ownership, expertise mapping)
+- **P2 Post-MVP:** Method Chain Tracking (track `df.groupby().agg()` level granularity)
+- **P2 Post-MVP:** Function → Package Function (which specific package functions are used)
+
 **Critical: Version-Level Tracking**
 
 - ❌ **WRONG:** Track "numpy" as single node → cannot detect version conflicts
@@ -2679,6 +2686,38 @@ impl TerminalExecutor {
 - Track **version requirements** for dependencies (requires: "numpy>=1.26,<2.0")
 - Track **version history** (upgraded from 1.24.0 → 1.26.0 on date X)
 - Enable queries: "Which files depend on numpy 1.24 specifically?" vs "Which files use any numpy?"
+
+**Package Tracking Scope (MVP):**
+
+- ✅ **File → Package@Version** (track what files import what packages)
+- ✅ **Package → Package** (transitive dependencies from lock files)
+- ✅ **Nested function tracking** (numpy.random.normal, not just numpy.array)
+- ✅ **Version conflict detection** (simple semver-based)
+- ✅ **Breaking change warnings** (major version bumps)
+- ✅ **Query: "What breaks if I upgrade X?"**
+
+**Metadata Sources (Priority):**
+
+1. **Lock files first** (package-lock.json, Cargo.lock, poetry.lock) - exact versions
+2. **Manifest files** (requirements.txt, package.json, Cargo.toml) - if no lock file
+3. **Skip runtime inspection** (pip show, npm list) for MVP - adds complexity
+
+**Function Tracking Granularity:**
+
+- **MVP:** Nested attributes (numpy.random.normal, pandas.DataFrame.groupby)
+- **Deferred:** Method chains (df.groupby().agg().reset_index()) - P2 Post-MVP
+
+**Cross-Language Strategy:**
+
+- **MVP:** Separate graphs per language (Python graph, JavaScript graph, Rust graph)
+- **Post-MVP:** Unified graph with API nodes connecting languages
+
+**Update Triggers:**
+
+- Project open (initial scan)
+- Lock file changes (watch requirements.txt, package-lock.json, Cargo.toml)
+- Manual refresh (user-requested)
+- Pre-code generation (ensure fresh context)
 
 **Implementation:** Update `gnn/mod.rs` and `gnn/graph.rs`
 
@@ -3825,8 +3864,19 @@ Yantra's agentic capabilities are implemented through **four specialized state m
   - **⚡ Parallel Processing**: Check multiple file locks/status simultaneously
 - **PlanGeneration**: Create executable plan with task list, time estimates, critical path analysis
   - **⚡ Parallel Processing**: Calculate complexity estimates for multiple tasks concurrently
+- **BlastRadiusAnalysis**: **NEW P0** - Calculate and visualize impact of planned changes
+  - **Purpose**: Show users exactly what will be affected BEFORE execution (preventive transparency)
+  - **Data Sources**: GNN dependency graph, test coverage, API specs, package metadata
+  - **Intelligent Display Logic**:
+    - **Always show** for: critical files, breaking changes, >10 indirect deps, package upgrades
+    - **Show for large changes**: >5 tasks, >3 files, >20 tests affected
+    - **Skip for small changes**: single file, no dependencies, <5 tests, no breaking changes
+  - **Output**: BlastRadiusPreview (see detailed spec below)
+  - **Performance Target**: <2s (GNN queries + analysis)
 - **PlanReview**: User reviews and approves execution plan (optional approval gate for complex features)
-  - ⚠️ **OPTIONAL APPROVAL GATE**: Required for features >5 tasks or multi-file changes
+  - ⚠️ **OPTIONAL APPROVAL GATE**: Required for features >5 tasks or multi-file changes OR high blast radius
+  - **Displays**: ExecutionPlan + BlastRadiusPreview (integrated view)
+  - **User Actions**: Approve, Modify Plan, Cancel
 - **EnvironmentSetup**: Setup the venv with all the techstack dependencies installed. Always use venv
   - **⚡ Parallel Processing**: Install multiple independent packages simultaneously (parallel pip install)
 
@@ -4028,6 +4078,330 @@ Yantra's agentic capabilities are implemented through **four specialized state m
 
 **Auto-Trigger**: No - requires user approval for safety
 **Post-MVP**: Optional auto-deploy after tests pass
+
+---
+
+### Blast Radius Analysis & Preview (P0 Feature - MVP)
+
+**Purpose**: Provide dependency-aware impact preview BEFORE executing changes, enabling informed decision-making and preventing unintended consequences.
+
+**Philosophy**: "Show, don't surprise" - Users should know exactly what will be affected before committing to execution.
+
+**Integration Point**: Code Generation State Machine → PlanReview State (after PlanGeneration, before execution)
+
+#### Data Structure
+
+```rust
+pub struct BlastRadiusAnalysis {
+    // Direct Impact
+    pub files_to_modify: Vec<FileImpact>,
+    pub critical_files: Vec<PathBuf>,  // Core business logic identified
+    
+    // Indirect Impact (from GNN downstream dependencies)
+    pub downstream_dependencies: Vec<DependencyImpact>,
+    pub affected_tests: Vec<TestImpact>,
+    
+    // External Impact
+    pub api_changes: Vec<ApiChange>,
+    pub breaking_changes: Vec<BreakingChange>,
+    
+    // Package Impact (from Tech Stack GNN)
+    pub package_upgrades: Vec<PackageUpgrade>,
+    pub package_conflicts: Vec<PackageConflict>,
+    
+    // Risk Metrics
+    pub risk_level: RiskLevel,  // Low, Medium, High, Critical
+    pub estimated_time: Duration,
+    pub rollback_complexity: RollbackComplexity,  // Low, Medium, High
+    pub affected_user_percentage: f32,  // Estimated % of API calls affected
+    
+    // Decision Factors
+    pub requires_approval: bool,
+    pub approval_reason: String,
+}
+
+pub struct FileImpact {
+    pub path: PathBuf,
+    pub is_critical: bool,
+    pub change_type: ChangeType,  // Create, Modify, Delete
+    pub dependent_count: usize,   // How many files depend on this
+}
+
+pub struct DependencyImpact {
+    pub file: PathBuf,
+    pub distance: usize,  // Degrees of separation (1=direct, 2=indirect, etc.)
+    pub impact_reason: String,  // "Imports modified function calculate()"
+}
+
+pub struct TestImpact {
+    pub test_file: PathBuf,
+    pub test_name: String,
+    pub coverage_type: TestCoverageType,  // Unit, Integration, E2E
+    pub needs_update: bool,  // Signature changed, needs rewrite
+}
+
+pub struct ApiChange {
+    pub endpoint: String,  // "/api/calculate"
+    pub method: HttpMethod,  // POST, GET, etc.
+    pub change_type: ApiChangeType,  // Added, Modified, Deprecated, Breaking
+    pub breaking: bool,
+}
+
+pub struct PackageUpgrade {
+    pub package: String,
+    pub from_version: String,
+    pub to_version: String,
+    pub breaking_changes: Vec<String>,  // Known breaking changes from changelog
+}
+```
+
+#### Analysis Algorithm
+
+```rust
+impl BlastRadiusAnalyzer {
+    pub async fn analyze(&self, plan: &ExecutionPlan) -> Result<BlastRadiusAnalysis, String> {
+        // 1. Identify direct files to be modified
+        let files_to_modify = self.extract_files_from_plan(plan);
+        
+        // 2. Query GNN for downstream dependencies (recursive)
+        let downstream = self.gnn.get_dependents_recursive(&files_to_modify).await?;
+        
+        // 3. Identify critical files using heuristics
+        let critical_files = self.identify_critical_files(&files_to_modify);
+        
+        // 4. Find all tests covering affected files
+        let affected_tests = self.gnn.find_tests_for_files(&files_to_modify).await?;
+        
+        // 5. Analyze API changes (if OpenAPI spec exists)
+        let api_changes = if let Some(spec) = &self.openapi_spec {
+            self.analyze_api_changes(spec, &files_to_modify).await?
+        } else {
+            vec![]
+        };
+        
+        // 6. Check package dependency impacts (from Tech Stack GNN)
+        let package_impacts = self.tech_stack_gnn
+            .analyze_package_changes(&plan.package_changes).await?;
+        
+        // 7. Calculate risk score
+        let risk_level = self.calculate_risk_level(
+            &critical_files,
+            &downstream,
+            &api_changes,
+            &package_impacts
+        );
+        
+        // 8. Estimate rollback complexity
+        let rollback_complexity = self.estimate_rollback_complexity(
+            &plan,
+            &api_changes,
+            &package_impacts
+        );
+        
+        Ok(BlastRadiusAnalysis {
+            files_to_modify: files_to_modify.into_iter()
+                .map(|f| FileImpact {
+                    path: f.clone(),
+                    is_critical: critical_files.contains(&f),
+                    change_type: ChangeType::Modify,
+                    dependent_count: self.gnn.count_dependents(&f).unwrap_or(0),
+                })
+                .collect(),
+            critical_files,
+            downstream_dependencies: downstream,
+            affected_tests,
+            api_changes,
+            breaking_changes: api_changes.iter()
+                .filter(|c| c.breaking)
+                .map(|c| BreakingChange {
+                    description: format!("API {} {} changed", c.method, c.endpoint),
+                    impact: format!("Affects ~{:.1}% of API calls", 
+                        self.estimate_api_usage_percentage(c)),
+                })
+                .collect(),
+            package_upgrades: package_impacts.upgrades,
+            package_conflicts: package_impacts.conflicts,
+            risk_level,
+            estimated_time: self.estimate_execution_time(&plan),
+            rollback_complexity,
+            affected_user_percentage: self.estimate_user_impact(&api_changes),
+            requires_approval: self.should_require_approval(&critical_files, &api_changes, &risk_level),
+            approval_reason: self.generate_approval_reason(&critical_files, &api_changes, &risk_level),
+        })
+    }
+    
+    fn identify_critical_files(&self, files: &[PathBuf]) -> Vec<PathBuf> {
+        files.iter()
+            .filter(|f| {
+                // Heuristic 1: Hub nodes (>10 dependents)
+                self.gnn.count_dependents(f).unwrap_or(0) > 10 ||
+                
+                // Heuristic 2: Core directories
+                f.to_string_lossy().contains("/core/") ||
+                f.to_string_lossy().contains("/models/") ||
+                f.to_string_lossy().contains("/db/") ||
+                
+                // Heuristic 3: Naming patterns
+                f.file_name()
+                    .and_then(|n| n.to_str())
+                    .map(|n| n.ends_with("_service.py") || 
+                             n.ends_with("_controller.py") ||
+                             n.ends_with("_model.py"))
+                    .unwrap_or(false) ||
+                
+                // Heuristic 4: Explicit marking in .yantra/critical_files.json
+                self.is_marked_critical(f)
+            })
+            .cloned()
+            .collect()
+    }
+    
+    fn calculate_risk_level(
+        &self,
+        critical_files: &[PathBuf],
+        downstream: &[DependencyImpact],
+        api_changes: &[ApiChange],
+        package_impacts: &PackageImpactAnalysis,
+    ) -> RiskLevel {
+        let mut score = 0;
+        
+        // Critical files: +20 points each
+        score += critical_files.len() * 20;
+        
+        // Wide ripple effect: +1 point per indirect dependency
+        score += downstream.len();
+        
+        // Breaking API changes: +30 points each
+        score += api_changes.iter().filter(|c| c.breaking).count() * 30;
+        
+        // Package upgrades with breaking changes: +25 points each
+        score += package_impacts.upgrades.iter()
+            .filter(|u| !u.breaking_changes.is_empty())
+            .count() * 25;
+        
+        // Package conflicts: +40 points each (very risky)
+        score += package_impacts.conflicts.len() * 40;
+        
+        match score {
+            0..=20 => RiskLevel::Low,
+            21..=50 => RiskLevel::Medium,
+            51..=100 => RiskLevel::High,
+            _ => RiskLevel::Critical,
+        }
+    }
+    
+    fn should_require_approval(
+        &self,
+        critical_files: &[PathBuf],
+        api_changes: &[ApiChange],
+        risk_level: &RiskLevel,
+    ) -> bool {
+        // Always require approval for:
+        !critical_files.is_empty() ||  // Touches critical files
+        api_changes.iter().any(|c| c.breaking) ||  // Breaking API changes
+        matches!(risk_level, RiskLevel::High | RiskLevel::Critical) ||  // High risk
+        // Size-based (existing logic from PlanReview):
+        false  // Size checks done separately in PlanReview state
+    }
+}
+```
+
+#### UI Display Format
+
+**Compact View (Small Changes):**
+```
+✅ Low Risk Change
+├── 2 files modified
+├── 5 tests affected
+└── No breaking changes
+[Continue] [Details]
+```
+
+**Detailed View (Large/Critical Changes):**
+```
+📊 Blast Radius Preview
+
+Direct Impact (Files to be Modified):
+├── src/calculator.py ⚠️ CRITICAL (47 dependents)
+├── src/utils.py (3 dependents)
+└── tests/test_calculator.py
+
+Indirect Impact (Downstream Dependencies):
+├── 12 files import modified code:
+│   ├── src/api/endpoints.py (Level 1 - direct import)
+│   ├── src/services/math_service.py (Level 1)
+│   ├── src/reports/generator.py (Level 2 - indirect)
+│   └── ... (9 more - click to expand)
+
+External Impact:
+├── 2 API endpoints will change:
+│   ├── POST /api/calculate ⚠️ BREAKING CHANGE
+│   │   └── Response schema modified (added "precision" field)
+│   └── GET /api/health ✅ Non-breaking (added "version")
+├── 47 tests need updating:
+│   ├── 23 unit tests (calculator, utils)
+│   ├── 18 integration tests (API, services)
+│   └── 6 E2E tests (full workflows)
+
+Package Dependencies:
+├── numpy: 1.24.0 → 1.26.0 ⚠️ UPGRADE REQUIRED
+│   └── Breaking changes: numpy.array default behavior changed
+└── pandas: 2.1.0 (no change)
+
+Risk Assessment:
+├── Risk Level: HIGH ⚠️
+├── Breaking Changes: 1 API endpoint
+├── Affected Users: ~45% of API calls (estimated)
+├── Rollback Complexity: MEDIUM (DB migration needed)
+└── Estimated Time: 45-60 minutes
+
+⚠️ High-risk change detected. Manual approval required.
+   Reasons:
+   - Touches critical file: src/calculator.py (47 dependents)
+   - Breaking API change: POST /api/calculate
+   - Package upgrade with breaking changes: numpy 1.24→1.26
+
+[Approve & Execute] [Modify Plan] [View Detailed Report] [Cancel]
+```
+
+#### Smart Display Logic
+
+```rust
+pub fn should_show_detailed_blast_radius(analysis: &BlastRadiusAnalysis) -> bool {
+    // Always show detailed view for:
+    !analysis.critical_files.is_empty() ||          // Critical files
+    !analysis.breaking_changes.is_empty() ||        // Breaking changes
+    analysis.affected_tests.len() > 20 ||           // Large test surface
+    analysis.downstream_dependencies.len() > 10 ||  // Wide ripple
+    !analysis.package_upgrades.is_empty() ||        // Package changes
+    matches!(analysis.risk_level, RiskLevel::High | RiskLevel::Critical)
+}
+
+pub fn should_skip_blast_radius(analysis: &BlastRadiusAnalysis) -> bool {
+    // Skip for trivial changes:
+    analysis.files_to_modify.len() == 1 &&          // Single file
+    analysis.downstream_dependencies.is_empty() &&  // No dependencies
+    analysis.affected_tests.len() < 5 &&            // Few tests
+    analysis.api_changes.is_empty() &&              // No API changes
+    analysis.package_upgrades.is_empty() &&         // No packages
+    matches!(analysis.risk_level, RiskLevel::Low)   // Low risk
+}
+```
+
+#### Performance Targets
+
+- **GNN Queries**: <500ms (parallel queries for dependents, tests, packages)
+- **Critical File Detection**: <100ms (in-memory checks + config lookup)
+- **API Change Analysis**: <300ms (if OpenAPI spec exists, otherwise skip)
+- **Package Impact Analysis**: <1s (query Tech Stack GNN + check changelogs)
+- **Total Analysis Time**: <2s (all operations)
+
+#### Future Enhancements (Post-MVP)
+
+**P1:** Live validation during DependencyValidation state (compare planned vs actual impact)
+**P2:** Historical blast radius tracking (learn from past changes)
+**P2:** ML-based user impact estimation (better than heuristic %)
+**P3:** Blast radius diff view (compare before/after architecture changes)
 
 ---
 
@@ -14130,11 +14504,34 @@ critical_files = [
 
 ### Overview
 
-**Status:** 🔴 NOT STARTED
+**Status:** � IN PROGRESS (75% Complete - Updated Dec 4, 2025)
+**Implementation:** Backend (4,876 lines) + UI (785 lines) complete, versioning workflows pending
 **Priority:** ⚡ MVP REQUIRED (Implement before Pair Programming)
 **Specification:** 997 lines of detailed requirements
 **Business Impact:** Design-first development, architecture governance
 **User Request:** "Where is the visualization of architecture flow?"
+
+**What's Working:**
+
+- ✅ SQLite storage with full CRUD operations
+- ✅ Deviation detection (850 lines) with severity calculation
+- ✅ Architecture generator (from intent and code)
+- ✅ UI components (ArchitectureCanvas, HierarchicalTabs, ComponentNode, ConnectionEdge)
+- ✅ Multi-format import (JSON/MD/Mermaid/PlantUML)
+- ✅ Export functionality (agent-callable)
+- ✅ GNN integration for code analysis
+- ✅ Tauri commands (17 backend APIs)
+- ✅ Read-only agent-driven UI principle
+- ✅ Impact analysis and auto-correction
+- ✅ Refactoring safety analyzer
+- ✅ Project initialization with architecture discovery
+
+**What's Pending (4 features):**
+
+- ❌ Rule of 3 versioning (keep 4 versions, auto-delete oldest)
+- ❌ Auto-save on every architecture change
+- ❌ Real-time deviation alerts (backend → frontend wiring)
+- ❌ Orchestrator integration (ensure blocking works in code generation flow)
 
 A comprehensive architecture visualization and governance system that enables **design-first development**, automatic architecture generation from existing code, and bidirectional sync between conceptual architecture and implementation.
 

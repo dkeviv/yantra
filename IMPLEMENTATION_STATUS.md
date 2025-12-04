@@ -47,15 +47,15 @@
 
 | Category                                    | MVP Features | MVP Progress | Post-MVP Features               | Post-MVP Progress |
 | ------------------------------------------- | ------------ | ------------ | ------------------------------- | ----------------- |
-| **✅ Architecture View System**             | 16/16        | 🟢 100%      | -                               | -                 |
+| **🟡 Architecture View System**             | 12/16        | � 75%        | -                               | -                 |
 | **✅ GNN Dependency Tracking**              | 10/10        | 🟢 100%      | -                               | -                 |
 | **✅ LLM Integration**                      | 13/13        | 🟢 100%      | -                               | -                 |
 | **✅ Agent Framework (Orchestration)**      | 13/13        | 🟢 100%      | 0/1 (Cross-Project)             | 🔴 0%             |
-| **✅ Agentic Capabilities (All P0+P1)**     | 97/97        | 🟢 100%      | 0/21 (P2+P3 remaining)          | 🔴 0%             |
+| **🟡 Agentic Capabilities (P0+P1)**         | 89/97        | � 92%        | 0/21 (P2+P3 remaining)          | 🔴 0%             |
 | **🔴 Agent Execution Intelligence (P0: 3)** | 0/3          | 🔴 0%        | -                               | -                 |
 | **🔴 Interaction Modes (Guided/Auto)**      | 0/10         | 🔴 0%        | -                               | -                 |
 | **🔴 Cascading Failure Protection**         | 0/10         | 🔴 0%        | -                               | -                 |
-| **🔴 State Machine Refactoring**            | 0/4          | � 0%         | 0/1 (Maintenance Machine)       | 🔴 0%             |
+| **🔴 State Machine Refactoring**            | 0/4          | 🔴 0%        | 0/1 (Maintenance Machine)       | 🔴 0%             |
 | **🔴 Concurrency Validation (Safety)**      | 0/1          | 🔴 0%        | -                               | -                 |
 | **✅ Testing & Validation**                 | 6/6          | 🟢 100%      | 0/2 (P1: affected tests, E2E)   | 🔴 0%             |
 | **✅ UI/Frontend (Basic + Minimal UI)**     | 4/4          | 🟢 100%      | -                               | -                 |
@@ -76,7 +76,7 @@
 | **⚡ Storage Tier 1 (In-Memory GNN)**       | -            | -            | 0/5 (Phase 3)                   | 🔴 0%             |
 | **🌐 Multi-Language Support**               | 10/10        | 🟢 100%      | -                               | -                 |
 | **🤝 Collaboration Features**               | -            | -            | 0/5                             | 🔴 0%             |
-| **TOTAL (All Categories)**                  | **115/152**  | **76%**      | **0/105**                       | **0%**            |
+| **TOTAL (All Categories)**                  | **111/152**  | **73%**      | **0/105**                       | **0%**            |
 
 **Note:** "Agentic Capabilities" row (97/97) is the primary MVP metric representing all P0+P1 capabilities across the framework.
 
@@ -225,23 +225,28 @@
   - **Supported Formats:** JSON (native), Markdown, Mermaid, PlantUML
   - **Progress:** 4/8 features done (New project init, Existing detection, Multi-format import, Code review)
   - **Pending:** Approval flow integration, Project scaffolding, Dependency setup, Config generation
-- **Architecture View System - ✅ 100% COMPLETE** (Dec 1, 2025)
-  - **Status:** All 16 MVP features implemented and integrated
+- **Architecture View System - 🟡 75% COMPLETE** (Dec 1-4, 2025)
+  - **Status:** 12/16 MVP features implemented (backend + UI complete, versioning pending)
+  - **Verified:** Backend (4,876 lines), UI (785 lines), 17 Tauri commands
   - **Implementation:**
-    - deviation_detector.rs expanded to 850 lines (+300 lines):
-      - `auto_correct_code()` - Auto-fix Low severity deviations (remove/add imports)
-      - `analyze_change_impact()` - Analyze change scope, risk level, affected components
-      - New types: `ImpactAnalysis`, `RiskLevel`, `ChangeScope`
-      - 6 tests added (import removal, addition, risk calculation)
-    - commands_check.rs expanded (+130 lines):
-      - `auto_correct_architecture_deviation` - Tauri command for auto-correction
-      - `analyze_architecture_impact` - Tauri command for impact analysis
-      - Request/response types: `AutoCorrectRequest`, `AutoCorrectionResult`, `AnalyzeImpactRequest`
-    - mod.rs: Exported new types (`ImpactAnalysis`, `RiskLevel`, `ChangeScope`)
-    - main.rs: Registered 2 new commands in invoke_handler
-  - **Files:** deviation_detector.rs (850 lines), commands_check.rs (+130 lines), mod.rs, main.rs
-  - **Compilation:** ✅ All code compiles successfully (50 warnings, 0 errors)
-  - **Benefits:** Architecture governance, auto-correction, impact analysis before changes
+    - deviation_detector.rs (850 lines) - Deviation detection, severity calculation, auto-correction
+    - storage.rs - SQLite database with full CRUD operations
+    - types.rs - Component, Connection, Architecture data structures
+    - generator.rs - Architecture generation from intent/code
+    - analyzer.rs - GNN-based code analysis
+    - refactoring.rs - Refactoring safety analysis
+    - commands.rs (633 lines) - 17 Tauri command APIs
+    - ArchitectureView/ (5 TSX components, 785 lines) - UI visualization
+    - project_initializer.rs - Multi-format import (JSON/MD/Mermaid/PlantUML)
+  - **Working:** Storage, deviation detection, UI components, multi-format import, export, GNN integration
+  - **Pending (4 features):**
+    - ❌ Rule of 3 versioning (keep 4, auto-delete oldest)
+    - ❌ Auto-save on every change
+    - ❌ Real-time deviation alerts in UI
+    - ❌ Orchestrator integration (blocking flow)
+  - **Files:** 8 Rust modules (4,876 lines), 5 TSX components (785 lines)
+  - **Compilation:** ✅ All code compiles successfully
+  - **See:** VERIFICATION_REPORT.md for detailed analysis
 - **Semantic-Enhanced Dependency Graph - ✅ 100% COMPLETE** (Dec 1, 2025)
   - **Architecture:** Hybrid structural + semantic search in single unified graph
   - **Decision:** Enhance GNN with embeddings instead of separate RAG/vector DB
@@ -276,22 +281,38 @@
 
 ## 🤖 AGENTIC CAPABILITIES - Comprehensive Framework
 
-**Last Updated:** December 4, 2025
-**Philosophy:** Four pillars of autonomous development: 🔍 PERCEIVE → 🧠 REASON → ⚡ ACT → 🔄 LEARN
-**Total Capabilities:** 118 (97 P0+P1 implemented = 82%, 21 P2+P3 pending = 18%)
-**MVP Completion:** ✅ 100% (97/97 P0+P1 capabilities implemented - ALL DONE!)
-**Test Stability:** ✅ Major improvements - Fixed 13 critical bugs (native libs, deadlocks, path issues)
+**Last Updated:** December 4, 2025  
+**Philosophy:** Four pillars of autonomous development: 🔍 PERCEIVE → 🧠 REASON → ⚡ ACT → 🔄 LEARN  
+**Total Capabilities:** 118 (89 P0+P1 complete = 75%, 8 P0+P1 partial = 7%, 21 P2+P3 pending = 18%)  
+**MVP Status:** 🟡 92% Complete (89/97 P0+P1 - 8 remaining)  
+**Test Stability:** ✅ Major improvements - Fixed 13 critical bugs (native libs, deadlocks, path issues)  
 **Documentation:** `.github/Specifications.md` §"Comprehensive Agentic Capabilities Framework"
 
-### 🎉 MVP MILESTONE ACHIEVED (December 4, 2025)
+**IMPORTANT CORRECTION (Dec 4, 2025):**
+Previous commits (65c1622, 3eea2e6) claimed 100% MVP completion. After thorough verification against Specifications.md:
 
-**Final Sprint Summary:**
+- ✅ **89/97 P0+P1 Complete** (92% MVP)
+- 🔄 **8/97 P0+P1 Partial** (8% remaining - primarily versioning & workflow integration)
+- See VERIFICATION_REPORT.md for detailed analysis
 
-- ✅ **6 New Modules:** 1,740 lines of code implemented in final session
-- ✅ **8 Capabilities:** API Health, Environment, Secrets, Documents, Tests, Multi-Project
-- ✅ **17 Tauri Commands:** Complete backend-frontend integration
+### 🎉 MVP MILESTONE: 92% COMPLETE (December 4, 2025)
+
+**Status After Verification:**
+
+- ✅ **89/97 P0+P1 Capabilities Complete** (92% MVP)
+- 🔄 **8/97 P0+P1 Partial** (versioning, workflow integration)
+- ✅ **6 New Modules:** 1,740 lines of code in final sprint
 - ✅ **19 Unit Tests:** Comprehensive coverage for all new modules
-- ✅ **2 Major Commits:** b4cc23e (health/env/secrets), c09d32f (docs/tests/multiproj)
+- ✅ **GNN Tracking:** 100% verified (10/10 capabilities)
+- 🔄 **Architecture View:** 75% verified (12/16 capabilities)
+
+**Verification Findings (VERIFICATION_REPORT.md):**
+
+Previous claims of 100% MVP completion were overcorrect. Detailed verification against Specifications.md shows:
+
+- Architecture View System: 12/16 complete (75%) - Backend + UI done, versioning/workflows pending
+- 4 remaining features: Rule of 3 versioning, auto-save, real-time alerts, orchestrator integration
+- GNN Dependency Tracking: 10/10 complete (100%) - Verified correct ✅
 
 **Test Robustness & Reliability:**
 
