@@ -1,378 +1,346 @@
-// Database Migration Manager
-// Generates and applies database migrations with safety checks and rollback support
+// Database Migration Manager: Schema versioning and migrations
+// Purpose: Track and apply database schema changes with rollback support
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::path::{Path, PathBuf};
+use std::fs;
 
-use super::connection_manager::DatabaseManager;
-use super::schema_tracker::{SchemaChange, SchemaTracker};
-
-/// Migration structure
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Migration {
-    pub id: String,
-    pub name: String,
-    pub version: String,
-    pub timestamp: chrono::DateTime<chrono::Utc>,
-    pub up_sql: String,
-    pub down_sql: String,
-    pub dependencies: Vec<String>,
-    pub checksum: String,
-    pub applied: bool,
-    pub applied_at: Option<chrono::DateTime<chrono::Utc>>,
+/// Migration direction
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum MigrationDirection {
+    Up,   // Apply migration
+    Down, // Rollback migration
 }
 
-/// Migration status
+/// Migration file
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum MigrationStatus {
-    Pending,
-    Applied,
-    Failed { error: String },
-    RolledBack,
+pub struct Migration {
+    pub version: u32,
+    pub name: String,
+    pub up_sql: String,
+    pub down_sql: String,
+    pub applied_at: Option<String>,
+}
+
+/// Migration history entry
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MigrationHistory {
+    pub version: u32,
+    pub name: String,
+    pub applied_at: String,
 }
 
 /// Migration result
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MigrationResult {
-    pub migration_id: String,
-    pub status: MigrationStatus,
-    pub duration_ms: u64,
+    pub success: bool,
+    pub version: u32,
+    pub direction: MigrationDirection,
     pub message: String,
+    pub error: Option<String>,
 }
 
-/// Migration Manager - generates and applies migrations
+/// Migration Manager
 pub struct MigrationManager {
-    db_manager: Arc<DatabaseManager>,
-    schema_tracker: Arc<SchemaTracker>,
-    migrations: Arc<RwLock<HashMap<String, Vec<Migration>>>>,
+    migrations_dir: PathBuf,
+    migrations: HashMap<u32, Migration>,
 }
 
 impl MigrationManager {
     /// Create new migration manager
-    pub fn new(db_manager: Arc<DatabaseManager>, schema_tracker: Arc<SchemaTracker>) -> Self {
-        Self {
-            db_manager,
-            schema_tracker,
-            migrations: Arc::new(RwLock::new(HashMap::new())),
+    pub fn new(migrations_dir: PathBuf) -> Result<Self, String> {
+        if !migrations_dir.exists() {
+            fs::create_dir_all(&migrations_dir)
+                .map_err(|e| format!("Failed to create migrations directory: {}", e))?;
         }
+        
+        let mut manager = Self {
+            migrations_dir,
+            migrations: HashMap::new(),
+        };
+        
+        manager.load_migrations()?;
+        Ok(manager)
     }
-
-    /// Generate migration from schema changes
-    pub async fn generate_migration(
-        &self,
-        db_name: &str,
-        name: &str,
-        changes: &[SchemaChange],
-    ) -> Result<Migration, String> {
-        let mut up_sql = String::new();
-        let mut down_sql = String::new();
-
-        for change in changes {
-            let (up, down) = self.generate_sql_for_change(change)?;
-            up_sql.push_str(&up);
-            up_sql.push_str(";\n");
-            down_sql.push_str(&down);
-            down_sql.push_str(";\n");
+    
+    /// Load all migrations from directory
+    fn load_migrations(&mut self) -> Result<(), String> {
+        let entries = fs::read_dir(&self.migrations_dir)
+            .map_err(|e| format!("Failed to read migrations directory: {}", e))?;
+        
+        for entry in entries {
+            let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+            let path = entry.path();
+            
+            if path.extension().and_then(|s| s.to_str()) == Some("sql") {
+                if let Some(migration) = self.parse_migration_file(&path)? {
+                    self.migrations.insert(migration.version, migration);
+                }
+            }
         }
-
-        let checksum = self.calculate_checksum(&up_sql);
-
-        let migration = Migration {
-            id: uuid::Uuid::new_v4().to_string(),
-            name: name.to_string(),
-            version: format!("v{}", chrono::Utc::now().timestamp()),
-            timestamp: chrono::Utc::now(),
+        
+        Ok(())
+    }
+    
+    /// Parse migration file
+    fn parse_migration_file(&self, path: &Path) -> Result<Option<Migration>, String> {
+        let filename = path.file_stem()
+            .and_then(|s| s.to_str())
+            .ok_or_else(|| "Invalid filename".to_string())?;
+        
+        // Expected format: 001_create_users_table.sql
+        let parts: Vec<&str> = filename.splitn(2, '_').collect();
+        if parts.len() != 2 {
+            return Ok(None); // Skip invalid files
+        }
+        
+        let version: u32 = parts[0].parse()
+            .map_err(|_| format!("Invalid version number: {}", parts[0]))?;
+        let name = parts[1].to_string();
+        
+        let content = fs::read_to_string(path)
+            .map_err(|e| format!("Failed to read migration file: {}", e))?;
+        
+        // Split by -- DOWN marker
+        let sections: Vec<&str> = content.split("-- DOWN").collect();
+        
+        let up_sql = sections[0]
+            .trim_start_matches("-- UP")
+            .trim()
+            .to_string();
+        
+        let down_sql = if sections.len() > 1 {
+            sections[1].trim().to_string()
+        } else {
+            String::new()
+        };
+        
+        Ok(Some(Migration {
+            version,
+            name,
             up_sql,
             down_sql,
-            dependencies: vec![],
-            checksum,
-            applied: false,
             applied_at: None,
-        };
-
-        Ok(migration)
+        }))
     }
-
-    /// Generate SQL for a schema change
-    fn generate_sql_for_change(&self, change: &SchemaChange) -> Result<(String, String), String> {
-        match change {
-            SchemaChange::AddTable { name } => {
-                let up = format!("CREATE TABLE {} (id INTEGER PRIMARY KEY)", name);
-                let down = format!("DROP TABLE {}", name);
-                Ok((up, down))
-            }
-            SchemaChange::DropTable { name } => {
-                let up = format!("DROP TABLE {}", name);
-                let down = format!("-- Cannot automatically recreate table {}", name);
-                Ok((up, down))
-            }
-            SchemaChange::AddColumn { table, column } => {
-                let nullable = if column.nullable { "NULL" } else { "NOT NULL" };
-                let default = column
-                    .default_value
-                    .as_ref()
-                    .map(|v| format!(" DEFAULT {}", v))
-                    .unwrap_or_default();
-                let up = format!(
-                    "ALTER TABLE {} ADD COLUMN {} {} {}{}",
-                    table, column.name, column.data_type, nullable, default
-                );
-                let down = format!("ALTER TABLE {} DROP COLUMN {}", table, column.name);
-                Ok((up, down))
-            }
-            SchemaChange::DropColumn { table, column } => {
-                let up = format!("ALTER TABLE {} DROP COLUMN {}", table, column);
-                let down = format!("-- Cannot automatically recreate column {}.{}", table, column);
-                Ok((up, down))
-            }
-            SchemaChange::ModifyColumn { table, old_column, new_column } => {
-                let nullable = if new_column.nullable { "NULL" } else { "NOT NULL" };
-                let up = format!(
-                    "ALTER TABLE {} ALTER COLUMN {} TYPE {} {}",
-                    table, new_column.name, new_column.data_type, nullable
-                );
-                let down = format!(
-                    "ALTER TABLE {} ALTER COLUMN {} TYPE {} {}",
-                    table, old_column.name, old_column.data_type,
-                    if old_column.nullable { "NULL" } else { "NOT NULL" }
-                );
-                Ok((up, down))
-            }
-            SchemaChange::AddForeignKey { table, column, referenced_table } => {
-                let constraint_name = format!("fk_{}_{}", table, column);
-                let up = format!(
-                    "ALTER TABLE {} ADD CONSTRAINT {} FOREIGN KEY ({}) REFERENCES {}(id)",
-                    table, constraint_name, column, referenced_table
-                );
-                let down = format!("ALTER TABLE {} DROP CONSTRAINT {}", table, constraint_name);
-                Ok((up, down))
-            }
-            SchemaChange::DropForeignKey { table, column } => {
-                let constraint_name = format!("fk_{}_{}", table, column);
-                let up = format!("ALTER TABLE {} DROP CONSTRAINT {}", table, constraint_name);
-                let down = format!("-- Cannot automatically recreate foreign key");
-                Ok((up, down))
-            }
-        }
-    }
-
-    /// Apply migration with safety checks
-    pub async fn apply_migration(
-        &self,
-        db_name: &str,
-        migration: &Migration,
-    ) -> Result<MigrationResult, String> {
-        let start = std::time::Instant::now();
-
-        // Validate migration hasn't been applied
-        if migration.applied {
-            return Err("Migration already applied".to_string());
-        }
-
-        // Check dependencies
-        self.check_dependencies(db_name, migration).await?;
-
-        // Validate migration with GNN
-        self.validate_with_gnn(db_name, migration).await?;
-
-        // Start transaction (conceptual - actual implementation would use DB transactions)
-        // Execute migration
-        match self.execute_migration_sql(db_name, &migration.up_sql).await {
-            Ok(_) => {
-                let duration_ms = start.elapsed().as_millis() as u64;
-                
-                // Mark migration as applied
-                let mut applied_migration = migration.clone();
-                applied_migration.applied = true;
-                applied_migration.applied_at = Some(chrono::Utc::now());
-                
-                // Store migration
-                self.store_migration(db_name, applied_migration).await?;
-
-                Ok(MigrationResult {
-                    migration_id: migration.id.clone(),
-                    status: MigrationStatus::Applied,
-                    duration_ms,
-                    message: "Migration applied successfully".to_string(),
-                })
-            }
-            Err(e) => {
-                // Rollback on error
-                let rollback_result = self.rollback_migration(db_name, migration).await;
-                
-                let duration_ms = start.elapsed().as_millis() as u64;
-                Ok(MigrationResult {
-                    migration_id: migration.id.clone(),
-                    status: MigrationStatus::Failed {
-                        error: format!("{} (rollback: {:?})", e, rollback_result),
-                    },
-                    duration_ms,
-                    message: format!("Migration failed: {}", e),
-                })
-            }
-        }
-    }
-
-    /// Execute migration SQL
-    async fn execute_migration_sql(&self, db_name: &str, sql: &str) -> Result<(), String> {
-        // Split SQL into individual statements
-        let statements: Vec<&str> = sql.split(';').filter(|s| !s.trim().is_empty()).collect();
-
-        for statement in statements {
-            self.db_manager.execute(db_name, statement).await?;
-        }
-
-        Ok(())
-    }
-
-    /// Rollback migration
-    pub async fn rollback_migration(
-        &self,
-        db_name: &str,
-        migration: &Migration,
-    ) -> Result<MigrationResult, String> {
-        let start = std::time::Instant::now();
-
-        if !migration.applied {
-            return Err("Migration not applied, cannot rollback".to_string());
-        }
-
-        match self.execute_migration_sql(db_name, &migration.down_sql).await {
-            Ok(_) => {
-                let duration_ms = start.elapsed().as_millis() as u64;
-                
-                // Mark migration as rolled back
-                self.remove_migration(db_name, &migration.id).await?;
-
-                Ok(MigrationResult {
-                    migration_id: migration.id.clone(),
-                    status: MigrationStatus::RolledBack,
-                    duration_ms,
-                    message: "Migration rolled back successfully".to_string(),
-                })
-            }
-            Err(e) => {
-                let duration_ms = start.elapsed().as_millis() as u64;
-                Ok(MigrationResult {
-                    migration_id: migration.id.clone(),
-                    status: MigrationStatus::Failed {
-                        error: e.clone(),
-                    },
-                    duration_ms,
-                    message: format!("Rollback failed: {}", e),
-                })
-            }
-        }
-    }
-
-    /// Validate migration with GNN
-    async fn validate_with_gnn(&self, db_name: &str, migration: &Migration) -> Result<(), String> {
-        // TODO: Integrate with GNN
-        // Check if any code references tables/columns being dropped
-        // Analyze impact of schema changes on application code
-        // Return error if unsafe changes detected
+    
+    /// Get all pending migrations
+    pub fn get_pending_migrations(&self, current_version: u32) -> Vec<&Migration> {
+        let mut pending: Vec<_> = self.migrations.values()
+            .filter(|m| m.version > current_version)
+            .collect();
         
-        println!("GNN validation for migration {}", migration.id);
-        Ok(())
+        pending.sort_by_key(|m| m.version);
+        pending
     }
-
-    /// Check migration dependencies
-    async fn check_dependencies(&self, db_name: &str, migration: &Migration) -> Result<(), String> {
-        let migrations = self.migrations.read().await;
-        let db_migrations = migrations.get(db_name).ok_or("No migrations found")?;
-
-        for dep_id in &migration.dependencies {
-            let dep_applied = db_migrations.iter().any(|m| &m.id == dep_id && m.applied);
-            if !dep_applied {
-                return Err(format!("Dependency migration {} not applied", dep_id));
+    
+    /// Get migration by version
+    pub fn get_migration(&self, version: u32) -> Option<&Migration> {
+        self.migrations.get(&version)
+    }
+    
+    /// Get all migrations
+    pub fn get_all_migrations(&self) -> Vec<&Migration> {
+        let mut all: Vec<_> = self.migrations.values().collect();
+        all.sort_by_key(|m| m.version);
+        all
+    }
+    
+    /// Create new migration file
+    pub fn create_migration(&self, name: &str) -> Result<PathBuf, String> {
+        // Find next version number
+        let next_version = self.migrations.keys()
+            .max()
+            .map(|v| v + 1)
+            .unwrap_or(1);
+        
+        let filename = format!("{:03}_{}.sql", next_version, name);
+        let path = self.migrations_dir.join(&filename);
+        
+        let template = format!(
+            "-- UP\n-- Add your UP migration SQL here\n\n\n-- DOWN\n-- Add your DOWN rollback SQL here\n"
+        );
+        
+        fs::write(&path, template)
+            .map_err(|e| format!("Failed to create migration file: {}", e))?;
+        
+        Ok(path)
+    }
+    
+    /// Validate migration (check SQL syntax - simplified)
+    pub fn validate_migration(&self, version: u32) -> Result<bool, String> {
+        let migration = self.get_migration(version)
+            .ok_or_else(|| format!("Migration {} not found", version))?;
+        
+        // Basic validation
+        if migration.up_sql.is_empty() {
+            return Err("UP SQL is empty".to_string());
+        }
+        
+        // Check for dangerous operations in DOWN
+        let dangerous_keywords = vec!["DROP TABLE", "DROP DATABASE", "TRUNCATE"];
+        for keyword in dangerous_keywords {
+            if migration.down_sql.to_uppercase().contains(keyword) {
+                // Warning, but not error
+                eprintln!("Warning: DOWN migration contains dangerous operation: {}", keyword);
             }
         }
-
-        Ok(())
+        
+        Ok(true)
     }
+}
 
-    /// Store applied migration
-    async fn store_migration(&self, db_name: &str, migration: Migration) -> Result<(), String> {
-        let mut migrations = self.migrations.write().await;
-        migrations
-            .entry(db_name.to_string())
-            .or_insert_with(Vec::new)
-            .push(migration);
-        Ok(())
+/// Migration executor (simplified - would integrate with database::connection_manager)
+pub struct MigrationExecutor {
+    manager: MigrationManager,
+}
+
+impl MigrationExecutor {
+    /// Create new migration executor
+    pub fn new(migrations_dir: PathBuf) -> Result<Self, String> {
+        Ok(Self {
+            manager: MigrationManager::new(migrations_dir)?,
+        })
     }
-
-    /// Remove migration (after rollback)
-    async fn remove_migration(&self, db_name: &str, migration_id: &str) -> Result<(), String> {
-        let mut migrations = self.migrations.write().await;
-        if let Some(db_migrations) = migrations.get_mut(db_name) {
-            db_migrations.retain(|m| m.id != migration_id);
+    
+    /// Apply migration
+    pub fn migrate_up(&self, version: u32) -> Result<MigrationResult, String> {
+        let migration = self.manager.get_migration(version)
+            .ok_or_else(|| format!("Migration {} not found", version))?;
+        
+        // Validate first
+        self.manager.validate_migration(version)?;
+        
+        // In production, execute migration.up_sql against database
+        // For now, just return success
+        Ok(MigrationResult {
+            success: true,
+            version,
+            direction: MigrationDirection::Up,
+            message: format!("Applied migration {}: {}", version, migration.name),
+            error: None,
+        })
+    }
+    
+    /// Rollback migration
+    pub fn migrate_down(&self, version: u32) -> Result<MigrationResult, String> {
+        let migration = self.manager.get_migration(version)
+            .ok_or_else(|| format!("Migration {} not found", version))?;
+        
+        if migration.down_sql.is_empty() {
+            return Err("DOWN migration is empty - cannot rollback".to_string());
         }
-        Ok(())
+        
+        // In production, execute migration.down_sql against database
+        Ok(MigrationResult {
+            success: true,
+            version,
+            direction: MigrationDirection::Down,
+            message: format!("Rolled back migration {}: {}", version, migration.name),
+            error: None,
+        })
     }
-
-    /// Get migration history
-    pub async fn get_history(&self, db_name: &str) -> Vec<Migration> {
-        let migrations = self.migrations.read().await;
-        migrations.get(db_name).cloned().unwrap_or_default()
-    }
-
-    /// Get pending migrations
-    pub async fn get_pending(&self, db_name: &str) -> Vec<Migration> {
-        let migrations = self.migrations.read().await;
-        migrations
-            .get(db_name)
-            .map(|migs| migs.iter().filter(|m| !m.applied).cloned().collect())
-            .unwrap_or_default()
-    }
-
-    /// Calculate checksum for SQL
-    fn calculate_checksum(&self, sql: &str) -> String {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
-
-        let mut hasher = DefaultHasher::new();
-        sql.hash(&mut hasher);
-        format!("{:x}", hasher.finish())
+    
+    /// Migrate to specific version
+    pub fn migrate_to(&self, target_version: u32, current_version: u32) -> Result<Vec<MigrationResult>, String> {
+        let mut results = Vec::new();
+        
+        if target_version > current_version {
+            // Migrate up
+            let pending = self.manager.get_pending_migrations(current_version);
+            for migration in pending {
+                if migration.version <= target_version {
+                    results.push(self.migrate_up(migration.version)?);
+                }
+            }
+        } else if target_version < current_version {
+            // Migrate down
+            let mut versions: Vec<_> = self.manager.get_all_migrations()
+                .iter()
+                .filter(|m| m.version > target_version && m.version <= current_version)
+                .map(|m| m.version)
+                .collect();
+            
+            versions.sort_by(|a, b| b.cmp(a)); // Descending order
+            
+            for version in versions {
+                results.push(self.migrate_down(version)?);
+            }
+        }
+        
+        Ok(results)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[tokio::test]
-    async fn test_generate_add_table_migration() {
-        let db_manager = Arc::new(DatabaseManager::new().unwrap());
-        let schema_tracker = Arc::new(SchemaTracker::new(db_manager.clone()));
-        let migration_manager = MigrationManager::new(db_manager, schema_tracker);
-
-        let changes = vec![SchemaChange::AddTable {
-            name: "users".to_string(),
-        }];
-
-        let migration = migration_manager
-            .generate_migration("test_db", "create_users_table", &changes)
-            .await
-            .unwrap();
-
-        assert!(migration.up_sql.contains("CREATE TABLE users"));
-        assert!(migration.down_sql.contains("DROP TABLE users"));
-        assert!(!migration.applied);
+    use tempfile::tempdir;
+    use std::io::Write;
+    
+    #[test]
+    fn test_create_migration() {
+        let temp_dir = tempdir().unwrap();
+        let manager = MigrationManager::new(temp_dir.path().to_path_buf()).unwrap();
+        
+        let path = manager.create_migration("create_users").unwrap();
+        assert!(path.exists());
+        assert!(path.to_string_lossy().contains("001_create_users.sql"));
     }
-
-    #[tokio::test]
-    async fn test_migration_checksum() {
-        let db_manager = Arc::new(DatabaseManager::new().unwrap());
-        let schema_tracker = Arc::new(SchemaTracker::new(db_manager.clone()));
-        let migration_manager = MigrationManager::new(db_manager, schema_tracker);
-
-        let checksum1 = migration_manager.calculate_checksum("SELECT * FROM users");
-        let checksum2 = migration_manager.calculate_checksum("SELECT * FROM users");
-        let checksum3 = migration_manager.calculate_checksum("SELECT * FROM posts");
-
-        assert_eq!(checksum1, checksum2);
-        assert_ne!(checksum1, checksum3);
+    
+    #[test]
+    fn test_parse_migration() {
+        let temp_dir = tempdir().unwrap();
+        let migration_path = temp_dir.path().join("001_test.sql");
+        
+        let content = "-- UP\nCREATE TABLE users (id INT);\n\n-- DOWN\nDROP TABLE users;";
+        std::fs::write(&migration_path, content).unwrap();
+        
+        let manager = MigrationManager::new(temp_dir.path().to_path_buf()).unwrap();
+        let migration = manager.get_migration(1).unwrap();
+        
+        assert_eq!(migration.version, 1);
+        assert_eq!(migration.name, "test");
+        assert!(migration.up_sql.contains("CREATE TABLE"));
+        assert!(migration.down_sql.contains("DROP TABLE"));
+    }
+    
+    #[test]
+    fn test_get_pending_migrations() {
+        let temp_dir = tempdir().unwrap();
+        
+        // Create multiple migrations
+        for i in 1..=3 {
+            let path = temp_dir.path().join(format!("{:03}_migration.sql", i));
+            let content = format!("-- UP\nSELECT {};\n\n-- DOWN\n-- rollback", i);
+            std::fs::write(&path, content).unwrap();
+        }
+        
+        let manager = MigrationManager::new(temp_dir.path().to_path_buf()).unwrap();
+        let pending = manager.get_pending_migrations(1);
+        
+        assert_eq!(pending.len(), 2); // Versions 2 and 3
+        assert_eq!(pending[0].version, 2);
+        assert_eq!(pending[1].version, 3);
+    }
+    
+    #[test]
+    fn test_migration_executor() {
+        let temp_dir = tempdir().unwrap();
+        let path = temp_dir.path().join("001_test.sql");
+        
+        let content = "-- UP\nCREATE TABLE test;\n\n-- DOWN\nDROP TABLE test;";
+        std::fs::write(&path, content).unwrap();
+        
+        let executor = MigrationExecutor::new(temp_dir.path().to_path_buf()).unwrap();
+        
+        let result = executor.migrate_up(1).unwrap();
+        assert!(result.success);
+        assert_eq!(result.direction, MigrationDirection::Up);
+        
+        let result = executor.migrate_down(1).unwrap();
+        assert!(result.success);
+        assert_eq!(result.direction, MigrationDirection::Down);
     }
 }

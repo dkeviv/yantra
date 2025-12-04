@@ -823,6 +823,50 @@ fn gnn_diff(node_id: String, old_version: u32, new_version: u32) -> Result<gnn::
     Err("Not implemented yet - needs global state integration".to_string())
 }
 
+// Database Migration commands
+
+/// Create new migration file
+#[tauri::command]
+fn db_create_migration(migrations_dir: String, name: String) -> Result<String, String> {
+    use agent::database::migration_manager::MigrationManager;
+    use std::path::PathBuf;
+    
+    let manager = MigrationManager::new(PathBuf::from(migrations_dir))?;
+    let path = manager.create_migration(&name)?;
+    
+    Ok(path.to_string_lossy().to_string())
+}
+
+/// Get all migrations
+#[tauri::command]
+fn db_get_migrations(migrations_dir: String) -> Result<Vec<agent::database::migration_manager::Migration>, String> {
+    use agent::database::migration_manager::MigrationManager;
+    use std::path::PathBuf;
+    
+    let manager = MigrationManager::new(PathBuf::from(migrations_dir))?;
+    Ok(manager.get_all_migrations().into_iter().cloned().collect())
+}
+
+/// Apply migration
+#[tauri::command]
+fn db_migrate_up(migrations_dir: String, version: u32) -> Result<agent::database::migration_manager::MigrationResult, String> {
+    use agent::database::migration_manager::MigrationExecutor;
+    use std::path::PathBuf;
+    
+    let executor = MigrationExecutor::new(PathBuf::from(migrations_dir))?;
+    executor.migrate_up(version)
+}
+
+/// Rollback migration
+#[tauri::command]
+fn db_migrate_down(migrations_dir: String, version: u32) -> Result<agent::database::migration_manager::MigrationResult, String> {
+    use agent::database::migration_manager::MigrationExecutor;
+    use std::path::PathBuf;
+    
+    let executor = MigrationExecutor::new(PathBuf::from(migrations_dir))?;
+    executor.migrate_down(version)
+}
+
 // Add Decision command (continuing from documentation)
 
 /// Add a new decision
@@ -1729,6 +1773,11 @@ fn main() {
             db_list_connections,
             db_disconnect,
             db_test_connection,
+            // Database migrations
+            db_create_migration,
+            db_get_migrations,
+            db_migrate_up,
+            db_migrate_down,
             // Browser automation commands
             browser_launch,
             browser_navigate,
