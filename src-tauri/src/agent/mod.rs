@@ -52,6 +52,7 @@ pub mod status_emitter;
 pub mod api_manager;
 pub mod dependency_manager;
 pub mod conflict_detector;
+pub mod intelligent_executor;
 
 // Re-export key types (many not yet used but part of public API)
 #[allow(unused_imports)]

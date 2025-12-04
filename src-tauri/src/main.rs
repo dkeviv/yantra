@@ -731,6 +731,32 @@ fn detect_conflicts(
     ))
 }
 
+// Intelligent Executor commands
+
+/// Execute command with intelligent strategy
+#[tauri::command]
+async fn intelligent_execute(
+    status_emitter: tauri::State<'_, Arc<tokio::sync::Mutex<agent::status_emitter::StatusEmitter>>>,
+    command: String,
+) -> Result<agent::intelligent_executor::ExecutionResult, String> {
+    let executor = agent::intelligent_executor::IntelligentExecutor::new()
+        .with_status_emitter(status_emitter.inner().clone());
+    
+    executor.execute(&command).await
+}
+
+/// Execute background command
+#[tauri::command]
+async fn execute_background(
+    status_emitter: tauri::State<'_, Arc<tokio::sync::Mutex<agent::status_emitter::StatusEmitter>>>,
+    command: String,
+) -> Result<agent::intelligent_executor::BackgroundTask, String> {
+    let executor = agent::intelligent_executor::IntelligentExecutor::new()
+        .with_status_emitter(status_emitter.inner().clone());
+    
+    executor.execute_background(&command).await
+}
+
 // Add Decision command (continuing from documentation)
 
 /// Add a new decision
@@ -1670,6 +1696,9 @@ fn main() {
             enforce_venv,
             // Conflict detection
             detect_conflicts,
+            // Intelligent execution
+            intelligent_execute,
+            execute_background,
             // Test Coverage commands
             get_test_coverage,
             get_affected_tests,
