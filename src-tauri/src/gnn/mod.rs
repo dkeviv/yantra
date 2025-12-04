@@ -21,6 +21,7 @@ pub mod features;
 pub mod embeddings;
 pub mod hnsw_index;
 pub mod query;
+pub mod version_tracker;
 
 // Re-export query types
 pub use query::{

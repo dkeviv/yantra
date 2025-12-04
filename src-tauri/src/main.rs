@@ -757,6 +757,72 @@ async fn execute_background(
     executor.execute_background(&command).await
 }
 
+// GNN Version Tracking commands
+
+/// Track a new version of a GNN node
+#[tauri::command]
+fn gnn_track_version(
+    node_id: String,
+    node_type: String,
+    file_path: String,
+    line_start: u32,
+    line_end: u32,
+    content: String,
+    author: Option<String>,
+    commit_hash: Option<String>,
+    change_reason: Option<String>,
+) -> Result<(), String> {
+    // In production, this would be managed by GNNEngine state
+    // For now, create a temporary node for the example
+    use crate::gnn::version_tracker::VersionTracker;
+    use crate::gnn::{CodeNode, NodeType};
+    
+    let node = CodeNode {
+        id: node_id.clone(),
+        name: node_id.split("::").last().unwrap_or("unknown").to_string(),
+        node_type: match node_type.as_str() {
+            "function" => NodeType::Function,
+            "class" => NodeType::Class,
+            "module" => NodeType::Module,
+            "import" => NodeType::Import,
+            _ => NodeType::Variable,
+        },
+        file_path,
+        line_start: line_start as usize,
+        line_end: line_end as usize,
+        semantic_embedding: None,
+        code_snippet: Some(content.clone()),
+        docstring: None,
+    };
+    
+    // TODO: Integrate with global VersionTracker state
+    let mut tracker = VersionTracker::new();
+    tracker.track_version(&node, content, author, commit_hash, change_reason);
+    
+    Ok(())
+}
+
+/// Get version history for a node
+#[tauri::command]
+fn gnn_get_history(node_id: String) -> Result<Option<gnn::version_tracker::NodeHistory>, String> {
+    // TODO: Access global VersionTracker state
+    Ok(None)
+}
+
+/// Rollback node to specific version
+#[tauri::command]
+fn gnn_rollback(node_id: String, target_version: u32) -> Result<gnn::version_tracker::NodeVersion, String> {
+    // TODO: Access global VersionTracker state and apply rollback
+    Err("Not implemented yet - needs global state integration".to_string())
+}
+
+/// Generate diff between two versions
+#[tauri::command]
+fn gnn_diff(node_id: String, old_version: u32, new_version: u32) -> Result<gnn::version_tracker::VersionDiff, String> {
+    // TODO: Access global VersionTracker state
+    Err("Not implemented yet - needs global state integration".to_string())
+}
+
 // Add Decision command (continuing from documentation)
 
 /// Add a new decision
@@ -1699,6 +1765,11 @@ fn main() {
             // Intelligent execution
             intelligent_execute,
             execute_background,
+            // GNN version tracking
+            gnn_track_version,
+            gnn_get_history,
+            gnn_rollback,
+            gnn_diff,
             // Test Coverage commands
             get_test_coverage,
             get_affected_tests,
