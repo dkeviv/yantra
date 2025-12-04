@@ -7,6 +7,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::fs;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use base64::Engine;
@@ -712,6 +713,22 @@ fn create_venv(project_path: String) -> Result<(), String> {
 #[tauri::command]
 fn enforce_venv(project_path: String) -> Result<Option<String>, String> {
     agent::dependency_manager::VenvManager::enforce_venv(&project_path)
+}
+
+// Conflict Detection commands
+
+/// Detect dependency and import conflicts
+#[tauri::command]
+fn detect_conflicts(
+    dependencies: Vec<agent::conflict_detector::VersionRequirement>,
+    imports: HashMap<String, Vec<String>>,
+    definitions: HashMap<String, Vec<String>>,
+) -> Result<agent::conflict_detector::ConflictDetectionResult, String> {
+    Ok(agent::conflict_detector::ConflictDetector::detect_conflicts(
+        dependencies,
+        imports,
+        definitions,
+    ))
 }
 
 // Add Decision command (continuing from documentation)
@@ -1651,6 +1668,8 @@ fn main() {
             get_venv_info,
             create_venv,
             enforce_venv,
+            // Conflict detection
+            detect_conflicts,
             // Test Coverage commands
             get_test_coverage,
             get_affected_tests,
