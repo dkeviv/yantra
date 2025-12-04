@@ -493,6 +493,79 @@ async fn db_test_connection(
     manager.test_connection(&config).await
 }
 
+// Browser automation commands
+
+/// Launch browser session
+#[tauri::command]
+async fn browser_launch(url: String, headless: bool) -> Result<String, String> {
+    let mut session = browser::BrowserSession::new(url, headless);
+    session.launch().await?;
+    // Return session ID (for now, just a simple identifier)
+    Ok("browser_session_1".to_string())
+}
+
+/// Navigate to URL
+#[tauri::command]
+async fn browser_navigate(url: String) -> Result<(), String> {
+    // Note: In production, this would use a session manager
+    // For now, creating a new session for each operation
+    let mut session = browser::BrowserSession::new(url.clone(), true);
+    session.launch().await?;
+    session.navigate().await
+}
+
+/// Click an element
+#[tauri::command]
+async fn browser_click(url: String, selector: String) -> Result<(), String> {
+    let mut session = browser::BrowserSession::new(url, true);
+    session.launch().await?;
+    session.navigate().await?;
+    session.click(&selector).await
+}
+
+/// Type text into an element
+#[tauri::command]
+async fn browser_type(url: String, selector: String, text: String) -> Result<(), String> {
+    let mut session = browser::BrowserSession::new(url, true);
+    session.launch().await?;
+    session.navigate().await?;
+    session.type_text(&selector, &text).await
+}
+
+/// Capture screenshot
+#[tauri::command]
+async fn browser_screenshot(url: String, path: String) -> Result<(), String> {
+    let mut session = browser::BrowserSession::new(url, true);
+    session.launch().await?;
+    session.navigate().await?;
+    session.screenshot(&path).await
+}
+
+/// Execute JavaScript in browser context
+#[tauri::command]
+async fn browser_evaluate_js(url: String, script: String) -> Result<String, String> {
+    let mut session = browser::BrowserSession::new(url, true);
+    session.launch().await?;
+    session.navigate().await?;
+    session.execute_script(&script).await
+}
+
+/// Collect console messages
+#[tauri::command]
+async fn browser_console_logs(url: String, duration_seconds: u64) -> Result<Vec<browser::ConsoleMessage>, String> {
+    let mut session = browser::BrowserSession::new(url, true);
+    session.launch().await?;
+    session.navigate().await?;
+    session.collect_messages(duration_seconds).await
+}
+
+/// Close browser session
+#[tauri::command]
+async fn browser_close(url: String) -> Result<(), String> {
+    let mut session = browser::BrowserSession::new(url, true);
+    session.close().await
+}
+
 // Add Decision command (continuing from documentation)
 
 /// Add a new decision
@@ -1395,6 +1468,15 @@ fn main() {
             db_list_connections,
             db_disconnect,
             db_test_connection,
+            // Browser automation commands
+            browser_launch,
+            browser_navigate,
+            browser_click,
+            browser_type,
+            browser_screenshot,
+            browser_evaluate_js,
+            browser_console_logs,
+            browser_close,
             // Test Coverage commands
             get_test_coverage,
             get_affected_tests,
