@@ -48,7 +48,7 @@ impl CommitManager {
         ))
     }
 
-    pub fn has_changes(&self) -> bool {
+    pub fn has_changes(&mut self) -> bool {
         self.git_mcp.has_changes()
     }
 }

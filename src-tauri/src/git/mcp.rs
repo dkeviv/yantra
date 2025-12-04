@@ -126,9 +126,11 @@ impl GitMcp {
 
     fn handle_diff(&self, id: u64, params: MCPParams) -> MCPResponse {
         let mut args = vec!["diff"];
+        let file_param;
         
         if let Some(file) = params.get_string("file") {
-            args.push(&file);
+            file_param = file;
+            args.push(&file_param);
         }
 
         match self.git_command(&args) {
@@ -141,10 +143,11 @@ impl GitMcp {
 
     fn handle_log(&self, id: u64, params: MCPParams) -> MCPResponse {
         let max_count = params.get_number("max_count").unwrap_or(10.0) as usize;
+        let max_count_arg = format!("--max-count={}", max_count);
         
         let args = vec![
             "log",
-            &format!("--max-count={}", max_count),
+            &max_count_arg,
             "--format=%H|%an|%ae|%ad|%s",
             "--date=iso",
         ];

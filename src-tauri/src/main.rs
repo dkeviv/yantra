@@ -420,6 +420,81 @@ fn add_feature(
     Ok(())
 }
 
+// Database commands
+
+/// Connect to a database
+#[tauri::command]
+async fn db_connect(
+    db_manager: tauri::State<'_, Arc<tokio::sync::Mutex<agent::database::DatabaseManager>>>,
+    config: agent::database::ConnectionConfig,
+) -> Result<(), String> {
+    let manager = db_manager.lock().await;
+    manager.connect(config).await
+}
+
+/// Execute a SELECT query
+#[tauri::command]
+async fn db_query(
+    db_manager: tauri::State<'_, Arc<tokio::sync::Mutex<agent::database::DatabaseManager>>>,
+    db_name: String,
+    query: String,
+) -> Result<agent::database::QueryResult, String> {
+    let manager = db_manager.lock().await;
+    manager.query(&db_name, &query).await
+}
+
+/// Execute INSERT/UPDATE/DELETE
+#[tauri::command]
+async fn db_execute(
+    db_manager: tauri::State<'_, Arc<tokio::sync::Mutex<agent::database::DatabaseManager>>>,
+    db_name: String,
+    query: String,
+) -> Result<agent::database::QueryResult, String> {
+    let manager = db_manager.lock().await;
+    manager.execute(&db_name, &query).await
+}
+
+/// Get database schema
+#[tauri::command]
+async fn db_schema(
+    db_manager: tauri::State<'_, Arc<tokio::sync::Mutex<agent::database::DatabaseManager>>>,
+    db_name: String,
+) -> Result<agent::database::SchemaInfo, String> {
+    let manager = db_manager.lock().await;
+    manager.get_schema(&db_name).await
+}
+
+/// List all database connections
+#[tauri::command]
+async fn db_list_connections(
+    db_manager: tauri::State<'_, Arc<tokio::sync::Mutex<agent::database::DatabaseManager>>>,
+) -> Result<Vec<String>, String> {
+    let manager = db_manager.lock().await;
+    Ok(manager.list_connections().await)
+}
+
+/// Disconnect from a database
+#[tauri::command]
+async fn db_disconnect(
+    db_manager: tauri::State<'_, Arc<tokio::sync::Mutex<agent::database::DatabaseManager>>>,
+    db_name: String,
+) -> Result<(), String> {
+    let manager = db_manager.lock().await;
+    manager.disconnect(&db_name).await
+}
+
+/// Test database connection
+#[tauri::command]
+async fn db_test_connection(
+    db_manager: tauri::State<'_, Arc<tokio::sync::Mutex<agent::database::DatabaseManager>>>,
+    config: agent::database::ConnectionConfig,
+) -> Result<bool, String> {
+    let manager = db_manager.lock().await;
+    manager.test_connection(&config).await
+}
+
+// Add Decision command (continuing from documentation)
+
 /// Add a new decision
 #[tauri::command]
 fn add_decision(
@@ -1245,10 +1320,16 @@ fn main() {
     let arch_state = arch_commands::ArchitectureState::new(gnn, llm)
         .expect("Failed to initialize architecture state");
 
+    // Initialize database manager
+    let db_manager = Arc::new(tokio::sync::Mutex::new(
+        agent::database::DatabaseManager::new().expect("Failed to initialize database manager")
+    ));
+
     tauri::Builder::default()
         .menu(menu)
         .manage(terminal_manager)
         .manage(arch_state)
+        .manage(db_manager)
         .on_menu_event(|event| {
             handle_menu_event(event);
         })
@@ -1306,6 +1387,14 @@ fn main() {
             add_decision,
             add_change,
             extract_features_from_chat,
+            // Database commands
+            db_connect,
+            db_query,
+            db_execute,
+            db_schema,
+            db_list_connections,
+            db_disconnect,
+            db_test_connection,
             // Test Coverage commands
             get_test_coverage,
             get_affected_tests,
