@@ -686,6 +686,34 @@ fn api_validate_contract(
     Ok(agent::api_manager::ApiManager::validate_contract(&spec, used_endpoints))
 }
 
+// Dependency & Environment Management commands
+
+/// Validate dependencies before execution
+#[tauri::command]
+fn validate_dependencies(
+    dependencies: Vec<agent::dependency_manager::Dependency>,
+) -> Result<agent::dependency_manager::ValidationResult, String> {
+    Ok(agent::dependency_manager::DependencyValidator::validate_dependencies(dependencies))
+}
+
+/// Get virtual environment info
+#[tauri::command]
+fn get_venv_info(project_path: String) -> Result<agent::dependency_manager::VenvInfo, String> {
+    Ok(agent::dependency_manager::VenvManager::get_venv_info(&project_path))
+}
+
+/// Create virtual environment
+#[tauri::command]
+fn create_venv(project_path: String) -> Result<(), String> {
+    agent::dependency_manager::VenvManager::create_venv(&project_path)
+}
+
+/// Enforce venv usage (returns activation command if not active)
+#[tauri::command]
+fn enforce_venv(project_path: String) -> Result<Option<String>, String> {
+    agent::dependency_manager::VenvManager::enforce_venv(&project_path)
+}
+
 // Add Decision command (continuing from documentation)
 
 /// Add a new decision
@@ -1618,6 +1646,11 @@ fn main() {
             // API management commands
             api_import_spec,
             api_validate_contract,
+            // Dependency & environment commands
+            validate_dependencies,
+            get_venv_info,
+            create_venv,
+            enforce_venv,
             // Test Coverage commands
             get_test_coverage,
             get_affected_tests,
