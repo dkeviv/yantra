@@ -669,6 +669,23 @@ async fn status_fail_task(
     Ok(())
 }
 
+// API Management commands
+
+/// Import OpenAPI specification from file
+#[tauri::command]
+fn api_import_spec(file_path: String) -> Result<agent::api_manager::ApiSpec, String> {
+    agent::api_manager::ApiManager::import_spec(&file_path)
+}
+
+/// Validate API contract against used endpoints
+#[tauri::command]
+fn api_validate_contract(
+    spec: agent::api_manager::ApiSpec,
+    used_endpoints: Vec<(String, agent::api_manager::HttpMethod)>,
+) -> Result<agent::api_manager::ValidationResult, String> {
+    Ok(agent::api_manager::ApiManager::validate_contract(&spec, used_endpoints))
+}
+
 // Add Decision command (continuing from documentation)
 
 /// Add a new decision
@@ -1598,6 +1615,9 @@ fn main() {
             status_get_all_tasks,
             status_complete_task,
             status_fail_task,
+            // API management commands
+            api_import_spec,
+            api_validate_contract,
             // Test Coverage commands
             get_test_coverage,
             get_affected_tests,
