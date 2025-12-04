@@ -1,7 +1,7 @@
 # Yantra - Technical Guide
 
 **Version:** MVP 1.0  
-**Last Updated:** November 28, 2025  
+**Last Updated:** December 4, 2025  
 **Audience:** Developers and Technical Contributors
 **Purpose:** Document current implementation details - reflects code as currently implemented
 
@@ -136,7 +136,262 @@ Yantra uses a dual-driver strategy for database connectivity, separating embedde
 
 ---
 
-## 🎉 Agent Framework: 36 Agentic Capabilities (100% Complete)
+## � Agentic Capabilities: Complete MVP Implementation (97/97 P0+P1)
+
+**Status:** ✅ 100% MVP COMPLETE (December 4, 2025)  
+**Total Capabilities:** 118 (97 P0+P1 implemented + 21 P2+P3 pending)  
+**Implementation:** 61 capabilities (Phases 1-6) + 36 capabilities (Phase 7)
+
+This section documents all 97 P0+P1 agentic capabilities that enable Yantra's autonomous code generation, validation, and deployment.
+
+### Capability Categories (14 Components = 97 P0+P1)
+
+1. **GNN Dependency Tracking (10)** - Structural + semantic code analysis
+2. **Architecture View System (16)** - Visual architecture management
+3. **Multi-LLM Orchestration (13)** - 13 LLM providers with smart routing
+4. **Context System (4)** - Token counting + hierarchical context
+5. **Testing & Validation (6)** - Python + JavaScript testing
+6. **Security Scanning (3)** - Semgrep + auto-fix + secrets
+7. **Browser CDP (8)** - Full browser automation
+8. **Git Integration (2)** - MCP protocol + AI commits
+9. **Multi-Language (10)** - 10 language parsers
+10. **Storage Optimization (2)** - Connection pooling + WAL
+11. **HNSW Indexing (3)** - Semantic search
+12. **Agent Framework (13)** - Orchestration + validation
+13. **HTTP Client (2)** - Intelligent client + tracing
+14. **Deployment (5)** - Railway automation
+
+### Phase 1-6: Foundation (61 Capabilities)
+
+#### 1. GNN Dependency Tracking (10 capabilities)
+
+**Location:** `src-tauri/src/gnn/`  
+**Files:** `engine.rs` (800 lines), `graph.rs` (650 lines), `parser.rs` (2,500+ lines), `embeddings.rs` (263 lines)  
+**Purpose:** Track all code dependencies for impact analysis and safe code generation
+
+**Capabilities:**
+
+1. **Build Dependency Graph** - Parse entire codebase into graph structure
+2. **Get Dependents** - Find all code that depends on a symbol
+3. **Get Dependencies** - Find all dependencies of a symbol
+4. **Impact Analysis** - Predict what breaks when code changes
+5. **Find Cycles** - Detect circular dependencies
+6. **Semantic Search** - Find similar code using embeddings
+7. **Call Hierarchy** - Track function/method call chains
+8. **Code Intelligence** - AST-based parsing for 11 languages
+9. **Symbol Extraction** - Extract functions, classes, variables
+10. **Diagnostics** - Real-time code issue detection
+
+**Technical Implementation:**
+
+- petgraph for graph data structure
+- tree-sitter for parsing (Python, JavaScript, Rust, Go, Java, C, C++, Ruby, PHP, Swift, Kotlin)
+- fastembed-rs for 384-dim semantic embeddings (optional)
+- SQLite for graph persistence
+- <1ms for exact structural queries, <10ms for semantic search
+
+**Key Algorithms:**
+
+- Depth-first traversal for dependency chains
+- Topological sort for build order
+- Union-find for connected components
+- HNSW for semantic nearest-neighbor search
+
+#### 2. Architecture View System (16 capabilities)
+
+**Location:** `src-tauri/src/architecture/`  
+**Files:** `storage.rs` (400+ lines), `deviation_detector.rs` (850 lines), `project_initializer.rs` (1,507 lines)  
+**Purpose:** Manage architecture as first-class citizen with visual editor and code-architecture alignment
+
+**Capabilities:** 11. **Component Management** - Create/edit/delete architecture components 12. **Connection Management** - Define relationships between components 13. **Visual Editor** - Interactive drag-and-drop architecture diagramming 14. **Architecture Persistence** - SQLite storage with connection pooling 15. **Deviation Detection** - Detect code drifting from architecture 16. **Auto-Correction** - Fix low-severity deviations automatically 17. **Impact Analysis** - Assess risk of architecture changes 18. **Multi-Format Import** - Import from JSON/Markdown/Mermaid/PlantUML 19. **Intelligent Parsing** - LLM-powered architecture extraction 20. **Project Initialization** - Generate new project from architecture 21. **Existing Detection** - Reverse-engineer architecture from code 22. **Code Review Integration** - Architecture-aware code reviews 23. **Approval Workflows** - Manage architecture change approvals 24. **Scaffolding** - Generate project structure from architecture 25. **Dependency Setup** - Auto-configure dependencies 26. **Config Generation** - Generate environment configuration
+
+**Technical Implementation:**
+
+- r2d2 connection pooling for SQLite (10 max connections, 2 min idle)
+- WAL mode for optimal concurrency
+- Component positioning with grid layout algorithms
+- LLM-powered Markdown parsing for architecture extraction
+- Risk assessment algorithm: Low/Medium/High/Critical levels
+
+#### 3. Multi-LLM Orchestration (13 capabilities)
+
+**Location:** `src-tauri/src/llm/`  
+**Files:** `multi_llm_manager.rs` (800+ lines), `client.rs` (per-provider implementations)  
+**Purpose:** Support 13 LLM providers with smart routing, failover, and cost optimization
+
+**Capabilities:** 27. **Claude Sonnet 4** - Primary LLM (200K context) 28. **GPT-4 Turbo** - Secondary/validation LLM 29. **GPT-4o** - High-speed alternative 30. **Claude Opus 3** - Legacy support 31. **Gemini Pro** - Google AI integration 32. **Command R+** - Cohere integration 33. **Mixtral 8x7B** - Open-source option 34. **Llama 3 70B** - Open-source option 35. **DeepSeek Coder** - Specialized coding model 36. **Qwen 2.5** - Chinese model support 37. **Smart Routing** - Cost/quality optimization 38. **Failover Logic** - Automatic fallback on failures 39. **Rate Limiting** - Prevent API exhaustion
+
+**Technical Implementation:**
+
+- Async HTTP requests with reqwest
+- Circuit breaker pattern (3 failures → open for 60s)
+- Exponential backoff (1s, 2s, 4s, 8s, 16s)
+- Response caching to reduce costs
+- Token tracking per provider
+
+#### 4. Context System (4 capabilities)
+
+**Location:** `src-tauri/src/llm/`  
+**Files:** `tokens.rs` (180 lines), `context.rs` (500+ lines)  
+**Purpose:** Maximize context utilization with exact token counting and hierarchical assembly
+
+**Capabilities:** 40. **Token Counting** - Exact cl100k_base tokenizer (GPT-4/Claude compatible) 41. **Hierarchical Context** - L1 (full code) + L2 (signatures) for 5-10x more context 42. **Context Compression** - Smart truncation when needed 43. **Adaptive Assembly** - GNN-based intelligent context selection
+
+**Technical Implementation:**
+
+- cl100k_base tokenizer (industry standard)
+- <10ms token counting after warmup
+- Budget allocation: 40% L1, 30% L2, 20% prompts, 10% buffer
+- GNN integration for related code discovery
+
+#### 5. Testing & Validation (6 capabilities)
+
+**Location:** `src-tauri/src/testing/`  
+**Files:** `test_generator.rs` (700+ lines), `executor.rs` (400+ lines)  
+**Purpose:** Generate and execute tests for Python and JavaScript
+
+**Capabilities:** 44. **Python Testing** - pytest integration 45. **JavaScript Testing** - Jest integration 46. **Test Generation** - Auto-generate unit tests from code 47. **Test Execution** - Parallel test running 48. **Coverage Analysis** - pytest-cov integration 49. **Test Tracking** - GNN-based test-to-code mapping
+
+**Technical Implementation:**
+
+- pytest subprocess execution for Python
+- Jest subprocess execution for JavaScript
+- Coverage parsing from pytest-cov output
+- GNN integration for affected test detection
+
+#### 6. Security Scanning (3 capabilities)
+
+**Location:** `src-tauri/src/security/`  
+**Files:** `scanner.rs` (512 lines)  
+**Purpose:** Scan for security vulnerabilities and auto-fix
+
+**Capabilities:** 50. **Semgrep Integration** - OWASP rule scanning 51. **Auto-Fix** - Automatic security fixes for known patterns 52. **Secrets Detection** - Prevent credential leaks
+
+**Technical Implementation:**
+
+- Semgrep subprocess execution
+- SARIF output parsing
+- Auto-fix pattern matching
+- TruffleHog patterns for secrets
+
+#### 7. Browser CDP (8 capabilities)
+
+**Location:** `src-tauri/src/browser/`  
+**Files:** `cdp.rs` (413 lines)  
+**Purpose:** Full browser automation via Chrome DevTools Protocol
+
+**Capabilities:** 53. **Browser Launch** - Spawn Chromium with CDP enabled 54. **Browser Navigate** - URL navigation 55. **Browser Click** - Element interaction 56. **Browser Type** - Text input 57. **Browser Screenshot** - Visual capture 58. **Browser Evaluate JS** - Execute JavaScript in context 59. **Browser Console** - Console log monitoring 60. **Browser Network** - Request interception
+
+**Technical Implementation:**
+
+- chromiumoxide crate for CDP integration
+- Async WebSocket communication
+- Element selector resolution
+- Screenshot capture as PNG
+
+#### 8. Git Integration (2 capabilities)
+
+**Location:** `src-tauri/src/git/`  
+**Files:** `mcp.rs` (700 lines)  
+**Purpose:** Git operations via Model Context Protocol
+
+**Capabilities:** 61. **MCP Protocol** - JSON-RPC 2.0 compliant Git communication 62. **AI Commits** - Smart commit message generation
+
+**Technical Implementation:**
+
+- JSON-RPC 2.0 message format
+- Git command execution via subprocess
+- LLM-powered commit message generation
+
+#### 9. Multi-Language Support (10 capabilities)
+
+**Location:** `src-tauri/src/gnn/parser.rs`  
+**Total Lines:** 2,500+ lines  
+**Purpose:** Parse 10 programming languages for dependency tracking
+
+**Capabilities:**
+63-72. **Language Parsers** - Python, JavaScript, Rust, Go, Java, C, C++, Ruby, PHP, Swift
+
+**Technical Implementation:**
+
+- tree-sitter-python, tree-sitter-javascript, tree-sitter-rust, etc.
+- Unified AST traversal patterns
+- Symbol extraction (functions, classes, imports)
+- 986-dimensional feature vectors
+
+#### 10. Storage Optimization (2 capabilities)
+
+**Location:** `src-tauri/src/architecture/storage.rs`  
+**Purpose:** Optimized SQLite operations
+
+**Capabilities:** 73. **Connection Pooling** - r2d2 pooling (10 max, 2 min idle) 74. **WAL Mode** - Write-Ahead Logging for concurrency
+
+**Technical Implementation:**
+
+- r2d2_sqlite integration
+- PRAGMA settings: journal_mode=WAL, synchronous=NORMAL, busy_timeout=5000
+- Deadlock prevention with internal methods
+
+#### 11. HNSW Semantic Indexing (3 capabilities)
+
+**Location:** `src-tauri/src/gnn/embeddings.rs`  
+**Lines:** 263 lines  
+**Purpose:** Fast semantic code search (Ferrari MVP requirement)
+
+**Capabilities:** 75. **O(log n) Search** - Logarithmic time complexity 76. **<10ms Latency** - Sub-10ms search times 77. **10k+ Node Support** - Scales to large codebases
+
+**Technical Implementation:**
+
+- fastembed-rs with all-MiniLM-L6-v2 model
+- 384-dimensional embeddings
+- HNSW index for nearest-neighbor search
+- Cosine similarity for ranking
+
+#### 12. Agent Framework (13 capabilities)
+
+**Location:** `src-tauri/src/agent/`  
+**Purpose:** Core orchestration and validation logic
+
+**Capabilities:** 78. **State Machine** - Phase-based execution (CodeGen → Testing → Deploy → Maintenance) 79. **Confidence Scoring** - Multi-factor validation 80. **Validation Pipeline** - Pre/post execution checks 81. **Auto-Retry** - Error recovery with code regeneration (3 attempts) 82. **Refactoring Safety** - Breaking change prevention 83. **Self-Correction** - Automatic fixes based on test failures 84. **Known Issues DB** - LLM failure pattern learning 85. **Pattern Extraction** - Error pattern recognition 86. **Decision Logging** - Audit trail in SQLite 87. **Error Analysis** - Root cause detection 88. **4-Level Context** - L1-L4 graduated context depth 89. **ChromaDB RAG** - Pattern learning and retrieval 90. **DB Query Ops** - Complex graph queries
+
+**Technical Implementation:**
+
+- See detailed Agent Framework section below for recent 36 capabilities
+
+#### 13. HTTP Client (2 capabilities)
+
+**Location:** `src-tauri/src/agent/http_client/`  
+**Files:** `mod.rs` (451 lines)  
+**Purpose:** Intelligent HTTP client for API interactions
+
+**Capabilities:** 91. **Intelligent Client** - Circuit breaker, retry, rate limiting 92. **Request Tracing** - Full request/response logging
+
+**Technical Implementation:**
+
+- reqwest for HTTP
+- Circuit breaker: 3 failures → open for 60s
+- Exponential backoff: 1s, 2s, 4s, 8s, 16s
+- Rate limiting: 100 req/s via governor crate
+- Mock support for testing
+
+#### 14. Deployment (5 capabilities)
+
+**Location:** `src-tauri/src/agent/deployment.rs`  
+**Files:** 636 lines  
+**Purpose:** Automated Railway.app deployment
+
+**Capabilities:** 93. **Railway Deploy** - Production deployment 94. **Preview Deploy** - Staging environments 95. **Deploy Rollback** - Automatic rollback on failure 96. **Deploy Status** - Health monitoring 97. **Deploy Logs** - Log streaming
+
+**Technical Implementation:**
+
+- Railway CLI integration
+- Health check endpoints
+- Rollback on failed health checks
+- Log streaming via WebSocket
+
+---
+
+## 🎉 Phase 7: Agent Modules (36 Capabilities - Dec 3-4, 2025)
 
 **Status:** ✅ All 36 P0+P1 capabilities implemented (December 4, 2025)  
 **Modules:** 15 agent modules in `src-tauri/src/agent/`  
@@ -147,6 +402,7 @@ Yantra uses a dual-driver strategy for database connectivity, separating embedde
 ### Agent Module Architecture
 
 All agent capabilities are implemented as independent Rust modules under `src-tauri/src/agent/`, each with:
+
 - Core functionality (structs, implementations, algorithms)
 - Error handling (Result types, descriptive messages)
 - Tauri command wrappers for frontend integration
@@ -155,26 +411,26 @@ All agent capabilities are implemented as independent Rust modules under `src-ta
 
 ### Module Overview Table
 
-| Module | LOC | Purpose | P0/P1 | Commands | Tests |
-|--------|-----|---------|-------|----------|-------|
-| `file_editor.rs` | 451 | Surgical code editing | P0 #1 | `file_edit` | 2 |
-| `database/manager.rs` | 600+ | Multi-DB connections | P0 #2-5 | `db_connect`, `db_query`, `db_execute`, `db_schema` | 5 |
-| `api_manager.rs` | 665 | API spec & contracts | P0 #6-7 | `api_import_spec`, `api_validate_contract` | 3 |
-| `command_classifier.rs` | 200 | Tool vs terminal | P0 #8 | `classify_command` | 2 |
-| `intelligent_executor.rs` | 389 | Smart execution | P0 #9 | `execute_command` | 3 |
-| `status_emitter.rs` | 320 | Progress events | P0 #10 | `emit_status`, `get_status` | 2 |
-| `dependency_manager.rs` | 556 | Dep validation | P0 #11-12 | `validate_deps`, `enforce_venv` | 4 |
-| `gnn/version_tracker.rs` | 440 | Node versioning | P0 #13 | `track_version`, `rollback` | 3 |
-| `conflict_detector.rs` | 408 | Conflict detection | P0 #14 | `detect_conflicts` | 3 |
-| `browser/cdp.rs` | 413 | Browser automation | P0 #15-19 | 5 browser commands | 4 |
-| `file_ops.rs` | 367 | Advanced file ops | P1 #20-23 | `file_delete`, `file_move`, `directory_tree`, `file_search` | 4 |
-| `database/migration_manager.rs` | 341 | Schema migrations | P1 #24 | `db_migrate`, `db_rollback` | 2 |
-| `api_health.rs` | 200 | Health monitoring | P1 #25-26 | `api_health_check`, `api_rate_limit` | 3 |
-| `document_readers.rs` | 330 | DOCX/PDF parsing | P1 #27 | `read_docx`, `read_pdf` | 2 |
-| `affected_tests.rs` | 260 | Test impact | P1 #31 | `find_affected_tests` | 4 |
-| `environment.rs` | 300 | Env snapshots | P1 #32-33 | `env_snapshot`, `env_validate`, `env_rollback` | 2 |
-| `multi_project.rs` | 320 | Project isolation | P1 #35 | `register_project`, `list_projects`, `activate_project` | 4 |
-| `secrets.rs` | 330 | Encrypted vault | P1 #36 | `secrets_set`, `secrets_get`, `secrets_delete` | 5 |
+| Module                          | LOC  | Purpose               | P0/P1     | Commands                                                    | Tests |
+| ------------------------------- | ---- | --------------------- | --------- | ----------------------------------------------------------- | ----- |
+| `file_editor.rs`                | 451  | Surgical code editing | P0 #1     | `file_edit`                                                 | 2     |
+| `database/manager.rs`           | 600+ | Multi-DB connections  | P0 #2-5   | `db_connect`, `db_query`, `db_execute`, `db_schema`         | 5     |
+| `api_manager.rs`                | 665  | API spec & contracts  | P0 #6-7   | `api_import_spec`, `api_validate_contract`                  | 3     |
+| `command_classifier.rs`         | 200  | Tool vs terminal      | P0 #8     | `classify_command`                                          | 2     |
+| `intelligent_executor.rs`       | 389  | Smart execution       | P0 #9     | `execute_command`                                           | 3     |
+| `status_emitter.rs`             | 320  | Progress events       | P0 #10    | `emit_status`, `get_status`                                 | 2     |
+| `dependency_manager.rs`         | 556  | Dep validation        | P0 #11-12 | `validate_deps`, `enforce_venv`                             | 4     |
+| `gnn/version_tracker.rs`        | 440  | Node versioning       | P0 #13    | `track_version`, `rollback`                                 | 3     |
+| `conflict_detector.rs`          | 408  | Conflict detection    | P0 #14    | `detect_conflicts`                                          | 3     |
+| `browser/cdp.rs`                | 413  | Browser automation    | P0 #15-19 | 5 browser commands                                          | 4     |
+| `file_ops.rs`                   | 367  | Advanced file ops     | P1 #20-23 | `file_delete`, `file_move`, `directory_tree`, `file_search` | 4     |
+| `database/migration_manager.rs` | 341  | Schema migrations     | P1 #24    | `db_migrate`, `db_rollback`                                 | 2     |
+| `api_health.rs`                 | 200  | Health monitoring     | P1 #25-26 | `api_health_check`, `api_rate_limit`                        | 3     |
+| `document_readers.rs`           | 330  | DOCX/PDF parsing      | P1 #27    | `read_docx`, `read_pdf`                                     | 2     |
+| `affected_tests.rs`             | 260  | Test impact           | P1 #31    | `find_affected_tests`                                       | 4     |
+| `environment.rs`                | 300  | Env snapshots         | P1 #32-33 | `env_snapshot`, `env_validate`, `env_rollback`              | 2     |
+| `multi_project.rs`              | 320  | Project isolation     | P1 #35    | `register_project`, `list_projects`, `activate_project`     | 4     |
+| `secrets.rs`                    | 330  | Encrypted vault       | P1 #36    | `secrets_set`, `secrets_get`, `secrets_delete`              | 5     |
 
 ### Implementation Philosophy
 
@@ -189,26 +445,31 @@ Each agent capability follows these principles:
 ### Cross-Module Integration Patterns
 
 **GNN Integration:**
+
 - `dependency_manager.rs`, `affected_tests.rs`, `conflict_detector.rs` all query the GNN
 - Uses `gnn::GraphNeuralNetwork` struct for dependency traversal
 - Enables impact analysis, conflict detection, and test selection
 
 **Database Operations:**
+
 - `database/manager.rs` provides connection pooling
 - `database/migration_manager.rs` builds on manager for schema evolution
 - Supports Postgres, MySQL, SQLite, MongoDB, Redis
 
 **Browser Automation:**
+
 - `browser/cdp.rs` uses chromiumoxide for Chrome DevTools Protocol
 - Async operations with tokio
 - Enables visual validation and E2E testing
 
 **Environment Management:**
+
 - `environment.rs` captures state (Python/Node versions, packages)
 - `multi_project.rs` creates isolated venvs per project
 - `dependency_manager.rs` validates packages before execution
 
 **Security:**
+
 - `secrets.rs` uses AES-256-GCM encryption
 - `api_manager.rs` validates API contracts before external calls
 - `file_editor.rs` validates file paths to prevent directory traversal
