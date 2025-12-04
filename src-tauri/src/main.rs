@@ -566,6 +566,32 @@ async fn browser_close(url: String) -> Result<(), String> {
     session.close().await
 }
 
+// File operations commands
+
+/// Delete file with optional backup
+#[tauri::command]
+fn file_delete(request: agent::file_ops::FileDeleteRequest) -> Result<agent::file_ops::FileDeleteResult, String> {
+    agent::file_ops::delete_file(request)
+}
+
+/// Move/rename file
+#[tauri::command]
+fn file_move(request: agent::file_ops::FileMoveRequest) -> Result<agent::file_ops::FileMoveResult, String> {
+    agent::file_ops::move_file(request)
+}
+
+/// Get directory tree structure
+#[tauri::command]
+fn directory_tree(root_path: String, max_depth: Option<usize>) -> Result<agent::file_ops::DirectoryTreeNode, String> {
+    agent::file_ops::get_directory_tree(root_path, max_depth)
+}
+
+/// Search for files by pattern
+#[tauri::command]
+fn file_search(request: agent::file_ops::FileSearchRequest) -> Result<Vec<agent::file_ops::FileSearchResult>, String> {
+    agent::file_ops::search_files(request)
+}
+
 // Add Decision command (continuing from documentation)
 
 /// Add a new decision
@@ -1477,6 +1503,11 @@ fn main() {
             browser_evaluate_js,
             browser_console_logs,
             browser_close,
+            // File operations commands
+            file_delete,
+            file_move,
+            directory_tree,
+            file_search,
             // Test Coverage commands
             get_test_coverage,
             get_affected_tests,
