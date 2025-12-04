@@ -47,9 +47,9 @@
 
 | Category                                    | MVP Features | MVP Progress | Post-MVP Features               | Post-MVP Progress |
 | ------------------------------------------- | ------------ | ------------ | ------------------------------- | ----------------- |
-| **🟡 Architecture View System**             | 11/16        | � 69%        | -                               | -                 |
-| **🟡 GNN Dependency Tracking**              | 6/10         | � 60%        | -                               | -                 |
-| **🟢 LLM Integration**                      | 11/13        | 🟢 85%       | 0/1 (Qwen Coder)                | 🔴 0%             |
+| **✅ Architecture View System**             | 16/16        | 🟢 100%      | -                               | -                 |
+| **✅ GNN Dependency Tracking**              | 10/10        | 🟢 100%      | -                               | -                 |
+| **✅ LLM Integration**                      | 13/13        | 🟢 100%      | -                               | -                 |
 | **✅ Agent Framework (Orchestration)**      | 13/13        | 🟢 100%      | 0/1 (Cross-Project)             | 🔴 0%             |
 | **✅ Agentic Capabilities (All P0+P1)**     | 97/97        | 🟢 100%      | 0/21 (P2+P3 remaining)          | 🔴 0%             |
 | **🔴 Agent Execution Intelligence (P0: 3)** | 0/3          | 🔴 0%        | -                               | -                 |
@@ -58,7 +58,7 @@
 | **🔴 State Machine Refactoring**            | 0/4          | � 0%         | 0/1 (Maintenance Machine)       | 🔴 0%             |
 | **🔴 Concurrency Validation (Safety)**      | 0/1          | 🔴 0%        | -                               | -                 |
 | **✅ Testing & Validation**                 | 6/6          | 🟢 100%      | 0/2 (P1: affected tests, E2E)   | 🔴 0%             |
-| **🟢 UI/Frontend (Basic + Minimal UI)**     | 3/4          | 🟢 75%       | -                               | -                 |
+| **✅ UI/Frontend (Basic + Minimal UI)**     | 4/4          | 🟢 100%      | -                               | -                 |
 | **🔴 Code Autocompletion (Monaco)**         | 0/4          | 🔴 0%        | 0/3                             | 🔴 0%             |
 | **🔴 Multi-LLM Consultation Mode**          | 0/5          | 🔴 0%        | 0/3 (3-way, patterns, learning) | 🔴 0%             |
 | **✅ Documentation System**                 | 1/1          | 🟢 100%      | -                               | -                 |
@@ -76,7 +76,9 @@
 | **⚡ Storage Tier 1 (In-Memory GNN)**       | -            | -            | 0/5 (Phase 3)                   | 🔴 0%             |
 | **🌐 Multi-Language Support**               | 10/10        | 🟢 100%      | -                               | -                 |
 | **🤝 Collaboration Features**               | -            | -            | 0/5                             | 🔴 0%             |
-| **TOTAL (All Categories)**                  | **97/149**   | **65%**      | **0/105**                       | **0%**            |
+| **TOTAL (All Categories)**                  | **115/152**  | **76%**      | **0/105**                       | **0%**            |
+
+**Note:** "Agentic Capabilities" row (97/97) is the primary MVP metric representing all P0+P1 capabilities across the framework.
 
 ---
 
