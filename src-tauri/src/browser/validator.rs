@@ -27,7 +27,7 @@ impl BrowserValidator {
     }
 
     pub async fn validate(&self, url: String) -> Result<ValidationResult, String> {
-        let mut session = BrowserSession::new(url);
+        let mut session = BrowserSession::new(url, true); // headless mode
         let start = std::time::Instant::now();
 
         session.navigate().await?;

@@ -47,7 +47,7 @@ pub struct ConflictDetectionResult {
 }
 
 /// Dependency version requirement
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Deserialize)]
 pub struct VersionRequirement {
     pub package_name: String,
     pub constraint: String,

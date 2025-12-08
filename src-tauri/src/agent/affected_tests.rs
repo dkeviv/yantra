@@ -128,9 +128,8 @@ impl AffectedTestsRunner {
                         return Ok(true);
                     }
                     
-                    if let Ok(deps) = self.gnn.get_dependencies(&current) {
-                        to_visit.extend(deps);
-                    }
+                    let deps = self.gnn.get_dependencies(&current);
+                    to_visit.extend(deps.iter().map(|node| node.id.clone()));
                 }
                 
                 Ok(false)
@@ -236,11 +235,12 @@ impl AffectedTestsRunner {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
     
     #[test]
     fn test_is_test_file_python() {
         let runner = AffectedTestsRunner {
-            gnn: GNNEngine::new("test".to_string()),
+            gnn: GNNEngine::new(&PathBuf::from("test")).expect("Failed to create GNN"),
             test_pattern: String::new(),
         };
         
@@ -252,7 +252,7 @@ mod tests {
     #[test]
     fn test_is_test_file_javascript() {
         let runner = AffectedTestsRunner {
-            gnn: GNNEngine::new("test".to_string()),
+            gnn: GNNEngine::new(&PathBuf::from("test")).expect("Failed to create GNN"),
             test_pattern: String::new(),
         };
         
@@ -265,7 +265,7 @@ mod tests {
     #[test]
     fn test_generate_test_command_python() {
         let runner = AffectedTestsRunner {
-            gnn: GNNEngine::new("test".to_string()),
+            gnn: GNNEngine::new(&PathBuf::from("test")).expect("Failed to create GNN"),
             test_pattern: String::new(),
         };
         

@@ -100,7 +100,7 @@ impl IntelligentExecutor {
             let result = timeout(
                 Duration::from_secs(timeout_secs),
                 async {
-                    Command::new(cmd)
+                    TokioCommand::new(cmd)
                         .args(args)
                         .output()
                         .await
@@ -124,7 +124,7 @@ impl IntelligentExecutor {
                 }
             }
         } else {
-            Command::new(cmd)
+            TokioCommand::new(cmd)
                 .args(args)
                 .output()
                 .await

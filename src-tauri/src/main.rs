@@ -24,6 +24,8 @@ mod documentation;
 mod bridge;
 mod terminal;
 mod architecture;
+mod browser;
+mod security;
 
 use terminal::TerminalManager;
 use architecture::commands as arch_commands;
@@ -1063,7 +1065,7 @@ fn find_affected_tests(
     use std::path::PathBuf;
     
     // TODO: Get GNN from global state
-    let gnn = GNNEngine::new("project".to_string());
+    let gnn = GNNEngine::new(&PathBuf::from("project"))?;
     let runner = AffectedTestsRunner::new(gnn, String::new());
     
     let paths: Vec<PathBuf> = changed_files.iter().map(PathBuf::from).collect();
@@ -1395,70 +1397,73 @@ async fn execute_tests_with_coverage(
 /// Get git status
 #[tauri::command]
 fn git_status(workspace_path: String) -> Result<String, String> {
-    let git_mcp = git::GitMcp::new(PathBuf::from(workspace_path));
-    git_mcp.status()
+    let mut git_mcp = git::GitMcp::new(PathBuf::from(workspace_path));
+    let status = git_mcp.status()?;
+    serde_json::to_string(&status).map_err(|e| e.to_string())
 }
 
 /// Add files to git staging
 #[tauri::command]
 fn git_add(workspace_path: String, files: Vec<String>) -> Result<(), String> {
-    let git_mcp = git::GitMcp::new(PathBuf::from(workspace_path));
+    let mut git_mcp = git::GitMcp::new(PathBuf::from(workspace_path));
     git_mcp.add_files(&files)
 }
 
 /// Commit staged changes
 #[tauri::command]
 fn git_commit(workspace_path: String, message: String) -> Result<String, String> {
-    let git_mcp = git::GitMcp::new(PathBuf::from(workspace_path));
+    let mut git_mcp = git::GitMcp::new(PathBuf::from(workspace_path));
     git_mcp.commit(&message)
 }
 
 /// Get git diff
 #[tauri::command]
 fn git_diff(workspace_path: String, file: Option<String>) -> Result<String, String> {
-    let git_mcp = git::GitMcp::new(PathBuf::from(workspace_path));
+    let mut git_mcp = git::GitMcp::new(PathBuf::from(workspace_path));
     git_mcp.diff(file.as_deref())
 }
 
 /// Get git log
 #[tauri::command]
 fn git_log(workspace_path: String, max_count: usize) -> Result<String, String> {
-    let git_mcp = git::GitMcp::new(PathBuf::from(workspace_path));
-    git_mcp.log(max_count)
+    let mut git_mcp = git::GitMcp::new(PathBuf::from(workspace_path));
+    let commits = git_mcp.log(max_count)?;
+    serde_json::to_string(&commits).map_err(|e| e.to_string())
 }
 
 /// List git branches
 #[tauri::command]
 fn git_branch_list(workspace_path: String) -> Result<String, String> {
-    let git_mcp = git::GitMcp::new(PathBuf::from(workspace_path));
-    git_mcp.branch_list()
+    let mut git_mcp = git::GitMcp::new(PathBuf::from(workspace_path));
+    let branches = git_mcp.branch_list()?;
+    serde_json::to_string(&branches).map_err(|e| e.to_string())
 }
 
 /// Get current branch
 #[tauri::command]
 fn git_current_branch(workspace_path: String) -> Result<String, String> {
-    let git_mcp = git::GitMcp::new(PathBuf::from(workspace_path));
+    let mut git_mcp = git::GitMcp::new(PathBuf::from(workspace_path));
     git_mcp.current_branch()
 }
 
 /// Checkout branch
 #[tauri::command]
 fn git_checkout(workspace_path: String, branch: String) -> Result<String, String> {
-    let git_mcp = git::GitMcp::new(PathBuf::from(workspace_path));
+    let mut git_mcp = git::GitMcp::new(PathBuf::from(workspace_path));
     git_mcp.checkout(&branch)
 }
 
 /// Git pull
 #[tauri::command]
 fn git_pull(workspace_path: String) -> Result<String, String> {
-    let git_mcp = git::GitMcp::new(PathBuf::from(workspace_path));
+    let mut git_mcp = git::GitMcp::new(PathBuf::from(workspace_path));
     git_mcp.pull()
 }
 
 /// Git push
 #[tauri::command]
 fn git_push(workspace_path: String) -> Result<String, String> {
-    let git_mcp = git::GitMcp::new(PathBuf::from(workspace_path));
+    let mut git_mcp = git::GitMcp::new(PathBuf::from(workspace_path));
     git_mcp.push()
 }
 
@@ -1499,6 +1504,7 @@ fn get_graph_dependencies(app_handle: tauri::AppHandle) -> Result<serde_json::Va
                             gnn::NodeType::Import => "import",
                             gnn::NodeType::Variable => "variable",
                             gnn::NodeType::Module => "file",
+                            gnn::NodeType::Package { .. } => "package",
                         },
                         "file_path": node.file_path,
                     })

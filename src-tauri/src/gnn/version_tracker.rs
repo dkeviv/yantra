@@ -276,12 +276,9 @@ mod tests {
             file_path: "test.py".to_string(),
             line_start: 1,
             line_end: 10,
-            signature: Some("def test_func():".to_string()),
+            code_snippet: Some("def test_func():\n    pass".to_string()),
             docstring: None,
-            dependencies: vec![],
             semantic_embedding: None,
-            complexity: None,
-            test_coverage: None,
         }
     }
     

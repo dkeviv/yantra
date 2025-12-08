@@ -622,6 +622,18 @@ impl GNNEngine {
         packages.dedup();
         packages
     }
+    
+    /// List all file paths in the graph
+    pub fn list_all_files(&self) -> Result<Vec<String>, String> {
+        let mut files: Vec<String> = self.graph.get_all_nodes()
+            .iter()
+            .map(|node| node.file_path.clone())
+            .collect();
+        
+        files.sort();
+        files.dedup();
+        Ok(files)
+    }
 }
 
 #[cfg(test)]

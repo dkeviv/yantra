@@ -123,7 +123,7 @@ impl RetryExecutor {
                         test_file.parent().unwrap_or(test_file.as_path()).to_path_buf()
                     );
                     
-                    match executor.execute(test_file.to_str().unwrap(), None).await {
+                    match executor.execute_tests(test_file.as_path(), None) {
                         Ok(result) => {
                             let improvement = self.calculate_improvement(&test_results.last().unwrap(), &result);
                             improvements.push(format!("Attempt {}: {} (pass rate: {:.1}% → {:.1}%)",
@@ -273,7 +273,7 @@ impl RetryExecutor {
 
         // Generate fixed code
         let response = self.llm_orchestrator
-            .generate_code_with_context(original_request, &[])
+            .generate_code(original_request)
             .await
             .map_err(|e| format!("Code regeneration failed: {}", e))?;
 
