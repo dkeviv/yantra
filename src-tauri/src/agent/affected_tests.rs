@@ -184,10 +184,19 @@ impl AffectedTestsRunner {
         // Check directory patterns
         if let Some(parent) = path.parent() {
             let parent_str = parent.to_string_lossy();
+            // Check for test directories (with or without leading slash)
             if parent_str.contains("/tests/") || parent_str.contains("/test/") ||
-               parent_str.contains("/__tests__/") {
+               parent_str.contains("/__tests__/") || parent_str.contains("__tests__") ||
+               parent_str == "tests" || parent_str == "test" || parent_str == "__tests__" {
                 return true;
             }
+        }
+        
+        // Also check if path itself starts with test directories
+        let path_str = file_path.to_string();
+        if path_str.starts_with("tests/") || path_str.starts_with("test/") ||
+           path_str.starts_with("__tests__/") {
+            return true;
         }
         
         false

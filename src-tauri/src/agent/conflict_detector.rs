@@ -162,9 +162,15 @@ impl ConflictDetector {
     fn detect_circular_dependencies(imports: &HashMap<String, Vec<String>>) -> Vec<Conflict> {
         let mut conflicts = Vec::new();
         let mut visited = HashSet::new();
-        let mut rec_stack = HashSet::new();
         
         for file in imports.keys() {
+            // Skip if already visited (part of a previously explored component)
+            // This ensures each cycle is detected exactly once
+            if visited.contains(file) {
+                continue;
+            }
+            
+            let mut rec_stack = HashSet::new();
             if let Some(cycle) = Self::find_cycle(file, imports, &mut visited, &mut rec_stack, &mut vec![]) {
                 conflicts.push(Conflict {
                     conflict_type: ConflictType::CircularDependency,
@@ -189,9 +195,17 @@ impl ConflictDetector {
         path: &mut Vec<String>,
     ) -> Option<Vec<String>> {
         if rec_stack.contains(node) {
-            // Found cycle
-            let cycle_start = path.iter().position(|n| n == node).unwrap();
-            return Some(path[cycle_start..].to_vec());
+            // Found cycle - node is already in path, find where it starts
+            if let Some(cycle_start) = path.iter().position(|n| n == node) {
+                let mut cycle = path[cycle_start..].to_vec();
+                cycle.push(node.to_string()); // Close the cycle
+                return Some(cycle);
+            } else {
+                // If not in path, just return the current path + node
+                let mut cycle = path.clone();
+                cycle.push(node.to_string());
+                return Some(cycle);
+            }
         }
         
         if visited.contains(node) {

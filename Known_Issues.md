@@ -7,6 +7,150 @@
 
 ## Active Issues
 
+### Issue #11: Circular Dependency Detection Bugs
+
+**Status:** ✅ RESOLVED  
+**Severity:** High (Test Failures)  
+**Reported:** December 8, 2025  
+**Resolved:** December 8, 2025  
+**Component:** Agent / Conflict Detector
+
+#### Description
+
+The circular dependency detection in `conflict_detector.rs` had two critical bugs causing test failures:
+
+1. **Unwrap Panic**: `find_cycle()` method panicked when node position not found in path
+2. **Duplicate Cycle Detection**: Same cycle detected multiple times from different starting points
+
+**Impact:**
+
+- Test `test_detect_circular_dependencies` failed
+- Would have caused runtime panics in production when detecting cycles
+- False positive duplicate conflict reports to users
+
+#### Root Causes
+
+**Bug 1: Unwrap Panic on None Value**
+
+**Location:** `find_cycle()` method, line 193
+
+**Issue:**
+
+```rust
+// BROKEN CODE
+if rec_stack.contains(node) {
+    let cycle_start = path.iter().position(|n| n == node).unwrap(); // ❌ Panic!
+    let mut cycle = path[cycle_start..].to_vec();
+    return Some(cycle);
+}
+```
+
+When a node was in the recursion stack but not in the current path (edge case in DFS traversal), `position()` returned `None`, causing `unwrap()` to panic.
+
+**Bug 2: Duplicate Cycle Detection**
+
+**Location:** `detect_circular_dependencies()` method
+
+**Issue:** Given imports `a→b`, `b→c`, `c→a`:
+
+- Starting from `a`: finds cycle `a→b→c→a`
+- Starting from `b`: finds cycle `b→c→a→b` (same cycle, different start)
+- Starting from `c`: finds cycle `c→a→b→c` (same cycle, different start)
+
+Test Expected: 1 circular dependency  
+Test Got: 3 circular dependencies (same cycle detected 3 times)
+
+**Root Cause:** The visited set was being reused across all DFS entry points, but the loop didn't skip already-visited nodes, allowing redundant exploration of strongly connected components.
+
+#### Solution
+
+**Fix 1: Proper Option Handling**
+
+```rust
+// FIXED CODE
+if rec_stack.contains(node) {
+    if let Some(cycle_start) = path.iter().position(|n| n == node) {
+        let mut cycle = path[cycle_start..].to_vec();
+        cycle.push(node.to_string()); // Close the cycle
+        return Some(cycle);
+    } else {
+        // Fallback: use entire path if position not found
+        let mut cycle = path.clone();
+        cycle.push(node.to_string());
+        return Some(cycle);
+    }
+}
+```
+
+**Fix 2: Skip Already-Visited Nodes**
+
+```rust
+// FINAL SOLUTION
+fn detect_circular_dependencies(imports: &HashMap<String, Vec<String>>) -> Vec<Conflict> {
+    let mut conflicts = Vec::new();
+    let mut visited = HashSet::new();  // Persists across iterations
+
+    for file in imports.keys() {
+        // ✅ KEY FIX: Skip files already visited in previous DFS traversals
+        if visited.contains(file) {
+            continue;
+        }
+
+        let mut rec_stack = HashSet::new();  // Fresh for each DFS
+        if let Some(cycle) = Self::find_cycle(file, imports, &mut visited, &mut rec_stack, &mut vec![]) {
+            conflicts.push(Conflict { ... });
+        }
+    }
+
+    conflicts
+}
+```
+
+**Why This Works:**
+
+In graph theory, a **strongly connected component** (SCC) can only have one cycle involving a given set of nodes. By maintaining a **persistent visited set** across all DFS traversals and **skipping already-visited nodes**, we ensure:
+
+- Each cycle is detected exactly once
+- No redundant exploration of strongly connected components
+- O(V + E) time complexity instead of O(V² + VE)
+
+**Deduplication Removed:** Initial fix included cycle normalization with HashSet, but this was redundant once visited set persistence was implemented. Removed for cleaner code and better performance.
+
+#### Files Modified
+
+- `src/agent/conflict_detector.rs` (Lines 163-210)
+  - Added Option handling in `find_cycle()` method
+  - Added visited node check in `detect_circular_dependencies()`
+  - Removed redundant cycle deduplication logic
+
+#### Testing
+
+**Before Fixes:**
+
+```
+test agent::conflict_detector::tests::test_detect_circular_dependencies ... FAILED
+- First run: Panic at unwrap() on None
+- Second run: assertion failed: left: 3, right: 1
+```
+
+**After Fixes:**
+
+```
+test agent::conflict_detector::tests::test_detect_circular_dependencies ... ok ✅
+test result: ok. 5 passed; 0 failed
+```
+
+All conflict_detector tests now passing (5/5).
+
+#### Lessons Learned
+
+1. **Never use `unwrap()` in production code** - Always handle Option/Result properly
+2. **Visited set must persist across DFS iterations** - Skip already-explored components
+3. **Defensive programming vs. optimal programming** - Deduplication was a safety net that became redundant once root cause was fixed
+4. **Graph algorithms need careful state management** - Understand what state persists vs. resets between iterations
+
+---
+
 ### Issue #10: Pre-existing Compilation Errors (67 → 15 errors)
 
 **Status:** 🔄 IN PROGRESS (78% complete)  

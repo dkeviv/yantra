@@ -1,4 +1,4 @@
-\*\*# Yantra: Complete Technical Specification - Revised
+\e\*\*# Yantra: Complete Technical Specification - Revised
 
 | Version | Date     | Changes                                                                      |
 | ------- | -------- | ---------------------------------------------------------------------------- |
