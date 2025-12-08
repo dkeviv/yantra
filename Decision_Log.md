@@ -9,35 +9,130 @@
 
 ### Quick Reference
 
-1. ✅ **Yantra Codex Deferred to Stretch Goal** - MVP focuses on LLM-only approach, Codex as post-MVP cost optimization (Dec 8, 2025) 🆕
-2. ✅ **YDoc Documentation System** - Block-based documentation with full traceability, graph-native integration, Git-friendly format (Dec 8, 2025) 🆕
-3. ✅ **Refined Storage Architecture** - Clarified Tier 1 includes both Dependency Graph + YDoc blocks, Codex remains separate (Dec 8, 2025) 🆕
-4. ✅ **Enhanced State Machines** - Added parallel execution, Test Intelligence improvements, Documentation Governance machine (Dec 8, 2025) 🆕
-5. ✅ **5-Tier Storage with Metadata-Based Embeddings** - LLM-generated summaries instead of code snippets; user presence in cloud (Dec 5, 2025)
-6. ✅ **Architecture SHOULD Be in GNN Too** - Alignment checking, single cloud sync (PostgreSQL), simpler than separate DB (Dec 5, 2025 - RECONSIDERED) 🆕
-7. ✅ **Known Issues in GNN Too** - Store failure patterns in dependency graph alongside templates for unified semantic search (Dec 5, 2025)
-8. ✅ **Template Nodes in GNN Database** - Store code templates/patterns in dependency graph (`.yantra/graph.db`) for unified semantic search (Dec 5, 2025)
-9. ✅ **HNSW Semantic Indexing - Ferrari MVP Standard** - Enterprise-grade O(log n) search from day one, no compromises (Dec 2, 2025)
-10. ✅ **GNN Persistence Pooling NOT Needed** - Analysis proves reads are in-memory, pooling adds zero value (Dec 2, 2025)
-11. ✅ **Semantic-Enhanced Dependency Graph (Not Separate RAG)** - Enhance GNN nodes with embeddings vs separate vector DB (100% COMPLETE)
-12. ✅ **Multi-Language Support for MVP (11 Languages)** - Python, JavaScript, TypeScript, Rust + 7 more via tree-sitter (100% COMPLETE)
-13. ✅ **PostgreSQL Migration CANCELLED** - 4-tier architecture makes PostgreSQL unnecessary, SQLite perfect for Tier 3
-14. ✅ **Cluster Agents Architecture (Phase 2A)** - Master-Servant pattern with Git coordination + Tier 2 file locking
-15. ✅ **Cloud Graph Database - Tier 0 (Phase 2B)** - Shared dependency graph database for proactive conflict prevention across agents/users
-16. ✅ **tokio::sync::Mutex for all async code** - NEVER use std::sync::Mutex in async functions
-17. ✅ **State Machine Separation** - 4 specialized machines (CodeGen, Testing, Deployment, Maintenance) vs single monolithic machine
-18. ✅ **Browser Validation in 3 Machines** - Different purposes at each stage (visual preview, E2E testing, production monitoring)
-19. ✅ **Monitoring → Maintenance** - Renamed to emphasize self-healing and CI/CD remediation capabilities
-20. ✅ **Test File Dependency Tracking** - GNN now tracks test-to-source relationships for coverage analysis
-21. ✅ **Tech Stack Dependency Tracking** - GNN will track package-to-file mapping to eliminate unused packages
-22. ✅ **Multi-File Project Orchestration** - E2E autonomous project creation from natural language intent
-23. ✅ **Architecture View System with SQLite** - Visual governance layer with living diagrams
-24. ✅ **Component Status Tracking** - File mapping with automatic status (📋🔄✅⚠️)
-25. ✅ **Connection Types with Styling** - 5 semantic types (→⇢⤳⋯>⇄) for visual clarity
-26. ✅ **Start with 1024 dimensions** (not 256) - Cost negligible, benefit significant
-27. ✅ **Yantra Cloud Codex** - Universal model (not per-user personalization)
-28. ✅ **GNN logic + Tree-sitter syntax** - Universal patterns + language-specific generation
-29. ✅ **Coding specialization** - Like AlphaGo for Go, Yantra for coding only
+1. ✅ **IMPLEMENTATION_STATUS.md Deprecated** - Replaced by Requirements_Table.md for SSOT compliance (Dec 8, 2025) 🆕
+2. ✅ **Yantra Codex Deferred to Stretch Goal** - MVP focuses on LLM-only approach, Codex as post-MVP cost optimization (Dec 8, 2025) 🆕
+3. ✅ **YDoc Documentation System** - Block-based documentation with full traceability, graph-native integration, Git-friendly format (Dec 8, 2025) 🆕
+4. ✅ **Refined Storage Architecture** - Clarified Tier 1 includes both Dependency Graph + YDoc blocks, Codex remains separate (Dec 8, 2025) 🆕
+5. ✅ **Enhanced State Machines** - Added parallel execution, Test Intelligence improvements, Documentation Governance machine (Dec 8, 2025) 🆕
+6. ✅ **5-Tier Storage with Metadata-Based Embeddings** - LLM-generated summaries instead of code snippets; user presence in cloud (Dec 5, 2025)
+7. ✅ **Architecture SHOULD Be in GNN Too** - Alignment checking, single cloud sync (PostgreSQL), simpler than separate DB (Dec 5, 2025 - RECONSIDERED) 🆕
+8. ✅ **Known Issues in GNN Too** - Store failure patterns in dependency graph alongside templates for unified semantic search (Dec 5, 2025)
+9. ✅ **Template Nodes in GNN Database** - Store code templates/patterns in dependency graph (`.yantra/graph.db`) for unified semantic search (Dec 5, 2025)
+10. ✅ **HNSW Semantic Indexing - Ferrari MVP Standard** - Enterprise-grade O(log n) search from day one, no compromises (Dec 2, 2025)
+11. ✅ **GNN Persistence Pooling NOT Needed** - Analysis proves reads are in-memory, pooling adds zero value (Dec 2, 2025) - **REVERSED Dec 8, 2025** ⚠️
+12. ✅ **Semantic-Enhanced Dependency Graph (Not Separate RAG)** - Enhance GNN nodes with embeddings vs separate vector DB (100% COMPLETE)
+13. ✅ **Multi-Language Support for MVP (11 Languages)** - Python, JavaScript, TypeScript, Rust + 7 more via tree-sitter (100% COMPLETE)
+14. ✅ **PostgreSQL Migration CANCELLED** - 4-tier architecture makes PostgreSQL unnecessary, SQLite perfect for Tier 3
+15. ✅ **Cluster Agents Architecture (Phase 2A)** - Master-Servant pattern with Git coordination + Tier 2 file locking
+16. ✅ **Cloud Graph Database - Tier 0 (Phase 2B)** - Shared dependency graph database for proactive conflict prevention across agents/users
+17. ✅ **tokio::sync::Mutex for all async code** - NEVER use std::sync::Mutex in async functions
+18. ✅ **State Machine Separation** - 4 specialized machines (CodeGen, Testing, Deployment, Maintenance) vs single monolithic machine
+19. ✅ **Browser Validation in 3 Machines** - Different purposes at each stage (visual preview, E2E testing, production monitoring)
+20. ✅ **Monitoring → Maintenance** - Renamed to emphasize self-healing and CI/CD remediation capabilities
+21. ✅ **Test File Dependency Tracking** - GNN now tracks test-to-source relationships for coverage analysis
+22. ✅ **Tech Stack Dependency Tracking** - GNN will track package-to-file mapping to eliminate unused packages
+23. ✅ **Multi-File Project Orchestration** - E2E autonomous project creation from natural language intent
+24. ✅ **Architecture View System with SQLite** - Visual governance layer with living diagrams
+25. ✅ **Component Status Tracking** - File mapping with automatic status (📋🔄✅⚠️)
+26. ✅ **Connection Types with Styling** - 5 semantic types (→⇢⤳⋯>⇄) for visual clarity
+27. ✅ **Start with 1024 dimensions** (not 256) - Cost negligible, benefit significant
+28. ✅ **Yantra Cloud Codex** - Universal model (not per-user personalization)
+29. ✅ **GNN logic + Tree-sitter syntax** - Universal patterns + language-specific generation
+30. ✅ **Coding specialization** - Like AlphaGo for Go, Yantra for coding only
+
+---
+
+## December 8, 2025 - IMPLEMENTATION_STATUS.md Deprecated
+
+**Status:** ✅ DECIDED - Archived and replaced with Requirements_Table.md  
+**Deciders:** Vivek + AI Assistant  
+**Impact:** Medium - Simplifies documentation maintenance  
+**Priority:** Documentation SSOT Compliance
+
+### Context
+
+We had two tracking documents:
+1. **IMPLEMENTATION_STATUS.md** (4,701 lines) - Achievement-focused narrative format
+2. **Requirements_Table.md** (577 lines) - Specification-driven table format
+
+Both tracked the same information (implementation status), violating SSOT principle in Copilot Instructions.
+
+### Problem
+
+1. **Maintenance Burden** - Must update two files for every change
+2. **Inconsistency Risk** - Files could diverge over time
+3. **Verbosity** - IMPLEMENTATION_STATUS was 8x longer (4,701 vs 577 lines)
+4. **Historical vs. Actionable** - IMPLEMENTATION_STATUS celebrated achievements, Requirements_Table showed gaps
+5. **Traceability** - Requirements_Table maps each requirement to Specifications.md section
+
+### Decision
+
+**Deprecate IMPLEMENTATION_STATUS.md** and use **Requirements_Table.md** as SSOT for tracking.
+
+### Rationale
+
+**Requirements_Table.md Advantages:**
+- ✅ **Specification-driven** - Each requirement maps to Specifications.md (Req # → Spec section)
+- ✅ **Granular** - 577 individual requirements vs. broad categories
+- ✅ **Table format** - Easier to scan, update, and maintain
+- ✅ **Implementation details** - File paths, gaps, status comments for each requirement
+- ✅ **Actionable** - Shows what's missing, not just what's done
+- ✅ **Traceability** - Complete requirements → spec → implementation chain
+- ✅ **Updated** - Currently Dec 8, 2025 (vs Dec 4 for IMPLEMENTATION_STATUS)
+
+**IMPLEMENTATION_STATUS.md Issues:**
+- ❌ **Verbose** - 4,701 lines of narrative text
+- ❌ **Achievement-focused** - Celebrates milestones but less useful for planning
+- ❌ **Outdated** - Last updated Dec 4, 2025
+- ❌ **Hard to maintain** - Long narrative format vs. table rows
+- ❌ **Less granular** - "97 P0+P1 capabilities" without individual details
+
+### Implementation
+
+1. ✅ Moved `IMPLEMENTATION_STATUS.md` → `docs/archive/IMPLEMENTATION_STATUS_Dec4_2025.md`
+2. ✅ Created redirect file at original location pointing to Requirements_Table.md
+3. ✅ Updated `.github/copilot-instructions.md` SSOT table
+4. ✅ Removed from Mandatory Files list, replaced with Requirements_Table.md
+5. ⏳ Need to update File_Registry.md (mark as deprecated)
+
+### Migration Guide
+
+**Old Reference:** `IMPLEMENTATION_STATUS.md`  
+**New Reference:** `.github/Requirements_Table.md`
+
+**For Status Tracking:** Use Requirements_Table.md  
+**For Planning:** Use Requirements_Table.md (see Priority sections)  
+**For Achievements:** See git history or archived IMPLEMENTATION_STATUS  
+**For Features:** Use Features.md (user-facing documentation)
+
+### Consequences
+
+**Positive:**
+- Single source of truth for implementation tracking
+- Less maintenance overhead (update one file, not two)
+- Better traceability (requirements → specs → code)
+- More actionable (gaps clearly identified)
+- Easier to scan and update (table format)
+
+**Negative:**
+- Loss of achievement/milestone narratives (preserved in archive)
+- Less historical context (git history still available)
+
+**Neutral:**
+- File moved to `.github/` folder (centralized with Specifications.md)
+
+### Related Decisions
+
+- **Nov 27, 2025:** Deprecated Project_Plan.md in favor of IMPLEMENTATION_STATUS.md
+- **Dec 8, 2025:** Now deprecating IMPLEMENTATION_STATUS.md in favor of Requirements_Table.md
+- **Pattern:** Evolving toward more structured, specification-driven tracking
+
+### Files Changed
+
+- `.github/copilot-instructions.md` - Updated SSOT table and mandatory files list
+- `IMPLEMENTATION_STATUS.md` - Replaced with deprecation notice and redirect
+- `docs/archive/IMPLEMENTATION_STATUS_Dec4_2025.md` - Archived original
+- `Decision_Log.md` - This entry
 
 ---
 

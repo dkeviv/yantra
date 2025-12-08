@@ -18,30 +18,31 @@ Yantra is an AI-first development platform that generates production-quality cod
 
 ### Documentation SSOT (Single Source of Truth)
 
-**Updated:** November 27, 2025
+**Updated:** December 8, 2025
 
 All documentation follows a strict Single Source of Truth (SSOT) policy to prevent confusion and duplication. Always reference these canonical paths:
 
 | Document | SSOT Location | Description | Last Updated |
 |----------|---------------|-------------|--------------|
 | **Specifications** | `.github/Specifications.md` | Product specifications, features, all phases (1-4), pair programming, Clean Code Mode | Nov 26, 2025 |
-| **Technical Guide** | `Technical_Guide.md` (root) | Implementation details, architecture decisions, 15 components with code references, Data Storage Architecture | Nov 27, 2025 |
-| **Implementation Status & Planning** | `IMPLEMENTATION_STATUS.md` (root) | **PRIMARY PLANNING DOCUMENT**: Feature tracking AND project planning. Tracks 111 features (35/70 MVP done). Replaces deprecated Project_Plan.md. Use this for all planning and status tracking. | Nov 27, 2025 |
+| **Technical Guide** | `Technical_Guide.md` (root) | Implementation details, architecture decisions, 15 components with code references, Data Storage Architecture | Dec 8, 2025 |
+| **Requirements Tracking** | `.github/Requirements_Table.md` | **PRIMARY TRACKING DOCUMENT**: All 577 requirements with implementation status, file paths, gaps. Replaces deprecated IMPLEMENTATION_STATUS.md. Use this for all status tracking and planning. | Dec 8, 2025 |
 | **Features** | `Features.md` (root) | User-facing feature documentation (25 features, 100% MVP complete) | Nov 29, 2025 |
 | **UX Guide** | `UX.md` (root) | User flows from user perspective (admin + end-user), New UI Features section | Nov 29, 2025 |
 | **File Registry** | `File_Registry.md` (root) | File inventory, purposes, dependencies, deprecation tracking | Nov 29, 2025 |
 | **Decision Log** | `Decision_Log.md` (root) | Architecture and design decision history | Nov 28, 2025 |
-| **Known Issues** | `Known_Issues.md` (root) | Bug tracking and fixes | - |
+| **Known Issues** | `Known_Issues.md` (root) | Bug tracking and fixes | Dec 8, 2025 |
 
 **DEPRECATED FILES (Keep for historical reference, DO NOT UPDATE):**
-- ~~`Project_Plan.md`~~ - Replaced by `IMPLEMENTATION_STATUS.md` (Nov 27, 2025). Reason: Duplicate timelines, verbose (2,708 lines), hard to maintain. IMPLEMENTATION_STATUS.md provides superior table format (872 lines), easier updates, single source of truth for planning.
+- ~~`Project_Plan.md`~~ - Replaced by `IMPLEMENTATION_STATUS.md` (Nov 27, 2025), then by `.github/Requirements_Table.md` (Dec 8, 2025). Reason: Duplicate timelines, verbose (2,708 lines), hard to maintain.
+- ~~`IMPLEMENTATION_STATUS.md`~~ - Archived to `docs/archive/IMPLEMENTATION_STATUS_Dec4_2025.md` (Dec 8, 2025). Reason: Redundant with Requirements_Table.md (4,701 lines vs 577 lines). Requirements_Table.md provides superior granularity, specification traceability, and table format. Both tracked same information, violating SSOT principle.
 - ~~`docs/Decision_Log.md`~~ - Archived to `docs/archive/Decision_Log_Nov20_2025.md` (Nov 29, 2025). Reason: Duplicate of root Decision_Log.md. Root file is SSOT (3,906 lines, updated Nov 28, 2025), contains all decisions. Docs version was outdated (1,547 lines, Nov 20, 2025).
 
 **IMPORTANT:** Before creating any documentation file, check the File_Registry.md to verify if it exists and confirm the SSOT location. Never create duplicates in different folders (e.g., root vs docs/ vs .github/).
 
 ### Mandatory Files to Maintain (Update Immediately After Implementation)
 
-1. **IMPLEMENTATION_STATUS.md** - **PRIMARY PLANNING DOCUMENT**: Track all features AND project planning (replaces deprecated Project_Plan.md)
+1. **/.github/Requirements_Table.md** - **PRIMARY TRACKING DOCUMENT**: Track all 577 requirements with implementation status, file paths, gaps, and priorities. Maps requirements to Specifications.md. Use this for all planning and status tracking.
 2. **/.github/Specifications.md** - Detailed requirements for features to be implemented (design specs, UX flows, technical details)
 3. **Features.md** - Document all implemented features from user perspective with use cases
 4. **UX.md** - Explain user flows (admin and end-user) from user perspective
