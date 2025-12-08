@@ -1,31 +1,56 @@
 // File: src-tauri/src/gnn/persistence.rs
-// Purpose: SQLite persistence for graph data
-// Dependencies: rusqlite
-// Last Updated: November 20, 2025
+// Purpose: SQLite persistence for graph data with WAL mode and connection pooling
+// Dependencies: rusqlite, r2d2, r2d2_sqlite
+// Last Updated: December 8, 2025 - Added WAL mode and connection pooling
 
 use super::{CodeNode, NodeType, EdgeType};
 use super::graph::CodeGraph;
-use rusqlite::{Connection, params, Result as SqlResult};
+use rusqlite::{params, Result as SqlResult};
+use r2d2::{Pool, PooledConnection};
+use r2d2_sqlite::SqliteConnectionManager;
 use std::path::Path;
 
 pub struct Database {
-    conn: Connection,
+    pool: Pool<SqliteConnectionManager>,
 }
 
 impl Database {
-    /// Create or open database at specified path
-    pub fn new(db_path: &Path) -> SqlResult<Self> {
-        let conn = Connection::open(db_path)?;
+    /// Create or open database at specified path with WAL mode and connection pooling
+    pub fn new(db_path: &Path) -> Result<Self, String> {
+        let manager = SqliteConnectionManager::file(db_path)
+            .with_init(|conn| {
+                // Enable WAL mode for better concurrency and corruption protection
+                conn.execute_batch("
+                    PRAGMA journal_mode=WAL;
+                    PRAGMA synchronous=NORMAL;
+                    PRAGMA busy_timeout=5000;
+                ")?;
+                Ok(())
+            });
         
-        let db = Self { conn };
-        db.create_tables()?;
+        let pool = Pool::builder()
+            .max_size(10)  // Max 10 connections for concurrent access
+            .min_idle(Some(2))  // Keep at least 2 idle connections ready
+            .build(manager)
+            .map_err(|e| format!("Failed to create connection pool: {}", e))?;
+        
+        let db = Self { pool };
+        db.create_tables()
+            .map_err(|e| format!("Failed to create tables: {}", e))?;
         
         Ok(db)
     }
     
+    /// Get a connection from the pool
+    fn get_conn(&self) -> Result<PooledConnection<SqliteConnectionManager>, String> {
+        self.pool.get().map_err(|e| format!("Failed to get connection: {}", e))
+    }
+    
     /// Create tables if they don't exist
     fn create_tables(&self) -> SqlResult<()> {
-        self.conn.execute(
+        let conn = self.get_conn().map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))))?;
+        
+        conn.execute(
             "CREATE TABLE IF NOT EXISTS nodes (
                 id TEXT PRIMARY KEY,
                 node_type TEXT NOT NULL,
@@ -37,7 +62,7 @@ impl Database {
             [],
         )?;
         
-        self.conn.execute(
+        conn.execute(
             "CREATE TABLE IF NOT EXISTS edges (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 edge_type TEXT NOT NULL,
@@ -50,22 +75,22 @@ impl Database {
         )?;
         
         // Create indices for faster queries
-        self.conn.execute(
+        conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_nodes_name ON nodes(name)",
             [],
         )?;
         
-        self.conn.execute(
+        conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_nodes_file ON nodes(file_path)",
             [],
         )?;
         
-        self.conn.execute(
+        conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_edges_source ON edges(source_id)",
             [],
         )?;
         
-        self.conn.execute(
+        conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_edges_target ON edges(target_id)",
             [],
         )?;
@@ -74,13 +99,18 @@ impl Database {
     }
     
     /// Save entire graph to database
-    pub fn save_graph(&self, graph: &CodeGraph) -> SqlResult<()> {
+    pub fn save_graph(&self, graph: &CodeGraph) -> Result<(), String> {
+        let conn = self.get_conn()?;
+        
         // Begin transaction for better performance
-        let tx = self.conn.unchecked_transaction()?;
+        let tx = conn.unchecked_transaction()
+            .map_err(|e| format!("Failed to begin transaction: {}", e))?;
         
         // Clear existing data
-        tx.execute("DELETE FROM edges", [])?;
-        tx.execute("DELETE FROM nodes", [])?;
+        tx.execute("DELETE FROM edges", [])
+            .map_err(|e| format!("Failed to delete edges: {}", e))?;
+        tx.execute("DELETE FROM nodes", [])
+            .map_err(|e| format!("Failed to delete nodes: {}", e))?;
         
         let (nodes, edges) = graph.export();
         
@@ -97,7 +127,7 @@ impl Database {
                     node.line_start,
                     node.line_end,
                 ],
-            )?;
+            ).map_err(|e| format!("Failed to insert node: {}", e))?;
         }
         
         // Insert edges
@@ -110,21 +140,22 @@ impl Database {
                     source_id,
                     target_id,
                 ],
-            )?;
+            ).map_err(|e| format!("Failed to insert edge: {}", e))?;
         }
         
-        tx.commit()?;
+        tx.commit().map_err(|e| format!("Failed to commit transaction: {}", e))?;
         Ok(())
     }
     
     /// Load entire graph from database
-    pub fn load_graph(&self) -> SqlResult<CodeGraph> {
+    pub fn load_graph(&self) -> Result<CodeGraph, String> {
+        let conn = self.get_conn()?;
         let mut graph = CodeGraph::new();
         
         // Load nodes
-        let mut stmt = self.conn.prepare(
+        let mut stmt = conn.prepare(
             "SELECT id, node_type, name, file_path, line_start, line_end FROM nodes"
-        )?;
+        ).map_err(|e| format!("Failed to prepare nodes query: {}", e))?;
         
         let nodes: Vec<CodeNode> = stmt.query_map([], |row| {
             Ok(CodeNode {
@@ -136,13 +167,14 @@ impl Database {
                 line_end: row.get(5)?,
                 ..Default::default()
             })
-        })?
-        .collect::<SqlResult<Vec<_>>>()?;
+        }).map_err(|e| format!("Failed to query nodes: {}", e))?
+        .collect::<SqlResult<Vec<_>>>()
+        .map_err(|e| format!("Failed to collect nodes: {}", e))?;
         
         // Load edges
-        let mut stmt = self.conn.prepare(
+        let mut stmt = conn.prepare(
             "SELECT edge_type, source_id, target_id FROM edges"
-        )?;
+        ).map_err(|e| format!("Failed to prepare edges query: {}", e))?;
         
         let edges: Vec<(String, String, EdgeType)> = stmt.query_map([], |row| {
             Ok((
@@ -150,8 +182,9 @@ impl Database {
                 row.get(2)?,
                 string_to_edge_type(&row.get::<_, String>(0)?),
             ))
-        })?
-        .collect::<SqlResult<Vec<_>>>()?;
+        }).map_err(|e| format!("Failed to query edges: {}", e))?
+        .collect::<SqlResult<Vec<_>>>()
+        .map_err(|e| format!("Failed to collect edges: {}", e))?;
         
         graph.import(nodes, edges);
         
@@ -159,24 +192,26 @@ impl Database {
     }
     
     /// Get statistics about the graph
-    pub fn get_stats(&self) -> SqlResult<GraphStats> {
-        let node_count: i64 = self.conn.query_row(
+    pub fn get_stats(&self) -> Result<GraphStats, String> {
+        let conn = self.get_conn()?;
+        
+        let node_count: i64 = conn.query_row(
             "SELECT COUNT(*) FROM nodes",
             [],
             |row| row.get(0),
-        )?;
+        ).map_err(|e| format!("Failed to count nodes: {}", e))?;
         
-        let edge_count: i64 = self.conn.query_row(
+        let edge_count: i64 = conn.query_row(
             "SELECT COUNT(*) FROM edges",
             [],
             |row| row.get(0),
-        )?;
+        ).map_err(|e| format!("Failed to count edges: {}", e))?;
         
-        let file_count: i64 = self.conn.query_row(
+        let file_count: i64 = conn.query_row(
             "SELECT COUNT(DISTINCT file_path) FROM nodes",
             [],
             |row| row.get(0),
-        )?;
+        ).map_err(|e| format!("Failed to count files: {}", e))?;
         
         Ok(GraphStats {
             node_count: node_count as usize,

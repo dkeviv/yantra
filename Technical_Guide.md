@@ -202,6 +202,7 @@ This section documents all 97 P0+P1 agentic capabilities that enable Yantra's au
 **Package Tracking Implementation Details:**
 
 **NodeType Extensions:**
+
 ```rust
 Package {
     name: String,        // "numpy"
@@ -211,27 +212,32 @@ Package {
 ```
 
 **EdgeType Extensions:**
+
 - `UsesPackage`: File → Package@Version (main.py uses numpy==1.26.0)
 - `DependsOn`: Package → Package (pandas depends on numpy)
 - `ConflictsWith`: Package@Version ↔ Package@Version
 
 **Supported Manifest Files:**
+
 - Python: `requirements.txt` (==, >=, <, ~= constraints)
 - JavaScript: `package.json`, `package-lock.json` (^, ~, exact versions)
 - Rust: `Cargo.lock` (planned)
 - Go: `go.sum` (planned)
 
 **Test Coverage:**
+
 - ✅ 5 unit tests (all passing)
 - ✅ 12 integration tests (all passing)
 - ✅ 100% code path coverage
 
 **Files:**
+
 - `src-tauri/src/gnn/package_tracker.rs` (530 lines)
 - `src-tauri/src/gnn/mod.rs` (NodeType::Package variant)
 - Tests: `tests/package_tracker_integration_test.rs` (370 lines)
 
 **Performance:**
+
 - Parse requirements.txt: <1ms
 - Parse package-lock.json: <5ms
 - Package version queries: <10ms
@@ -247,11 +253,13 @@ Package {
 **⚠️ Known Limitation - WAL Mode Not Enabled:**
 
 The GNN persistence layer (`src-tauri/src/gnn/persistence.rs`) does NOT have WAL mode enabled yet. This causes:
+
 - Single connection bottleneck (~200ms queries under load)
 - Database locked during writes (no concurrent reads)
 - Suboptimal performance for multi-threaded access
 
 **Required Fix (2 hours):**
+
 ```rust
 // Current: Single connection, no WAL
 pub struct Database {
@@ -277,17 +285,18 @@ impl Database {
                 ")?;
                 Ok(())
             });
-        
+
         let pool = Pool::builder()
             .max_size(10)
             .build(manager)?;
-        
+
         Ok(Self { pool })
     }
 }
 ```
 
 **Expected Performance After WAL:**
+
 - Query time: ~200ms → ~10ms (20x improvement)
 - Concurrent reads: ❌ Blocked → ✅ Allowed
 - Write locks: ❌ Entire DB → ✅ Only write operations
