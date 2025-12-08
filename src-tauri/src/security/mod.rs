@@ -4,7 +4,7 @@
 pub mod semgrep;
 pub mod autofix;
 
-pub use semgrep::{SemgrepScanner, SecurityIssue, Severity};
+pub use semgrep::{SemgrepScanner, SecurityIssue, Severity, ScanResult};
 pub use autofix::{AutoFixer, FixSuggestion};
 
 #[cfg(test)]

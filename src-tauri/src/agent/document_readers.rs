@@ -153,13 +153,14 @@ impl DocxReader {
     }
     
     /// Extract metadata from DOCX
-    fn extract_metadata(docx: &docx_rs::Docx) -> DocumentMetadata {
+    fn extract_metadata(_docx: &docx_rs::Docx) -> DocumentMetadata {
+        // TODO: docx-rs 0.4 doesn't expose these fields easily
         DocumentMetadata {
-            title: docx.doc_props.core.as_ref().and_then(|c| c.title.clone()),
-            author: docx.doc_props.core.as_ref().and_then(|c| c.creator.clone()),
-            created_at: docx.doc_props.core.as_ref().and_then(|c| c.created.clone()),
-            modified_at: docx.doc_props.core.as_ref().and_then(|c| c.modified.clone()),
-            page_count: None, // Not easily available in docx-rs
+            title: None,
+            author: None,
+            created_at: None,
+            modified_at: None,
+            page_count: None,
         }
     }
     
@@ -234,25 +235,25 @@ impl PdfReader {
             if let Ok(info_dict) = info.as_dict() {
                 if let Ok(title) = info_dict.get(b"Title") {
                     if let Ok(s) = title.as_string() {
-                        metadata.title = Some(String::from_utf8_lossy(&s).to_string());
+                        metadata.title = Some(s.to_string());
                     }
                 }
                 
                 if let Ok(author) = info_dict.get(b"Author") {
                     if let Ok(s) = author.as_string() {
-                        metadata.author = Some(String::from_utf8_lossy(&s).to_string());
+                        metadata.author = Some(s.to_string());
                     }
                 }
                 
                 if let Ok(created) = info_dict.get(b"CreationDate") {
                     if let Ok(s) = created.as_string() {
-                        metadata.created_at = Some(String::from_utf8_lossy(&s).to_string());
+                        metadata.created_at = Some(s.to_string());
                     }
                 }
                 
                 if let Ok(modified) = info_dict.get(b"ModDate") {
                     if let Ok(s) = modified.as_string() {
-                        metadata.modified_at = Some(String::from_utf8_lossy(&s).to_string());
+                        metadata.modified_at = Some(s.to_string());
                     }
                 }
             }

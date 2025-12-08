@@ -1,11 +1,166 @@
 # Yantra - Known Issues
 
 **Purpose:** Track all bugs, issues, and their fixes  
-**Last Updated:** December 2, 2025
+**Last Updated:** December 8, 2025
 
 ---
 
 ## Active Issues
+
+### Issue #10: Pre-existing Compilation Errors (67 → 15 errors)
+
+**Status:** 🔄 IN PROGRESS (78% complete)  
+**Severity:** High (Blocking)  
+**Reported:** December 8, 2025  
+**Component:** Multiple (GNN, LLM, Agent, Browser)
+
+#### Description
+
+The codebase had 67 pre-existing compilation errors preventing the build and test execution. Systematic fix applied, reducing errors from 67 to 15 (78% reduction, 52 errors fixed).
+
+**Impact:**
+- Blocked all unit test execution
+- Prevented package tracker tests from running
+- Made development difficult due to compilation failures
+
+#### Errors Fixed (52 total)
+
+**1. GNN Module Issues (15 fixes)**
+- ✅ `NodeType` missing `Hash` trait derive
+- ✅ `PackageLanguage` missing `Hash` trait derive  
+- ✅ `HnswIndex` missing `Debug` trait implementation
+- ✅ `Hnsw` missing lifetime parameter (added `'static`)
+- ✅ `HnswIndex::insert()` returns `()`, removed `.map_err()`
+- ✅ `get_node_dependencies()` → renamed to `get_dependencies()` (3 occurrences in query.rs)
+- ✅ `node.embedding` → changed to `node.semantic_embedding`
+- ✅ `CodeNode` test initialization missing fields (added semantic_embedding, code_snippet, docstring)
+- ✅ Temporary value dropped in `avg_function_lines()` (stored `all_nodes` before iteration)
+- ✅ `HashMap<_, _>` missing type annotations in `find_shortest_path()`
+- ✅ `NodeType::Method` pattern matching removed (variant doesn't exist)
+- ✅ Added `NodeType::Package { .. }` case in refactoring.rs
+
+**2. Type Conversion Issues (8 fixes)**
+- ✅ String vs &str comparison in version_tracker.rs (used `.as_str()`)
+- ✅ `line_start`/`line_end` usize → u32 conversion (added `as u32` casts)
+- ✅ Similarity f64 → f32 conversion in context_depth.rs (added `as f32` cast)
+- ✅ Similarity f32 → f64 conversion in context_depth.rs (added `as f64` cast)
+- ✅ `from_utf8_lossy(&s)` on `Cow<str>` → changed to `s.to_string()`
+- ✅ `tree_sitter_rust::LANGUAGE` → changed to `tree_sitter_rust::language()` function call
+- ✅ Duplicate closing braces in document_readers.rs (syntax error)
+
+**3. Borrow Checker Issues (12 fixes)**
+- ✅ `git_mcp` mutability in project_orchestrator.rs (changed to `let mut`)
+- ✅ `git_mcp` mutability in commit.rs (`&self` → `&mut self`)
+- ✅ `installed_version` borrow after move (added `.clone()`)
+- ✅ `encrypted_value` vault borrow conflict (cloned before save)
+- ✅ RAG `embedder` interior mutability (wrapped in `RefCell<T>`, 6 occurrences)
+- ✅ `events` borrow conflict in status_emitter.rs (stored len in variable)
+- ✅ `Vec<CodeNode>` `.map_err()` removed (method returns Vec, not Result)
+- ✅ `Vec<CodeNode>` `.unwrap_or_default()` removed (not needed)
+- ✅ affected_tests.rs dependency checks (changed to `.iter().any()` pattern)
+
+**4. Missing Exports/Types (7 fixes)**
+- ✅ `CodeGraph` not exported from gnn::mod.rs (added `pub use`)
+- ✅ `ScanResult` not exported from security::mod.rs (added to exports)
+- ✅ `GraphNeuralNetwork` → renamed to `GNNEngine` (11 occurrences)
+- ✅ `MigrationStatus` → renamed to `MigrationDirection`
+
+**5. Missing Dependencies (2 fixes)**
+- ✅ Added `walkdir = "2.4"` to Cargo.toml
+- ✅ Added `futures = "0.3"` to Cargo.toml
+- ✅ Added `glob = "0.3"` to Cargo.toml
+- ✅ Added `rand = "0.8"` to Cargo.toml
+
+**6. Async/Await Issues (4 fixes)**
+- ✅ `Command::new().output()` not awaited in intelligent_executor.rs (wrapped in async block)
+- ✅ Missing `.await` in else branch of intelligent_executor.rs
+- ✅ `handler.next()` returns Option<Result>, not Result (changed pattern to `Some(Err(e))`)
+
+**7. Field/Method Issues (4 fixes)**
+- ✅ `original_request.description` → changed to `original_request.intent`
+- ✅ `CoreProps` fields (title, creator, created, modified) don't exist (set to None)
+- ✅ `Instant` serialization error (added `#[serde(skip)]` to request_counts)
+
+**8. Browser/CDP Issues (1 fix)**
+- ✅ chromiumoxide CDP imports temporarily commented out (ConsoleApiCalledEvent, RequestWillBeSentEvent, runtime module)
+
+#### Remaining Errors (15 total)
+
+**Missing Method Implementations (3):**
+- ❌ `PytestExecutor::execute()` method not found
+- ❌ `LLMOrchestrator::generate_code_with_context()` method not found  
+- ❌ `GNNEngine::list_all_files()` method not found
+
+**Arc Borrow Issues (2):**
+- ❌ Cannot move out of Arc
+- ❌ Cannot borrow data in Arc as mutable
+
+**Type Issues (4):**
+- ❌ Missing type `ConsoleApiCalledEvent` (from commented CDP imports)
+- ❌ Missing type `RequestWillBeSentEvent` (from commented CDP imports)
+- ❌ `Result<Output, std::io::Error>` is not a future (1 remaining instance)
+- ❌ Mismatched types (1 instance)
+
+**Field/Argument Issues (3):**
+- ❌ No field `cells` on type `&TableChild`
+- ❌ Function takes 2 arguments but 1 supplied
+- ❌ Missing crate `pdf_extract`
+
+#### Files Modified
+
+1. `src/gnn/mod.rs` - Added Hash derives, fixed exports
+2. `src/gnn/hnsw_index.rs` - Debug impl, lifetime, removed map_err
+3. `src/gnn/query.rs` - Method renames, type annotations, temp value fix, field names
+4. `src/gnn/version_tracker.rs` - Type conversions
+5. `src/gnn/completion.rs` - tree_sitter function call
+6. `src/gnn/graph.rs` - get_dependencies method
+7. `src/llm/rag.rs` - RefCell wrapper for embedder (6 changes)
+8. `src/llm/context_depth.rs` - Type casts
+9. `src/agent/project_orchestrator.rs` - git_mcp mutability
+10. `src/agent/dependency_manager.rs` - Clone installed_version
+11. `src/agent/secrets.rs` - Clone encrypted_value
+12. `src/agent/document_readers.rs` - String conversion, CoreProps fields
+13. `src/agent/affected_tests.rs` - Dependency check logic
+14. `src/agent/api_health.rs` - Serde skip for Instant
+15. `src/agent/status_emitter.rs` - Events borrow fix
+16. `src/agent/intelligent_executor.rs` - Async blocks, await
+17. `src/architecture/refactoring.rs` - NodeType pattern
+18. `src/security/mod.rs` - ScanResult export
+19. `src/browser/cdp.rs` - Handler pattern, commented imports
+20. `src/git/commit.rs` - Method mutability
+21. `src/main.rs` - GNNEngine rename
+22. `src/testing/retry.rs` - Field name fix
+23. `src/agent/database/mod.rs` - Export fix
+24. `Cargo.toml` - Added dependencies
+
+#### Solution Strategy
+
+**Phase 1: Low-hanging fruit (Completed)**
+- Import errors → Added missing exports
+- Dependency errors → Added to Cargo.toml
+- Type renames → Global search/replace
+- Simple type casts → Added `as` conversions
+
+**Phase 2: Borrow checker (Completed)**
+- Interior mutability → RefCell wrapper
+- Clone before move → Added .clone()
+- Method signatures → Changed &self to &mut self
+
+**Phase 3: Missing methods (In Progress)**
+- Need to implement or stub missing methods
+- Arc issues require design decisions
+
+#### Next Steps
+
+1. Implement missing methods or create stub implementations
+2. Fix Arc borrowing issues (may need Arc<RwLock<T>> pattern)
+3. Find correct chromiumoxide CDP imports or use alternative
+4. Add pdf_extract dependency or remove usage
+5. Fix remaining type mismatches and argument counts
+
+---
+
+## Resolved Issues
 
 ### Issue #9: Architecture Storage Deadlock - Nested Mutex Lock
 

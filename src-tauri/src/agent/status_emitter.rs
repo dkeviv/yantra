@@ -238,7 +238,8 @@ impl StatusEmitter {
         
         // Keep only last 1000 events
         if events.len() > 1000 {
-            events.drain(0..events.len() - 1000);
+            let new_start = events.len() - 1000;
+            events.drain(0..new_start);
         }
     }
 

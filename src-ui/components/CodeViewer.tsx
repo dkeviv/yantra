@@ -1,16 +1,17 @@
 // File: src-ui/components/CodeViewer.tsx
-// Purpose: Code viewer component with Monaco Editor and file tabs
-// Dependencies: solid-js, appStore, monaco-editor
-// Last Updated: November 23, 2025
+// Purpose: Code viewer component with Monaco Editor, file tabs, and Tree-sitter completions
+// Dependencies: solid-js, appStore, monaco-editor, Tree-sitter completion provider
+// Last Updated: December 7, 2025
 
 import { Component, onMount, createEffect, onCleanup, For, Show } from 'solid-js';
 import { appStore } from '../stores/appStore';
 import { layoutStore } from '../stores/layoutStore';
-import { monaco } from '../monaco-setup';
+import { monaco, registerCompletionProvider } from '../monaco-setup';
 
 const CodeViewer: Component = () => {
   let editorContainer: HTMLDivElement | undefined;
   let editor: monaco.editor.IStandaloneCodeEditor | undefined;
+  let completionRegistered = false;
 
   onMount(() => {
     if (!editorContainer) return;
@@ -51,7 +52,31 @@ const CodeViewer: Component = () => {
         top: 4,
         bottom: 4,
       },
+      // Enable advanced completion features
+      suggest: {
+        showKeywords: true,
+        showSnippets: true,
+        showFunctions: true,
+        showClasses: true,
+        showModules: true,
+      },
+      quickSuggestions: {
+        other: true,
+        comments: false,
+        strings: false,
+      },
     });
+
+    // Register Tree-sitter + GNN completion provider
+    // Try to get project path from workspace or use current directory
+    const projectPath = appStore.projectPath() || '/tmp/yantra-project';
+    if (!completionRegistered) {
+      registerCompletionProvider('python', projectPath);
+      registerCompletionProvider('javascript', projectPath);
+      registerCompletionProvider('typescript', projectPath);
+      registerCompletionProvider('rust', projectPath);
+      completionRegistered = true;
+    }
 
     // Listen to content changes
     editor.onDidChangeModelContent(() => {

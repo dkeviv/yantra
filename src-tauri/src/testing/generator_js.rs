@@ -1,14 +1,14 @@
 // File: src-tauri/src/testing/generator_js.rs
 // Purpose: Jest test generator for JavaScript/TypeScript code
 // Dependencies: LLM orchestration, tree-sitter-javascript
-// Last Updated: December 3, 2025
+// Last Updated: December 4, 2025
 //
 // Generates comprehensive Jest tests for JavaScript/TypeScript:
 // - Unit tests with expect() assertions
 // - Mock functions and modules
 // - Async/await test patterns
 // - Edge cases and error handling
-// - Type-safe tests for TypeScript
+// Type-safe tests for TypeScript
 //
 // Usage:
 // 1. Parse JavaScript/TypeScript source code
@@ -18,6 +18,9 @@
 
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+use crate::testing::{TestGenerationRequest, TestGenerationResponse};
+use crate::llm::{CodeGenerationRequest, LLMConfig};
+use crate::llm::orchestrator::LLMOrchestrator;
 
 /// Configuration for Jest test generation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -47,6 +50,106 @@ impl Default for JestGeneratorConfig {
             coverage_target: 0.9,
         }
     }
+}
+
+/// Generate Jest tests using LLM (unified interface)
+pub async fn generate_jest_tests(
+    request: TestGenerationRequest,
+    llm_config: LLMConfig,
+) -> Result<TestGenerationResponse, String> {
+    let test_prompt = build_jest_test_prompt(&request);
+    
+    let llm_request = CodeGenerationRequest {
+        intent: test_prompt,
+        file_path: Some(format!("{}.test.{}", 
+            request.file_path.replace(".js", "").replace(".ts", "").replace(".jsx", "").replace(".tsx", ""),
+            if request.language.to_lowercase().contains("typescript") { "ts" } else { "js" }
+        )),
+        context: vec![
+            format!("# {} code to test:\n{}", request.language, request.code),
+            format!("# Target coverage: {:.0}%", request.coverage_target * 100.0),
+        ],
+        dependencies: Vec::new(),
+    };
+    
+    let orchestrator = LLMOrchestrator::new(llm_config);
+    let response = orchestrator.generate_code(&llm_request).await
+        .map_err(|e| e.message)?;
+    
+    let test_code = &response.code;
+    let test_count = count_jest_tests(test_code);
+    
+    Ok(TestGenerationResponse {
+        tests: test_code.clone(),
+        test_count,
+        estimated_coverage: estimate_jest_coverage(test_count, &request.code),
+        fixtures: Vec::new(),
+    })
+}
+
+fn build_jest_test_prompt(request: &TestGenerationRequest) -> String {
+    let lang = if request.language.to_lowercase().contains("typescript") {
+        "TypeScript"
+    } else {
+        "JavaScript"
+    };
+    
+    format!(
+        r#"Generate comprehensive Jest tests for {} code.
+
+Requirements:
+1. Achieve at least {:.0}% code coverage
+2. Include happy path tests
+3. Include edge case tests (undefined, null, empty values, boundary conditions)
+4. Include error condition tests
+5. Use describe/it blocks with clear names
+6. Use expect() assertions
+7. Mock external dependencies with jest.mock()
+8. Test async functions with async/await
+9. Follow Jest best practices
+
+Code to test:
+```{}
+{}
+```
+
+Generate ONLY the test code with proper imports and Jest syntax."#,
+        lang,
+        request.coverage_target * 100.0,
+        lang.to_lowercase(),
+        request.code
+    )
+}
+
+fn count_jest_tests(test_code: &str) -> usize {
+    test_code.lines()
+        .filter(|line| {
+            let trimmed = line.trim();
+            trimmed.starts_with("it(") || 
+            trimmed.starts_with("it.skip(") || 
+            trimmed.starts_with("test(") ||
+            trimmed.starts_with("test.skip(")
+        })
+        .count()
+}
+
+fn estimate_jest_coverage(test_count: usize, code: &str) -> f32 {
+    let code_lines = code.lines()
+        .filter(|line| {
+            let trimmed = line.trim();
+            !trimmed.is_empty() && 
+            !trimmed.starts_with("//") && 
+            !trimmed.starts_with("/*")
+        })
+        .count();
+    
+    if code_lines == 0 {
+        return 0.0;
+    }
+    
+    // Estimate: each test covers ~5-10 lines of code
+    let estimated_coverage = (test_count as f32 * 7.0) / code_lines as f32;
+    estimated_coverage.min(1.0)
 }
 
 /// Jest test generator

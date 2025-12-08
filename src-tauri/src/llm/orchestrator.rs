@@ -156,28 +156,34 @@ impl LLMOrchestrator {
             return Ok(response);
         }
 
-        // Failover to secondary provider
-        let secondary_result = match self.config.primary_provider {
-            LLMProvider::Claude => self.try_openai(request).await,
-            LLMProvider::OpenAI => self.try_claude(request).await,
-            LLMProvider::OpenRouter => self.try_claude(request).await,
-            LLMProvider::Groq => self.try_claude(request).await,
-            LLMProvider::Gemini => self.try_claude(request).await,
-            LLMProvider::Qwen => self.try_claude(request).await,
-        };
+        // Failover to configured secondary provider (if available)
+        if let Some(secondary) = self.config.secondary_provider {
+            let secondary_result = match secondary {
+                LLMProvider::Claude => self.try_claude(request).await,
+                LLMProvider::OpenAI => self.try_openai(request).await,
+                LLMProvider::OpenRouter => self.try_openrouter(request).await,
+                LLMProvider::Groq => self.try_groq(request).await,
+                LLMProvider::Gemini => self.try_gemini(request).await,
+                LLMProvider::Qwen => self.try_openai(request).await,
+            };
 
-        if let Ok(response) = secondary_result {
-            eprintln!(
-                "Warning: Failed over from {:?} to {:?}",
-                self.config.primary_provider,
-                response.provider
-            );
-            return Ok(response);
+            if let Ok(response) = secondary_result {
+                eprintln!(
+                    "Warning: Failed over from {:?} to {:?}",
+                    self.config.primary_provider,
+                    secondary
+                );
+                return Ok(response);
+            }
         }
 
-        // Both providers failed
+        // No secondary configured or both providers failed
         Err(LLMError {
-            message: "All LLM providers failed".to_string(),
+            message: if self.config.secondary_provider.is_some() {
+                "Primary and secondary LLM providers failed".to_string()
+            } else {
+                "Primary LLM provider failed and no secondary configured".to_string()
+            },
             provider: None,
             is_retryable: true,
         })
@@ -615,6 +621,7 @@ mod tests {
             groq_api_key: None,
             gemini_api_key: None,
             primary_provider: LLMProvider::Claude,
+            secondary_provider: Some(LLMProvider::OpenAI),
             max_retries: 3,
             timeout_seconds: 30,
             selected_models: vec![],

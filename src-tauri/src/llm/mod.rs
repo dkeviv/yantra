@@ -42,6 +42,9 @@ pub struct LLMConfig {
     pub groq_api_key: Option<String>,
     pub gemini_api_key: Option<String>,
     pub primary_provider: LLMProvider,
+    /// Secondary provider for automatic failover (optional)
+    #[serde(default)]
+    pub secondary_provider: Option<LLMProvider>,
     pub max_retries: u32,
     pub timeout_seconds: u64,
     /// User-selected models for each provider (model IDs)
@@ -144,6 +147,7 @@ impl Default for LLMConfig {
             groq_api_key: None,
             gemini_api_key: None,
             primary_provider: LLMProvider::Claude,
+            secondary_provider: None,
             max_retries: 3,
             timeout_seconds: 30,
             selected_models: Vec::new(),

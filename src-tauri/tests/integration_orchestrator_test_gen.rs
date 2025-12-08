@@ -33,6 +33,7 @@ async fn test_orchestrator_generates_tests_for_code() {
     // Create LLM orchestrator with real API key
     let llm_config = LLMConfig {
         primary_provider: LLMProvider::Claude,
+        secondary_provider: None,
         claude_api_key: claude_key,
         openai_api_key: None,
         openrouter_api_key: None,
@@ -111,6 +112,7 @@ async fn test_orchestrator_runs_generated_tests() {
     // Create LLM orchestrator
     let llm_config = LLMConfig {
         primary_provider: LLMProvider::Claude,
+        secondary_provider: None,
         claude_api_key: claude_key,
         openai_api_key: None,
         openrouter_api_key: None,

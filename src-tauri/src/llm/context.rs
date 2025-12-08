@@ -306,6 +306,7 @@ fn calculate_priority(node_type: &NodeType, depth: usize) -> u32 {
         NodeType::Class => 7,        // Classes are important
         NodeType::Variable => 5,     // Variables provide context
         NodeType::Module => 4,       // Module definitions
+        NodeType::Package { .. } => 9, // Package dependencies are highly important
     };
     
     // Reduce priority based on depth (closer nodes are more relevant)
@@ -314,7 +315,7 @@ fn calculate_priority(node_type: &NodeType, depth: usize) -> u32 {
 
 /// Format a node as context string for LLM
 fn format_node_context(node: &CodeNode) -> String {
-    match node.node_type {
+    match &node.node_type {
         NodeType::Import => {
             format!("# Import from {}\nimport {}", node.file_path, node.name)
         }
@@ -335,6 +336,9 @@ fn format_node_context(node: &CodeNode) -> String {
         }
         NodeType::Module => {
             format!("# Module: {} ({})", node.name, node.file_path)
+        }
+        NodeType::Package { name, version, language } => {
+            format!("# Package: {}=={} ({})", name, version, format!("{:?}", language))
         }
     }
 }
@@ -725,7 +729,7 @@ fn format_node_full_code(node: &CodeNode) -> String {
 
 /// Format node as signature only (for L2 related context)
 fn format_node_signature(node: &CodeNode) -> String {
-    match node.node_type {
+    match &node.node_type {
         NodeType::Function => {
             format!(
                 "def {}(...): ...  # {}, line {}",
@@ -746,6 +750,9 @@ fn format_node_signature(node: &CodeNode) -> String {
         }
         NodeType::Module => {
             format!("# Module: {} ({})", node.name, node.file_path)
+        }
+        NodeType::Package { name, version, .. } => {
+            format!("{}=={}  # package dependency", name, version)
         }
     }
 }

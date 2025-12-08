@@ -194,6 +194,14 @@ fn find_node(project_path: String, name: String, file_path: Option<String>) -> R
     Ok(engine.find_node(&name, file_path_str).cloned())
 }
 
+/// Get code completions using Tree-sitter and GNN
+#[tauri::command]
+fn get_code_completions(request: gnn::completion::CompletionRequest) -> Result<Vec<gnn::completion::CompletionItem>, String> {
+    let project_path = Path::new(&request.project_path);
+    let provider = gnn::completion::CompletionProvider::new(Some(project_path))?;
+    provider.get_completions(&request)
+}
+
 // LLM Configuration commands
 
 /// Get LLM configuration (sanitized, no API keys)
@@ -226,6 +234,33 @@ fn set_llm_provider(app_handle: tauri::AppHandle, provider: String) -> Result<()
     };
     
     manager.set_primary_provider(provider_enum)
+}
+
+/// Set secondary LLM provider for automatic failover
+#[tauri::command]
+fn set_secondary_llm_provider(app_handle: tauri::AppHandle, provider: Option<String>) -> Result<(), String> {
+    let config_dir = app_handle.path_resolver()
+        .app_config_dir()
+        .ok_or_else(|| "Failed to get config directory".to_string())?;
+    
+    let mut manager = llm::config::LLMConfigManager::new(&config_dir)?;
+    
+    let provider_enum = match provider {
+        Some(p) => {
+            match p.to_lowercase().as_str() {
+                "claude" => Some(llm::LLMProvider::Claude),
+                "openai" => Some(llm::LLMProvider::OpenAI),
+                "openrouter" => Some(llm::LLMProvider::OpenRouter),
+                "groq" => Some(llm::LLMProvider::Groq),
+                "gemini" => Some(llm::LLMProvider::Gemini),
+                "none" => None,
+                _ => return Err(format!("Invalid provider: {}. Use 'claude', 'openai', 'openrouter', 'groq', 'gemini', or 'none'", p)),
+            }
+        }
+        None => None,
+    };
+    
+    manager.set_secondary_provider(provider_enum)
 }
 
 /// Set Claude API key
@@ -1024,11 +1059,11 @@ fn find_affected_tests(
     strategy: String,
 ) -> Result<agent::affected_tests::TestImpactAnalysis, String> {
     use agent::affected_tests::{AffectedTestsRunner, FilterStrategy};
-    use crate::gnn::GraphNeuralNetwork;
+    use crate::gnn::GNNEngine;
     use std::path::PathBuf;
     
     // TODO: Get GNN from global state
-    let gnn = GraphNeuralNetwork::new("project".to_string());
+    let gnn = GNNEngine::new("project".to_string());
     let runner = AffectedTestsRunner::new(gnn, String::new());
     
     let paths: Vec<PathBuf> = changed_files.iter().map(PathBuf::from).collect();
@@ -1911,6 +1946,7 @@ fn main() {
         groq_api_key: None,
         gemini_api_key: None,
         primary_provider: llm::LLMProvider::Claude,
+        secondary_provider: None,
         max_retries: 3,
         timeout_seconds: 30,
         selected_models: Vec::new(),
@@ -1949,8 +1985,10 @@ fn main() {
             get_dependencies,
             get_dependents,
             find_node,
+            get_code_completions,
             get_llm_config,
             set_llm_provider,
+            set_secondary_llm_provider,
             set_claude_key,
             set_openai_key,
             set_openrouter_key,

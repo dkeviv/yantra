@@ -88,14 +88,15 @@ impl FeatureExtractor {
     /// Section 1: Node Identity Features (50 dims)
     /// One-hot encoding for node type + basic properties
     fn extract_node_identity(&self, node: &CodeNode, features: &mut Vec<f32>) {
-        // Node type one-hot (5 dims)
-        let mut node_type_vec = vec![0.0; 5];
+        // Node type one-hot (6 dims - added Package)
+        let mut node_type_vec = vec![0.0; 6];
         match node.node_type {
             NodeType::Function => node_type_vec[0] = 1.0,
             NodeType::Class => node_type_vec[1] = 1.0,
             NodeType::Variable => node_type_vec[2] = 1.0,
             NodeType::Import => node_type_vec[3] = 1.0,
             NodeType::Module => node_type_vec[4] = 1.0,
+            NodeType::Package { .. } => node_type_vec[5] = 1.0,
         }
         features.extend(node_type_vec);
 

@@ -1,37 +1,1625 @@
 # Yantra - Decision Log
 
 **Purpose:** Track all significant design and architecture decisions  
-**Last Updated:** December 2, 2025
+**Last Updated:** December 8, 2025
 
 ---
 
-## 🔥 Recent Critical Decisions (Dec 2, 2025)
+## 🔥 Recent Critical Decisions (Dec 8, 2025)
 
 ### Quick Reference
 
-1. ✅ **HNSW Semantic Indexing - Ferrari MVP Standard** - Enterprise-grade O(log n) search from day one, no compromises (Dec 2, 2025) 🆕
-2. ✅ **GNN Persistence Pooling NOT Needed** - Analysis proves reads are in-memory, pooling adds zero value (Dec 2, 2025) 🆕
-3. ✅ **Database Driver Architecture: Dual SQLite Strategy** - Use rusqlite for embedded, sqlx for remote databases (Dec 2, 2025)
-4. ✅ **Semantic-Enhanced Dependency Graph (Not Separate RAG)** - Enhance GNN nodes with embeddings vs separate vector DB (100% COMPLETE)
-5. ✅ **Multi-Language Support for MVP (11 Languages)** - Python, JavaScript, TypeScript, Rust + 7 more via tree-sitter (100% COMPLETE)
-6. ✅ **PostgreSQL Migration CANCELLED** - 4-tier architecture makes PostgreSQL unnecessary, SQLite perfect for Tier 3
-7. ✅ **Cluster Agents Architecture (Phase 2A)** - Master-Servant pattern with Git coordination + Tier 2 file locking
-8. ✅ **Cloud Graph Database - Tier 0 (Phase 2B)** - Shared dependency graph database for proactive conflict prevention across agents/users
-9. ✅ **tokio::sync::Mutex for all async code** - NEVER use std::sync::Mutex in async functions
-10. ✅ **Test Coverage UI Integration** - GNN-powered real-time coverage display with selective test execution
-11. ✅ **State Machine Separation** - 4 specialized machines (CodeGen, Testing, Deployment, Maintenance) vs single monolithic machine
-12. ✅ **Browser Validation in 3 Machines** - Different purposes at each stage (visual preview, E2E testing, production monitoring)
-13. ✅ **Monitoring → Maintenance** - Renamed to emphasize self-healing and CI/CD remediation capabilities
-14. ✅ **Test File Dependency Tracking** - GNN now tracks test-to-source relationships for coverage analysis
-15. ✅ **Tech Stack Dependency Tracking** - GNN will track package-to-file mapping to eliminate unused packages
-16. ✅ **Multi-File Project Orchestration** - E2E autonomous project creation from natural language intent
-17. ✅ **Architecture View System with SQLite** - Visual governance layer with living diagrams
-18. ✅ **Component Status Tracking** - File mapping with automatic status (📋🔄✅⚠️)
-19. ✅ **Connection Types with Styling** - 5 semantic types (→⇢⤳⋯>⇄) for visual clarity
-20. ✅ **Start with 1024 dimensions** (not 256) - Cost negligible, benefit significant
-21. ✅ **Yantra Cloud Codex** - Universal model (not per-user personalization)
-22. ✅ **GNN logic + Tree-sitter syntax** - Universal patterns + language-specific generation
-23. ✅ **Coding specialization** - Like AlphaGo for Go, Yantra for coding only
+1. ✅ **Yantra Codex Deferred to Stretch Goal** - MVP focuses on LLM-only approach, Codex as post-MVP cost optimization (Dec 8, 2025) 🆕
+2. ✅ **YDoc Documentation System** - Block-based documentation with full traceability, graph-native integration, Git-friendly format (Dec 8, 2025) 🆕
+3. ✅ **Refined Storage Architecture** - Clarified Tier 1 includes both Dependency Graph + YDoc blocks, Codex remains separate (Dec 8, 2025) 🆕
+4. ✅ **Enhanced State Machines** - Added parallel execution, Test Intelligence improvements, Documentation Governance machine (Dec 8, 2025) 🆕
+5. ✅ **5-Tier Storage with Metadata-Based Embeddings** - LLM-generated summaries instead of code snippets; user presence in cloud (Dec 5, 2025)
+6. ✅ **Architecture SHOULD Be in GNN Too** - Alignment checking, single cloud sync (PostgreSQL), simpler than separate DB (Dec 5, 2025 - RECONSIDERED) 🆕
+7. ✅ **Known Issues in GNN Too** - Store failure patterns in dependency graph alongside templates for unified semantic search (Dec 5, 2025)
+8. ✅ **Template Nodes in GNN Database** - Store code templates/patterns in dependency graph (`.yantra/graph.db`) for unified semantic search (Dec 5, 2025)
+9. ✅ **HNSW Semantic Indexing - Ferrari MVP Standard** - Enterprise-grade O(log n) search from day one, no compromises (Dec 2, 2025)
+10. ✅ **GNN Persistence Pooling NOT Needed** - Analysis proves reads are in-memory, pooling adds zero value (Dec 2, 2025)
+11. ✅ **Semantic-Enhanced Dependency Graph (Not Separate RAG)** - Enhance GNN nodes with embeddings vs separate vector DB (100% COMPLETE)
+12. ✅ **Multi-Language Support for MVP (11 Languages)** - Python, JavaScript, TypeScript, Rust + 7 more via tree-sitter (100% COMPLETE)
+13. ✅ **PostgreSQL Migration CANCELLED** - 4-tier architecture makes PostgreSQL unnecessary, SQLite perfect for Tier 3
+14. ✅ **Cluster Agents Architecture (Phase 2A)** - Master-Servant pattern with Git coordination + Tier 2 file locking
+15. ✅ **Cloud Graph Database - Tier 0 (Phase 2B)** - Shared dependency graph database for proactive conflict prevention across agents/users
+16. ✅ **tokio::sync::Mutex for all async code** - NEVER use std::sync::Mutex in async functions
+17. ✅ **State Machine Separation** - 4 specialized machines (CodeGen, Testing, Deployment, Maintenance) vs single monolithic machine
+18. ✅ **Browser Validation in 3 Machines** - Different purposes at each stage (visual preview, E2E testing, production monitoring)
+19. ✅ **Monitoring → Maintenance** - Renamed to emphasize self-healing and CI/CD remediation capabilities
+20. ✅ **Test File Dependency Tracking** - GNN now tracks test-to-source relationships for coverage analysis
+21. ✅ **Tech Stack Dependency Tracking** - GNN will track package-to-file mapping to eliminate unused packages
+22. ✅ **Multi-File Project Orchestration** - E2E autonomous project creation from natural language intent
+23. ✅ **Architecture View System with SQLite** - Visual governance layer with living diagrams
+24. ✅ **Component Status Tracking** - File mapping with automatic status (📋🔄✅⚠️)
+25. ✅ **Connection Types with Styling** - 5 semantic types (→⇢⤳⋯>⇄) for visual clarity
+26. ✅ **Start with 1024 dimensions** (not 256) - Cost negligible, benefit significant
+27. ✅ **Yantra Cloud Codex** - Universal model (not per-user personalization)
+28. ✅ **GNN logic + Tree-sitter syntax** - Universal patterns + language-specific generation
+29. ✅ **Coding specialization** - Like AlphaGo for Go, Yantra for coding only
+
+---
+
+## December 8, 2025 - YDoc Documentation System
+
+**Status:** ✅ DECIDED - Unified documentation system with full traceability  
+**Deciders:** Vivek + AI Architect  
+**Impact:** Critical - Enables complete requirement-to-code traceability  
+**Priority:** MVP Foundation
+
+### Context
+
+Previous documentation approach was fragmented:
+
+- Separate markdown files without structured relationships
+- No formal traceability from requirements to code
+- Manual documentation updates (out-of-sync risk)
+- Limited query capabilities
+- No SSOT enforcement
+
+### Decision
+
+Implement YDoc: A block-based documentation system that treats documentation as first-class nodes in the dependency graph.
+
+**Core Principles:**
+
+1. **Block Database as Canonical Source:** SQLite database stores parsed blocks; .ydoc files are serialization (not storage)
+2. **Graph-Native:** Every block links to requirements, code, tests through dependency graph edges
+3. **Agent-First:** LLM reads JSON blocks and writes via structured tools
+4. **Git-Friendly:** ipynb-compatible format (opens in VS Code, Jupyter, GitHub)
+5. **Full Traceability:** Requirement → Architecture → Spec → Code → Test → Docs
+
+**File Format:**
+
+- Extension: `.ydoc`
+- Schema: ipynb-compatible with custom metadata
+- Block types: 12 types (Requirements, ADR, Architecture, Tech Spec, Project Plan, Tech Guide, API Guide, User Guide, Testing Plan, Test Results, Change Log, Decisions Log)
+- Yantra metadata: yantra_id, yantra_type, created_by, graph_edges, tags, status
+
+**Storage Integration:**
+
+- **Tier 1 SQLite:** Store parsed blocks (documents table + blocks table)
+- **Graph Edges:** Extended dependency graph with new edge types (traces_to, implements, realized_in, tested_by, documents, has_issue)
+- **File System:** .ydoc files in `/ydocs` folder with organized structure
+
+**Traceability Chains:**
+
+- Requirement → Architecture (traces_to)
+- Architecture → Specification (implements)
+- Specification → Code (realized_in)
+- Requirement → Tests (tested_by)
+- Code → Documentation (documented_in)
+- Code → Issues (has_issue)
+
+**Query Capabilities:**
+
+- Find all code implementing REQ-001 (traverse full chain)
+- Find docs needing update when code changes (reverse traverse)
+- Impact analysis for requirement changes (multi-hop traversal)
+- Detect SSOT violations (multiple sources for same endpoint/arch)
+
+**Smart Archiving:**
+
+- Test results: Keep failures indefinitely, last 10 passing, daily summaries >30 days, delete raw >90 days
+- Change logs: Keep recent detailed entries, summarize old ones
+
+### Benefits
+
+1. **Complete Traceability:** From user intent to deployed code
+2. **Automated Updates:** Agent detects affected docs when code changes
+3. **SSOT Enforcement:** Validation service prevents conflicting documentation
+4. **Git Integration:** Conflict detection, clean diffs with nbstripout
+5. **Query Power:** Fast FTS5 search + graph traversal
+6. **Compliance Ready:** Audit trail from requirements to implementation
+
+### Rationale
+
+**Why Block Database as Canonical Source:**
+
+- Fast queries (FTS5 full-text search)
+- Agent-friendly structured access
+- Graph integration for traceability
+- Files are git-friendly view, not source
+
+**Why ipynb-Compatible:**
+
+- Opens in VS Code/Jupyter/GitHub (no custom tooling required)
+- Standard metadata field for Yantra extensions
+- Proven format with ecosystem support
+- Visual rendering with Monaco/nteract
+
+**Why 12 Document Types:**
+
+- Cover full software lifecycle (requirements → deployment)
+- Structured types enable validation rules
+- Type-specific templates and workflows
+- Clear organization patterns
+
+**Why Graph-Native:**
+
+- Enables multi-hop traceability queries
+- Detects outdated documentation automatically
+- Powers impact analysis UI
+- Unified semantic search across code + docs
+
+### Implementation Notes
+
+**Phase 1 (MVP):**
+
+- SQLite schema (documents, blocks, extended graph edges)
+- File I/O (parse .ydoc, serialize to disk)
+- Basic CRUD operations
+- Simple UI panels (4-panel layout)
+- Graph edge creation on code generation
+- MASTER.ydoc auto-generation on init
+
+**Phase 2:**
+
+- Documentation Governance State Machine (9 states)
+- Automatic update detection
+- Conflict resolution workflows
+- Confluence bidirectional sync via MCP
+- Advanced querying UI (visual graph explorer)
+- Smart archiving automation
+
+**Folder Structure:**
+
+```
+/ydocs
+  /requirements (EPIC-*.ydoc)
+  /architecture (COMPONENT-*.ydoc)
+  /specs (FEATURE-*.ydoc)
+  /adr (ADR-NNN-*.ydoc)
+  /guides/tech (SECTION-*.ydoc)
+  /guides/api (MODULE-*.ydoc)
+  /guides/user (SECTION-*.ydoc)
+  /plans (SPRINT-*.ydoc)
+  /testing (PLAN-*.ydoc)
+  /testing/results (RESULT-DATE.ydoc)
+  /logs (CHANGE-LOG.ydoc, DECISION-LOG.ydoc)
+```
+
+### Impact on Other Systems
+
+1. **Dependency Graph:** Add 6 new edge types, 2 new node types (YDocDocument, YDocBlock)
+2. **State Machines:** CodeGen creates graph edges during code generation
+3. **UI:** 4-panel documentation view (Features, Decisions, Changes, Tasks)
+4. **Git Integration:** Conflict detection for .ydoc files, custom diff tooling
+5. **Search:** FTS5 index for block content, semantic search via embeddings
+
+### Alternative Considered
+
+**Markdown + Front Matter:**
+
+- Rejected: No structured blocks, harder to query
+- Rejected: Graph integration would require custom parsing
+- Rejected: No standard tooling support (ipynb has ecosystem)
+
+**Separate Documentation DB:**
+
+- Rejected: Would duplicate graph data
+- Rejected: Separate sync/consistency issues
+- Current approach: Documentation IS part of dependency graph
+
+---
+
+## December 8, 2025 - Refined Storage Architecture (Multi-Tier + Separate Codex)
+
+**Status:** ✅ DECIDED - Clarified storage layers and responsibilities  
+**Deciders:** Vivek + AI Architect  
+**Impact:** High - Defines complete data architecture  
+**Priority:** Foundation
+
+### Context
+
+Previous specs mentioned multi-tier storage but relationships needed clarification:
+
+- What data goes in which tier?
+- Why is Codex separate from Tier 1?
+- How do tiers interact?
+
+### Decision
+
+**Complete 5-Tier Architecture + Separate Codex:**
+
+**Tier 0 (Cloud - Phase 2B):** PostgreSQL + pgvector + Redis
+
+- **Purpose:** Team coordination and cross-machine conflict prevention
+- **Data:** Dependency graph structure (nodes, edges, metadata - NO CODE)
+- **Data:** User presence (active files, heartbeats, locks)
+- **Performance:** <50ms sync latency via WebSocket/gRPC
+- **Privacy:** Only graph structure + metadata synced, code stays local
+
+**Tier 1 (Local - MVP):** petgraph (in-memory) + SQLite
+
+- **Purpose:** Primary storage for dependency graph + YDoc blocks
+- **Data:** Code dependencies (files, functions, classes, packages)
+- **Data:** YDoc blocks (documents, blocks, graph edges for traceability)
+- **Data:** Project metadata, configuration
+- **Performance:** <1ms in-memory graph queries, <10ms SQLite queries
+- **Technology:** petgraph for graph operations, SQLite with WAL mode
+
+**Tier 2 (Local - Phase 2A):** sled embedded database
+
+- **Purpose:** Agent coordination for multi-agent scenarios
+- **Data:** Agent state, file locks, task queues
+- **Performance:** <1ms read, <5ms write
+- **Rationale:** High-write scenarios need specialized storage
+
+**Tier 3 (Local - MVP):** TOML files
+
+- **Purpose:** Configuration management
+- **Data:** User settings, LLM configs, project settings
+- **Location:** `.yantra/config.toml`, `.yantra/settings.toml`
+- **Rationale:** Human-readable, git-friendly, zero dependencies
+
+**Tier 4 (Memory - MVP):** HashMap → moka cache
+
+- **Purpose:** Ephemeral caching for context assembly
+- **Data:** LLM context, recent file contents, active sessions
+- **Performance:** <1ms lookup
+- **Lifecycle:** In-memory only, no persistence
+
+**Yantra Codex (Separate - MVP):** SQLite + HNSW
+
+- **Purpose:** AI code generation learning (actual GNN neural network)
+- **Data:** Learned patterns, bug-fix pairs, LLM corrections
+- **Data:** 1024-dim embeddings, GraphSAGE weights
+- **Location:** `.yantra/codex.db` (separate from graph.db)
+- **Size:** ~500MB model + patterns
+- **Rationale:** Different access patterns, optional sync to cloud
+
+### Why Codex is Separate from Tier 1
+
+**Different Responsibilities:**
+
+- **Tier 1:** Structural relationships (what calls what, who imports what)
+- **Codex:** Intelligence layer (how to generate code, what patterns work)
+
+**Different Data Types:**
+
+- **Tier 1:** Graph nodes/edges, documentation blocks
+- **Codex:** Neural network weights, pattern embeddings, confidence scores
+
+**Different Access Patterns:**
+
+- **Tier 1:** Frequent reads (every code generation), rare writes (file changes)
+- **Codex:** Inference requests (15ms), learning updates (batch processing)
+
+**Different Sync Needs:**
+
+- **Tier 1:** Must sync for team coordination (conflict prevention)
+- **Codex:** Optional cloud sync (privacy-preserving learning)
+
+**Different Lifecycle:**
+
+- **Tier 1:** Recreated on project import (parse files)
+- **Codex:** Persists across projects (universal patterns)
+
+### Storage Optimization
+
+**SQLite WAL Mode (MVP):**
+
+- Concurrent reads without blocking writers
+- Required for multi-threaded access
+- Enabled in both graph.db and codex.db
+
+**Connection Pooling (MVP):**
+
+- Max 10 connections per database
+- Reduces connection overhead
+- Prevents resource exhaustion
+
+**HNSW Indexing (MVP):**
+
+- O(log n) semantic search
+- Tier 1: Code + doc embeddings
+- Codex: Pattern embeddings
+- all-MiniLM-L6-v2 model (384-dim)
+
+**Smart Archiving (MVP):**
+
+- Test results: Archive >30 days
+- Logs: Summarize >90 days
+- Keep failures indefinitely
+
+### Rationale
+
+**Why Not Single Database:**
+
+- Mixing graph + neural network would complicate queries
+- Different backup/recovery needs
+- Codex can be shared across projects
+
+**Why Separate Cloud Tier:**
+
+- Real-time team coordination requires dedicated infrastructure
+- PostgreSQL better for concurrent multi-user writes
+- Redis provides <10ms pub/sub for presence
+
+**Why SQLite for Local:**
+
+- Zero configuration, embedded
+- Proven reliability (used by browsers, phones)
+- WAL mode enables concurrency
+- Perfect for single-user local storage
+
+---
+
+## December 8, 2025 - Yantra Codex Deferred to Stretch Goal
+
+**Status:** ✅ DECIDED - Codex moved to post-MVP  
+**Deciders:** Vivek + AI Architect  
+**Impact:** Critical - Simplifies MVP scope, defers cost optimization  
+**Priority:** Strategic Scoping Decision
+
+### Context
+
+Yantra Codex was originally planned as MVP feature:
+
+- GraphSAGE neural network (1024-dim embeddings, 150M parameters)
+- Pattern storage (code patterns, bug patterns, test patterns)
+- Continuous learning from bugs, tests, LLM mistakes, manual edits
+- 15ms inference for pattern matching
+- Cost optimization target: 96% LLM reduction after 12 months
+- Separate Codex database (`.yantra/codex.db`)
+
+**Problem:** Codex adds significant complexity to MVP while benefits are long-term (6-12 months).
+
+### Decision
+
+**Defer Yantra Codex to stretch goal / Phase 2.**
+
+MVP will use **LLM-only approach** for code generation:
+
+- Multi-LLM orchestration (Claude Sonnet 4 + GPT-4 Turbo)
+- Circuit breaker pattern for failover
+- Retry logic with confidence scoring
+- GNN dependency validation (still present)
+- Template patterns can use existing GNN + embeddings
+
+**Rationale:**
+
+1. **MVP works without it:**
+   - LLM orchestration + GNN dependency validation sufficient for core "code that never breaks" guarantee
+   - Multi-LLM consultation provides quality without neural network
+   - Template patterns can leverage GNN semantic search (HNSW already implemented)
+
+2. **Complex infrastructure:**
+   - GraphSAGE requires PyTorch bindings (`tch-rs`) or ONNX runtime
+   - Training pipeline infrastructure (data collection, model training, version management)
+   - Inference engine with GPU/CPU optimization
+   - Pattern database design and management
+   - Continuous learning loop implementation
+
+3. **Longer ROI timeline:**
+   - Benefits materialize after 6-12 months of learning
+   - Not immediately valuable for MVP users
+   - Cost optimization is long-term concern, not MVP blocker
+
+4. **Focus on fundamentals first:**
+   - YDoc system (documentation traceability) is higher priority
+   - WAL mode + connection pooling (performance) more impactful
+   - Test oracle generation (quality) more critical
+   - Package version tracking (conflict detection) more urgent
+
+5. **Can add later on proven foundation:**
+   - Once MVP demonstrates "code that never breaks" value
+   - After user feedback validates core workflow
+   - When cost optimization becomes actual user pain point
+   - Build Codex as enhancement layer on stable platform
+
+### Benefits
+
+**Immediate:**
+
+- Simpler MVP scope (6 fewer requirements in critical path)
+- Faster time to market (no neural network infrastructure)
+- Lower technical risk (LLM APIs proven, neural networks complex)
+- Easier debugging (LLM reasoning traceable, neural networks opaque)
+
+**Strategic:**
+
+- Prove core value proposition first (quality guarantee)
+- Validate user workflow before optimization
+- Can build Codex informed by real usage patterns
+- Cost optimization becomes compelling upgrade story
+
+**Technical:**
+
+- Existing LLM orchestration already robust
+- GNN semantic search (HNSW) handles pattern matching
+- Template storage can use GNN nodes (already supports embeddings)
+- Retry logic + confidence scoring provides learning-like behavior
+
+### Implementation Changes
+
+**Requirements Updated (6 requirements → Stretch Goal):**
+
+- CODEX-001: GraphSAGE architecture → Deferred
+- CODEX-002: Pattern storage → Use GNN + embeddings for MVP
+- CODEX-003: Continuous learning → LLM consultation sufficient
+- CODEX-004: 15ms inference → LLM latency acceptable
+- CODEX-005: 96% cost reduction → Long-term optimization
+- CODEX-006: Cloud Codex → Phase 3 (depends on Codex)
+
+**State Machine Changes:**
+
+- SM-CG-013: CodeGeneration state marked ✅ COMPLETE (works with LLM-only)
+- AG-004: LEARN primitives → Stretch goal (retry/feedback sufficient for MVP)
+
+**Storage Architecture Changes:**
+
+- STOR-001: Codex storage deferred
+- Tier 1 remains petgraph + SQLite (no Codex DB needed)
+
+### Future Path (Post-MVP)
+
+**When to implement Codex:**
+
+1. **After MVP success** - Core quality guarantee proven
+2. **When cost matters** - Users report LLM cost concerns
+3. **With usage data** - Real patterns to learn from
+
+**Implementation approach:**
+
+1. Collect training data during MVP usage (bug patterns, successful fixes, test patterns)
+2. Build GraphSAGE model with collected data
+3. Create Codex DB separately from main GNN
+4. Add inference layer as optional optimization
+5. Gradual rollout with confidence thresholds
+
+**Estimated effort when implemented:**
+
+- 2-3 weeks neural network infrastructure
+- 1-2 weeks pattern database design
+- 1 week inference engine
+- 2 weeks learning pipeline
+- 1 week integration with existing orchestrator
+- **Total: ~6-8 weeks** (full sprint cycle)
+
+### Alternatives Considered
+
+1. **Hybrid approach:** Simple pattern matching without neural network
+   - **Rejected:** Adds complexity without full benefits
+   - Better to use LLM-only or full Codex, not half-measure
+
+2. **Pre-trained model:** Start with pre-trained coding model
+   - **Rejected:** Still requires inference infrastructure
+   - Doesn't learn from Yantra-specific patterns
+   - Negates cost optimization benefits
+
+3. **Template library only:** Static templates without learning
+   - **Considered for MVP:** Can use GNN + embeddings
+   - Acceptable intermediate solution
+   - Can build up library organically
+
+### Success Criteria
+
+**MVP succeeds without Codex if:**
+
+- 95%+ generated code passes tests without human intervention ✓ (LLM + GNN sufficient)
+- Zero breaking changes to existing code ✓ (GNN validation handles this)
+- <3% critical security vulnerabilities ✓ (Semgrep handles this)
+- <2 minute total cycle time ✓ (LLM latency acceptable)
+
+**Trigger to implement Codex:**
+
+- User reports: "LLM costs too high for my scale"
+- Data shows: Repetitive patterns LLM could learn
+- Business case: ROI positive after 6 months
+
+### Related Decisions
+
+- **YDoc System** (Dec 8, 2025) - Higher priority, enables traceability
+- **Enhanced State Machines** (Dec 8, 2025) - Test Intelligence more critical
+- **5-Tier Storage** (Dec 5, 2025) - Codex storage specification remains (for future)
+- **Template Nodes in GNN** (Dec 5, 2025) - Provides pattern storage without Codex
+
+---
+
+## December 8, 2025 - Enhanced State Machines with Parallel Execution
+
+**Status:** ✅ DECIDED - Refined state machine architecture  
+**Deciders:** Vivek + AI Architect  
+**Impact:** High - Improves performance and test quality  
+**Priority:** MVP Enhancement
+
+### Context
+
+Previous state machine specs needed enhancements:
+
+1. Test quality concerns (Test Oracle Problem)
+2. Performance opportunities (parallel execution)
+3. Documentation governance missing
+4. Unclear how browsers used in different phases
+
+### Decision
+
+**Key Enhancements:**
+
+**1. Test Intelligence State Machine (NEW):**
+
+Added dedicated machine (10 states) to solve Test Oracle Problem:
+
+- **State 1:** Intent Specification Extraction - Extract testable specs from user intent
+- **State 2:** Test Oracle Generation - Generate verification strategies (spec-based, differential, metamorphic, contract-based)
+- **State 3:** Input Space Analysis - Analyze input domains (boundary values, equivalence partitions, edge cases)
+- **State 4:** Test Data Generation - Generate test data (valid, invalid, boundary, random)
+- **State 5:** Test Case Generation - Generate actual test code with assertions
+- **State 6:** Assertion Strength Analysis - Verify assertions are strong (not weak like "is not None")
+- **State 7:** Test Quality Verification - Mutation testing for effectiveness (>80% mutation score)
+- **State 8:** Test Suite Organization - Organize by module/feature, separate unit/integration/E2E
+- **State 9:** Test Impact Analysis - Determine which tests affected by code changes
+- **State 10:** Test Update Generation - Generate test updates when code changes
+
+**Rationale:** Separating test generation from execution allows:
+
+- Focus on test quality BEFORE running
+- Better mutation testing integration
+- Test-code co-evolution tracking
+- Smarter test update generation
+
+**2. Parallel Execution Throughout:**
+
+Added "(parallel)" annotations to indicate concurrent operations:
+
+**CodeGeneration Machine:**
+
+- Dependency Assessment: CVE scan (parallel patterns)
+- Browser Validation: Multiple tab validation (parallel)
+- Security Scanning: 4 workers concurrent
+- Concurrency Validation: Multiple scenarios (parallel)
+
+**Test Execution Machine:**
+
+- Environment Setup: Parallel dependency installs
+- Unit Testing: 4+ workers parallel
+- Integration Testing: Parallel API tests
+- Browser Testing: 2-3 browsers parallel
+- Property-Based Testing: Parallel test runs
+
+**Deployment Machine:**
+
+- Package Building: Parallel multi-stage builds
+- Config Generation: Parallel file generation
+- Railway Upload: Parallel artifact/layer upload
+- Health Check: Parallel endpoint checks
+
+**Maintenance Machine:**
+
+- Monitoring: Parallel across sessions/regions
+- Error Analysis: Parallel pattern matching
+- Issue Detection: Parallel paths
+- Auto-Fix Generation: Parallel candidates
+- Deployment: Parallel deployment regions
+
+**Performance Targets:**
+
+- 3-4x speedup for test execution
+- 2-3x speedup for deployment
+- Near-instant parallel validation
+
+**3. Documentation Governance State Machine (Phase 2):**
+
+Added dedicated machine (9 states) for automated documentation:
+
+- **State 1:** Documentation Analysis - Analyze what docs needed based on trigger events
+- **State 2:** Block Identification - Identify YDoc blocks to create/update
+- **State 3:** Content Generation - Generate/update documentation content using LLM
+- **State 4:** Graph Linking - Create traceability edges in dependency graph
+- **State 5:** Conflict Detection - Check for duplicate/conflicting docs (SSOT validation)
+- **State 6:** User Clarification - Request user input for conflicts
+- **State 7:** Conflict Resolution - Apply resolution or auto-resolve simple conflicts
+- **State 8:** Validation - Verify documentation quality and completeness
+- **State 9:** Complete - Documentation updated and synced
+
+**Rationale:** Automated documentation maintenance ensures:
+
+- Docs stay synchronized with code
+- SSOT enforcement
+- Traceability maintained
+- Reduces manual documentation burden
+
+**4. Browser Validation Clarification:**
+
+**CodeGeneration Machine - Browser Validation:**
+
+- **Purpose:** Visual preview and basic functionality
+- **Scope:** Check UI renders, no console errors, basic interactions
+- **Tools:** CDP (Chrome DevTools Protocol)
+- **Performance:** <30s for simple UIs
+
+**Test Execution Machine - Browser Testing:**
+
+- **Purpose:** Full E2E user workflow testing
+- **Scope:** Complete user journeys, multi-page flows, complex interactions
+- **Tools:** Playwright integration
+- **Performance:** Parallel 2-3 browsers for compatibility
+
+**Maintenance Machine - Browser Validation:**
+
+- **Purpose:** Production monitoring with Real User Monitoring
+- **Scope:** Live session replay, performance tracking, error detection
+- **Tools:** CDP + session recording
+- **Performance:** Continuous monitoring, <1s issue detection
+
+### Benefits
+
+1. **Better Test Quality:** Dedicated test intelligence prevents weak tests
+2. **Faster Execution:** Parallel operations reduce cycle time by 3-4x
+3. **Automated Docs:** Documentation governance keeps docs current
+4. **Clear Browser Roles:** Different purposes at each stage
+5. **Mutation Testing:** Verify tests actually catch bugs
+6. **Test-Code Co-Evolution:** Tests update with code changes
+
+### Impact on Performance
+
+**Before (Sequential):**
+
+- Test execution: 2-3 minutes
+- Deployment: 4-5 minutes
+- Total cycle: 8-10 minutes
+
+**After (Parallel):**
+
+- Test execution: 40-60 seconds (4x speedup)
+- Deployment: 90-120 seconds (3x speedup)
+- Total cycle: 3-4 minutes (3x speedup)
+
+### Implementation Notes
+
+**Test Intelligence (Phase 1):**
+
+- Implement mutation testing framework
+- Add assertion strength analyzer
+- Build test oracle generators
+- Create input space analyzer
+
+**Parallel Execution (Phase 1):**
+
+- Use Tokio for async/parallel Rust code
+- Configure test runners for parallelism (pytest -n auto, jest --maxWorkers)
+- Implement concurrent browser launching
+- Add parallel security scanning
+
+**Documentation Governance (Phase 2):**
+
+- Trigger on: code generation complete, architecture change, requirement added
+- Generate YDoc blocks with graph edges
+- SSOT conflict detection
+- Auto-resolve simple conflicts, escalate complex ones
+
+---
+
+## December 5, 2025 - 5-Tier Storage with Metadata-Based Embeddings & User Presence
+
+**Status:** ✅ DECIDED - Comprehensive storage architecture finalized  
+**Deciders:** Vivek + AI Architect  
+**Impact:** High - Defines entire data architecture for MVP and beyond  
+**Priority:** Foundation for all other features
+
+### Context
+
+Multiple architecture discussions led to clarification of complete storage strategy:
+
+1. How to prevent database bloat with code snippets?
+2. Should semantic embeddings include code implementation?
+3. What data must sync to cloud for team coordination?
+4. How to handle user presence without exposing code?
+
+### Key Decisions
+
+**1. Metadata-Based Embeddings (NOT Code-Based):**
+
+**Problem:** Storing full code snippets in database would bloat storage (500 chars/node × 100K nodes = 50MB just for code duplication).
+
+**Solution:** LLM generates semantic metadata DURING graph build, embeddings created from metadata:
+
+- Semantic summary (~100 chars): "Authenticates user credentials and creates session"
+- Function signature: "authenticate_user(username: str, password: str) -> Session"
+- Dependencies list: ["UserModel.find_by_username", "bcrypt.verify", "Session.create"]
+- Purpose/keywords: "Authentication", "Security"
+
+**Benefits:**
+
+- Database stays lean (no code duplication, metadata only)
+- Embeddings equally semantic (meaning preserved, algorithm hidden)
+- Privacy-preserving (safe to sync to cloud, no competitive advantage exposed)
+- Faster graph queries (less data to serialize/deserialize)
+
+**2. User Presence Tracking in Cloud (Tier 0):**
+
+**Problem:** Without knowing who's editing what files, merge conflicts are inevitable. GitHub's reactive approach (detect after commit) doesn't work for AI agents who can't manually resolve conflicts.
+
+**Solution:** Proactive conflict prevention through real-time presence tracking:
+
+- User identifier synced when file opened
+- Heartbeat every 30 seconds (prove still active)
+- Lock types: soft (warning) vs hard (blocking)
+- Stale detection: auto-release after 5 minutes no activity
+- Query before edit: "Is anyone working on this file or its dependencies?"
+
+**Benefits:**
+
+- Prevent conflicts BEFORE work starts (not after)
+- Enable multi-agent coordination
+- Show team visibility ("Alice is editing auth.py")
+- Automatic lock cleanup (no manual intervention)
+
+**3. Complete 5-Tier Architecture:**
+
+**Tier 0 (Cloud - Phase 2B):** PostgreSQL + pgvector + Redis
+
+- **Same data as Tier 1:** Code dependencies (nodes, edges, metadata)
+- Semantic metadata (LLM-generated summaries, signatures, dependencies)
+- Semantic embeddings (384-dim, from metadata NOT code)
+- Templates, Known Issues, Architecture (all with metadata + embeddings)
+- **ONLY DIFFERENCE:** User presence & locks (identifier, file paths, timestamps, heartbeats)
+- Yantra Codex collective learning (pattern embeddings only, separate from graph)
+- Privacy: NO source code, function bodies, or algorithms
+- Purpose: Team-wide mirror of local graphs + collaboration features
+
+**Tier 1 (Local GNN - MVP):** petgraph + SQLite
+
+- Code dependencies (nodes, edges, metadata)
+- Semantic metadata (LLM-generated summaries, signatures, dependencies)
+- Semantic embeddings (384-dim, fastembed-rs, from metadata)
+- Templates, Known Issues, Architecture (all as graph nodes)
+- Storage: ~500MB for 100K LOC (lean, no code duplication)
+- NOTE: Despite being called "GNN" in codebase, this is NOT a neural network - it's a dependency graph (petgraph)
+
+**Tier 2 (Agent Coordination - MVP):** SQLite (Phase 2A: sled)
+
+- Agent state, file locks, task queue, inter-agent messages
+- Write-heavy (100K writes/sec with sled)
+- Storage: <10MB (transient)
+
+**Tier 3 (Configuration - MVP):** SQLite
+
+- User preferences, API keys, privacy settings, UI state
+- Read-heavy (100:1 read:write)
+- Storage: <1MB
+
+**Tier 4 (Context Cache - MVP basic, Phase 2+: moka):** In-memory LRU
+
+- Assembled contexts, token counts, compressed contexts
+- Budget: 500MB, automatic eviction
+- Performance optimization only (not a limitation)
+
+**Yantra Codex Storage (SEPARATE from all tiers):**
+
+**Local:**
+
+- Storage: `models/yantra_codex_v1.pth` (NOT in any database)
+- Technology: PyTorch model weights, 150M parameters, 600MB
+- Purpose: GraphSAGE neural network for code generation
+- Separation: Different tech stack, purpose, update cycle from dependency graph
+
+**Cloud (Phase 2B, Opt-in):**
+
+- Storage: S3 for weights + PostgreSQL for metadata (NOT in Tier 0 graph)
+- Purpose: Collective learning, aggregated pattern embeddings
+- Privacy: Only embeddings, no code
+
+### What Syncs to Cloud (Tier 0)
+
+**Synced (Same as Tier 1 + Collaboration Data):**
+
+- Code dependencies (nodes, edges, node types)
+- File paths and metadata
+- Semantic summaries ("Authenticates user...")
+- Function signatures (name + params, NO bodies)
+- Dependencies list
+- Semantic embeddings (from metadata)
+- Templates, Known Issues, Architecture (all metadata only)
+- **Collaboration-specific:** User identifier, file paths, timestamps, lock status (ONLY DIFFERENCE)
+
+**NEVER Synced:**
+
+- Source code content
+- Function implementations
+- Algorithm details
+- Business logic
+- Comments (might contain secrets)
+- String literals (might contain API keys)
+
+### Conflict Prevention Comparison
+
+**GitHub Approach:**
+
+- No real-time locking
+- Conflicts detected AFTER both users commit
+- Manual merge conflict resolution required
+- Suitable for human review workflow
+
+**Yantra Approach:**
+
+- Real-time user presence tracking
+- Conflicts prevented BEFORE work starts
+- Automatic coordination for AI agents
+- Required for autonomous workflow (agents can't manually resolve)
+
+### MVP Scope
+
+**Included:**
+
+- Tier 1: Full local dependency graph with metadata-based embeddings
+- Tier 2: Single-agent coordination
+- Tier 3: Configuration management
+- Tier 4: Basic context caching
+- Yantra Codex: Local model only (models/yantra_codex_v1.pth, separate storage)
+
+**NOT Included (Phase 2B+):**
+
+- Tier 0: Cloud sync and user presence
+- Team collaboration features
+- Collective learning
+- Real-time conflict prevention
+- Cloud Yantra Codex
+
+### Implementation Notes
+
+**LLM Metadata Extraction:**
+
+- Run during graph build (one-time per function)
+- Cache by code hash (only regenerate if code changes)
+- Use cheap model (GPT-3.5 or local) for cost efficiency
+- Extract: summary, signature, dependencies, purpose, keywords
+
+**Embedding Generation:**
+
+- Input: Concatenated metadata (NOT code)
+- Model: fastembed-rs (all-MiniLM-L6-v2, 384-dim)
+- Output: Stored in CodeNode.semantic_embedding
+- Search: HNSW index for <50ms queries
+
+**Cloud Sync (Phase 2B):**
+
+- Trigger: On commit, file open/close, heartbeat, template/failure creation
+- Transport: WebSocket for real-time, HTTP fallback
+- Latency: <100ms for lock claims
+- Privacy: Metadata only, enforced at serialization layer
+
+---
+
+## December 5, 2025 - Architecture SHOULD Be in GNN Too (Reconsidered After User Feedback)
+
+**Status:** ✅ DECIDED - Architecture belongs in GNN alongside code  
+**Deciders:** Vivek + AI Architect  
+**Impact:** High - Simplifies alignment checking, single cloud sync  
+**Priority:** Post-implementation (refactor existing architecture module)
+
+### Context
+
+Initial decision was to keep Architecture separate (`~/.yantra/architecture.db`). However, user raised excellent points:
+
+**User Questions:**
+
+1. "How will you drive architecture violations when code changes easily?"
+2. "SQLite is only for local GNN. When we scale it will use PostgreSQL+Redis in cloud."
+3. "Guess this is more of a scope creep to have architecture in GNN."
+
+**Critical Insight:** If Architecture is separate from code, you need TWO systems to check alignment. If it's IN the GNN, violations are just graph queries!
+
+### The Problem with Separate Storage
+
+**Current Implementation (Separate):**
+
+```
+Code Change → Update GNN (.yantra/graph.db)
+              ↓
+         DeviationDetector
+              ↓
+         Query Architecture (~/.yantra/architecture.db)
+              ↓
+         Compare TWO systems → Find violations
+```
+
+**Issues:**
+
+1. ❌ **Two systems to sync:** Code changes in GNN, Architecture in separate DB
+2. ❌ **Two cloud sync systems needed:** GNN → PostgreSQL, Architecture → ??? (another PostgreSQL? Redis?)
+3. ❌ **Complex alignment checking:** Query GNN for code, query Architecture DB for design, compare manually
+4. ❌ **Potential inconsistency:** Code graph updated but Architecture check delayed
+
+### The Solution: Architecture IN GNN
+
+**New Approach (GNN):**
+
+```
+Code Change → Update GNN (.yantra/graph.db)
+              ↓
+         Component nodes + edges already there
+              ↓
+         Alignment check = Graph query (sub-second)
+              ↓
+         Find violations instantly via edges
+```
+
+**Benefits:**
+
+1. ✅ **Single source of truth:** Code + Architecture in ONE graph
+2. ✅ **Single cloud sync:** PostgreSQL + Redis (Tier 0) handles everything
+3. ✅ **Instant alignment checking:** Graph traversal, no separate query
+4. ✅ **Automatic consistency:** Code changes immediately update component status
+5. ✅ **Simpler implementation:** No separate Architecture database or sync logic
+
+### How Architecture Fits in GNN
+
+**Add Component and Service node types:**
+
+```rust
+pub enum NodeType {
+    // Code-level nodes (existing)
+    Function, Class, Variable, Import, Module,
+
+    // Pattern nodes (Dec 5, 2025)
+    Template,      // Code templates
+    Pattern,       // Best practices
+    FailureCase,   // Known issues
+
+    // Architecture nodes (Dec 5, 2025 - NEW)
+    Component,     // Logical component (e.g., "AuthService")
+    Service,       // Service boundary (e.g., "Backend API")
+    Layer,         // Architectural layer (e.g., "Data Access Layer")
+}
+
+pub enum EdgeType {
+    // Code-level edges (existing)
+    Calls, Uses, Imports, DependsOn,
+
+    // Failure edges
+    CausedBy, FixedBy, SimilarTo,
+
+    // Architecture edges (NEW)
+    BelongsTo,     // File → Component (which component owns this file)
+    ServiceCall,   // Component → Component (service-level connection)
+    LayerOf,       // Component → Layer (which layer is this component in)
+    Implements,    // File → Component (this file implements component)
+}
+```
+
+**Example Graph Structure:**
+
+```
+Component Node: "AuthService"
+  ├─ BelongsTo → Layer: "Backend"
+  ├─ ServiceCall → Component: "Database"
+  └─ Implements ← File: "auth.py"
+       └─ Contains → Function: "login()"
+```
+
+### Architecture Alignment = Graph Query
+
+**Check if code matches architecture:**
+
+```rust
+// Find all files that should belong to AuthService
+let auth_files = graph.find_edges(EdgeType::BelongsTo, "component_auth_service");
+
+// For each file, check if it exists and has required functions
+for file_id in auth_files {
+    let file_node = graph.get_node(file_id);
+    if !file_exists(file_node.file_path) {
+        violations.push(Misalignment {
+            severity: Severity::High,
+            description: format!("File {} missing", file_node.file_path),
+            component: "AuthService",
+        });
+    }
+
+    // Check required functions
+    let functions = graph.find_edges(EdgeType::Contains, file_id);
+    let has_login = functions.iter().any(|f| f.name == "login");
+    if !has_login {
+        violations.push(Misalignment {
+            severity: Severity::Medium,
+            description: "AuthService missing login() function",
+            component: "AuthService",
+        });
+    }
+}
+```
+
+**Single graph query** instead of querying two separate databases!
+
+### Cloud Sync Simplification
+
+**Current Plan (Separate):**
+
+```
+Local:
+- GNN: .yantra/graph.db (SQLite)
+- Architecture: ~/.yantra/architecture.db (SQLite)
+
+Cloud (Tier 0):
+- GNN: PostgreSQL + Redis
+- Architecture: ??? (Another PostgreSQL? Separate Redis? S3?)
+- Need TWO sync mechanisms
+```
+
+**New Plan (Unified):**
+
+```
+Local:
+- GNN: .yantra/graph.db (SQLite) - Contains code + architecture
+
+Cloud (Tier 0):
+- GNN: PostgreSQL + Redis - Contains everything
+- ONE sync mechanism for all data
+- Component/Service nodes sync just like Function/Class nodes
+```
+
+**Massive Simplification:** PostgreSQL already handles millions of rows. No need for separate Architecture sync.
+
+### Visual Metadata: How to Handle?
+
+**Concern:** Architecture has visual metadata (positions, colors).
+
+**Solution:** Store as node metadata fields (like semantic embeddings):
+
+```rust
+pub struct CodeNode {
+    // Existing
+    id, name, node_type, file_path, line_start, line_end,
+
+    // Semantic (optional)
+    semantic_embedding: Option<Vec<f32>>,
+
+    // Architecture visual (optional, only for Component/Service/Layer nodes)
+    visual_position: Option<Position>,  // { x, y } for React Flow
+    visual_category: Option<String>,     // "frontend", "backend", "database"
+    visual_status: Option<ComponentStatus>,  // Planned, InProgress, Implemented
+}
+```
+
+Only Component/Service/Layer nodes have these fields populated. Function/Class nodes don't need them.
+
+### Migration Path
+
+**Already Implemented (Separate):**
+
+- `src-tauri/src/architecture/*.rs` (1,699 lines)
+- SQLite storage with 4 tables
+- React Flow UI integration
+- 11 Tauri commands
+
+**Migration Strategy (Post-MVP):**
+
+1. Extend NodeType with Component/Service/Layer (10 lines)
+2. Add architecture edge types (BelongsTo, ServiceCall, LayerOf, Implements)
+3. Migrate existing Architecture DB data to GNN nodes/edges
+4. Update DeviationDetector to use graph queries instead of separate DB
+5. Remove separate Architecture database
+6. Update UI to query GNN instead of Architecture API
+
+**Estimated effort:** 2-3 days (vs. building separate cloud sync: 1-2 weeks)
+
+### Comparison: Before vs After
+
+| Aspect                    | Separate Architecture DB   | Architecture in GNN     |
+| ------------------------- | -------------------------- | ----------------------- |
+| **Storage**               | 2 DBs (GNN + Architecture) | 1 DB (GNN)              |
+| **Cloud Sync**            | 2 systems (complex)        | 1 system (simple)       |
+| **Alignment Check**       | Query 2 DBs, compare       | Single graph query      |
+| **Performance**           | 2 network calls            | 1 network call          |
+| **Consistency**           | Potential lag              | Always consistent       |
+| **Complexity**            | Higher                     | Lower                   |
+| **Implementation Effort** | Separate sync logic        | Reuse existing GNN sync |
+
+### Real-World Example: Alignment Check
+
+**User makes code change:**
+
+```python
+# User adds new function to auth.py
+def reset_password(user_id):
+    ...
+```
+
+**Separate Architecture (Current):**
+
+```
+1. GNN parses auth.py → Adds reset_password() node
+2. Separate query to Architecture DB: What should auth.py have?
+3. Compare: Does architecture require reset_password()?
+4. Result: 2 database queries, manual comparison
+```
+
+**Architecture in GNN (Proposed):**
+
+```
+1. GNN parses auth.py → Adds reset_password() node
+2. Graph query: auth.py → BelongsTo → AuthService component
+3. Graph query: AuthService → Required functions?
+4. Compare in-memory: Does reset_password() match design?
+5. Result: 1 graph traversal, instant check
+```
+
+**Speed:** Sub-second alignment check vs. multi-second with separate DB.
+
+### Addressing Original Concerns
+
+**Original Reason for Separation:** "Different abstraction levels"
+
+**Counter-argument:**
+
+- GNN already tracks files AND functions (different abstraction levels)
+- Adding Component/Service is just one level UP from files
+- It's still a graph - just with higher-level nodes
+
+**Original Reason:** "Visual metadata"
+
+**Counter-argument:**
+
+- Optional fields on Component nodes (like semantic embeddings are optional)
+- Function/Class nodes don't have visual fields
+- Not significantly different from storing metadata
+
+**Original Reason:** "Global reusability"
+
+**Counter-argument:**
+
+- Cloud GNN (Tier 0, PostgreSQL) IS global
+- Component patterns can be shared across projects via cloud
+- Actually BETTER than separate ~/.yantra/ storage
+
+### Decision: Move Architecture to GNN
+
+**Rationale:**
+
+1. ✅ **User's point #1:** Alignment checking is graph query (instant, simple)
+2. ✅ **User's point #2:** Single cloud sync (PostgreSQL handles all)
+3. ✅ **User's point #3:** NOT scope creep - actually SIMPLER
+4. ✅ **Consistency:** Code changes immediately update component status
+5. ✅ **Performance:** One graph traversal vs. two database queries
+6. ✅ **Maintainability:** One sync system vs. two
+
+**Trade-off:** Migrate existing Architecture module (2-3 days work)
+
+**Long-term benefit:** Simpler system, faster alignment checks, single cloud sync
+
+### Files Affected
+
+**Migration (Post-MVP):**
+
+- `src-tauri/src/gnn/mod.rs` - Add Component/Service/Layer to NodeType
+- `src-tauri/src/gnn/mod.rs` - Add architecture EdgeTypes
+- `src-tauri/src/architecture/*.rs` - Refactor to use GNN instead of separate DB
+- `src-tauri/src/architecture/deviation_detector.rs` - Use graph queries
+- Remove `~/.yantra/architecture.db` storage
+
+### Success Metrics
+
+- ✅ Alignment check performance: <100ms (vs. current ~500ms)
+- ✅ Single cloud sync system (vs. two separate systems)
+- ✅ Code change → component status update: <10ms (in-memory)
+- ✅ Reduced maintenance burden (one storage system)
+
+**Decision Summary:** User is right - Architecture SHOULD be in GNN. Simpler, faster, single cloud sync. Current separation was over-engineering. Move architecture to Component/Service/Layer nodes in GNN.
+
+---
+
+## December 5, 2025 - Architecture Stays Separate from GNN (Different Abstraction Level) [SUPERSEDED]
+
+**⚠️ This decision has been SUPERSEDED by the reconsideration above (Dec 5, 2025).**
+
+**Original reasoning** (now obsolete): Different abstraction levels, global reusability, visual metadata.
+
+**Why reconsidered:** User pointed out alignment checking complexity and need for single cloud sync system.
+
+**New decision:** Architecture moves to GNN as Component/Service/Layer nodes.
+
+---
+
+## December 5, 2025 - Known Issues Should Also Live in GNN (Reconsideration)
+
+**Status:** ✅ DECIDED - Known issues belong in GNN alongside templates  
+**Deciders:** Vivek + AI Architect  
+**Impact:** High - Unified failure learning with code context  
+**Priority:** Post-MVP (Phase 2)
+
+### Context
+
+Original plan: Separate `~/.yantra/known_issues.db` (global, Tier 3) for failure patterns.
+
+**Question from Vivek:** "Why not add known issues to GNN as well since it has semantic search? It has rich graph with semantics - why not use it for issues as well?"
+
+**Answer:** You're absolutely right! Known issues SHOULD be in the GNN.
+
+### Why Known Issues Belong in GNN (Not Separate Database)
+
+| Factor                | GNN Database (`.yantra/graph.db`)                       | Separate Known Issues DB                |
+| --------------------- | ------------------------------------------------------- | --------------------------------------- |
+| **Code Relationship** | ✅ Issues tied to specific functions/classes via edges  | ❌ Separate, no graph relationships     |
+| **Semantic Search**   | ✅ Already integrated, find similar failures            | ❌ Would need to add separately         |
+| **Context**           | ✅ "This function fails when X dependency missing"      | ❌ Just text descriptions               |
+| **Query**             | ✅ "Show auth issues" returns auth code + auth failures | ❌ Separate lookup                      |
+| **Graph Traversal**   | ✅ Track which functions cause which errors             | ❌ No graph structure                   |
+| **Learning**          | ✅ Per-project patterns (Python vs JS failures differ)  | ⚠️ Global patterns lose project context |
+
+### Decision: Known Issues = FailureCase Nodes in GNN
+
+**Store failure patterns as `FailureCase` nodes in `.yantra/graph.db` with edges to affected code.**
+
+### Architecture: Failure Cases as Graph Nodes
+
+```rust
+// NodeType already includes FailureCase (from template decision)
+pub enum NodeType {
+    Function, Class, Variable, Import, Module,
+    Template,      // Code templates
+    Pattern,       // Best practices
+    FailureCase,   // Known failures + fixes ← THIS!
+}
+
+// Example failure case node
+CodeNode {
+    id: "failure_auth_timing_attack",
+    node_type: NodeType::FailureCase,
+    name: "JWT Timing Attack Vulnerability",
+    file_path: "failures/auth_patterns.md",  // Virtual file
+    line_start: 1,
+    line_end: 50,
+    semantic_embedding: Some([...]),  // Embedded failure description
+    code_snippet: Some("if token == expected_token"),  // Vulnerable pattern
+    docstring: Some("Fix: Use constant-time comparison"),
+}
+
+// Edges connecting failures to affected code
+CodeEdge {
+    edge_type: EdgeType::CausedBy,  // NEW edge type
+    source_id: "func_validate_jwt",
+    target_id: "failure_auth_timing_attack",
+}
+```
+
+### Example Use Cases
+
+**1. Contextual Warning During Code Generation:**
+
+```
+User: "Generate JWT validation function"
+
+GNN Query:
+1. Find all JWT-related functions (existing code)
+2. Find all JWT-related templates (patterns)
+3. Find all JWT-related failures (known issues) ← NEW!
+
+Response: "Here's JWT validation code. ⚠️ Avoid timing attacks (use constant-time comparison)."
+```
+
+**2. Failure Pattern Matching:**
+
+```
+Test fails with: "TypeError: 'NoneType' object is not subscriptable"
+
+GNN Semantic Search:
+- Find similar failure patterns (semantic)
+- Find affected functions (graph traversal)
+- Find fixes that worked (edges to solutions)
+
+Response: "Similar issue in parse_config(). Fix: Add null check before accessing dict."
+```
+
+**3. Proactive Error Prevention:**
+
+```
+User: "Modify async database call"
+
+GNN Analysis:
+1. Find function dependencies (existing graph)
+2. Check for async-related failures (FailureCase nodes)
+3. Warn about deadlock patterns
+
+Response: "⚠️ Warning: This pattern can cause asyncio deadlocks. Use asyncio.create_task()."
+```
+
+### Benefits Over Separate Database
+
+1. **Graph Relationships:**
+   - Link failures to specific functions via edges
+   - Track which dependencies cause which errors
+   - Visualize failure propagation
+
+2. **Semantic Search:**
+   - Find similar failures even with different wording
+   - "Connection refused" matches "Database unreachable"
+
+3. **Unified Query:**
+   - Single search returns code + templates + failures
+   - No need to query multiple systems
+
+4. **Context Preservation:**
+   - Per-project failures (Python async ≠ JavaScript async)
+   - Failure patterns tied to specific code versions
+
+5. **Automatic Learning:**
+   - When test fails → Create FailureCase node
+   - When fix works → Create edge to solution pattern
+   - Graph grows organically with project
+
+### Implementation
+
+**1. Extend EdgeType for Failures:**
+
+```rust
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EdgeType {
+    // Existing
+    Calls, Uses, Imports, DependsOn,
+
+    // NEW: Failure-related edges
+    CausedBy,      // Function → FailureCase
+    FixedBy,       // FailureCase → Pattern (solution)
+    SimilarTo,     // FailureCase → FailureCase (clustering)
+}
+```
+
+**2. Failure Case Management:**
+
+```rust
+// src-tauri/src/gnn/failures.rs (NEW FILE)
+
+pub struct FailureManager {
+    gnn: Arc<Mutex<GNNEngine>>,
+}
+
+impl FailureManager {
+    // Add failure pattern
+    pub fn add_failure(
+        &self,
+        name: String,
+        description: String,
+        vulnerable_pattern: String,
+        fix_pattern: String,
+        affected_functions: Vec<String>,  // Function IDs
+    ) -> Result<String, String>;
+
+    // Find similar failures
+    pub fn find_similar_failures(
+        &self,
+        error_message: String,
+    ) -> Result<Vec<FailureCase>, String>;
+
+    // Get failures for function
+    pub fn get_function_failures(
+        &self,
+        function_id: String,
+    ) -> Result<Vec<FailureCase>, String>;
+}
+```
+
+**3. Integration with Testing:**
+
+```rust
+// When test fails
+if test_result.failed {
+    let error_pattern = extract_error_pattern(&test_result.error);
+
+    // Check if similar failure exists
+    let similar = failure_mgr.find_similar_failures(error_pattern)?;
+
+    if similar.is_empty() {
+        // New failure - add to GNN
+        failure_mgr.add_failure(
+            error_type,
+            error_message,
+            code_snippet,
+            None,  // Fix not known yet
+            vec![function_id],
+        )?;
+    } else {
+        // Known failure - suggest fix
+        suggest_fix(&similar[0].fix_pattern);
+    }
+}
+```
+
+### Comparison: Original Plan vs New Decision
+
+| Aspect         | Original (Separate DB)               | New Decision (GNN)               |
+| -------------- | ------------------------------------ | -------------------------------- |
+| **Storage**    | `~/.yantra/known_issues.db` (global) | `.yantra/graph.db` (per-project) |
+| **Scope**      | User-level (all projects)            | Project-level                    |
+| **Structure**  | Flat table                           | Graph nodes + edges              |
+| **Search**     | SQL queries                          | Semantic + structural            |
+| **Code Links** | None                                 | Direct edges to functions        |
+| **Context**    | Text only                            | Code + dependencies + patterns   |
+
+### Trade-offs
+
+**Pros:**
+
+- ✅ Rich graph relationships
+- ✅ Semantic search integrated
+- ✅ Per-project context
+- ✅ Automatic learning from failures
+- ✅ Unified query system
+
+**Cons:**
+
+- ⚠️ No cross-project learning (but: Cloud GNN solves this in Phase 2B)
+- ⚠️ Graph might get large (but: FailureCase nodes are small)
+
+**Mitigation:** Phase 2B Cloud GNN (Tier 0) can aggregate failure patterns across users for collective learning.
+
+### Files Affected
+
+**To Be Modified:**
+
+- `src-tauri/src/gnn/mod.rs` - EdgeType enum (add CausedBy, FixedBy, SimilarTo)
+- `src-tauri/src/gnn/persistence.rs` - Serialize new edge types
+
+**New Files:**
+
+- `src-tauri/src/gnn/failures.rs` - Failure management APIs
+
+### Success Metrics
+
+- Failure patterns captured automatically during testing
+- Code generation avoids known pitfalls
+- Similar failures detected and fixed faster
+- Collective learning (Cloud GNN Phase 2B)
+
+### Next Steps
+
+1. Already have FailureCase in NodeType (from template decision) ✅
+2. Add CausedBy/FixedBy/SimilarTo to EdgeType (10 lines)
+3. Implement FailureManager (200 lines)
+4. Integrate with testing pipeline (50 lines)
+5. Build UI for failure browsing (Post-MVP)
+
+**Decision Summary:** Known issues are code-related, so they belong in the code graph. Same reasoning as templates - semantic search, unified query, graph relationships all point to GNN as the right home.
+
+---
+
+## December 5, 2025 - Template Nodes in GNN Database (Unified Semantic Search)
+
+**Status:** ✅ DECIDED - Ready for implementation  
+**Deciders:** Vivek + AI Architect  
+**Impact:** High - Enables code template library with zero additional infrastructure  
+**Priority:** Post-MVP (Phase 2)
+
+### Context
+
+Need to store code templates, best practice patterns, and known failure cases. Original plan suggested separate vector database (redb), but semantic search already integrated into GNN via fastembed-rs. Question: Where should templates live?
+
+### Options Considered
+
+| Option                     | Storage                                           | Pros                                                | Cons                                            | Decision        |
+| -------------------------- | ------------------------------------------------- | --------------------------------------------------- | ----------------------------------------------- | --------------- |
+| **A: Extend GNN (Tier 1)** | Add Template/Pattern/FailureCase to NodeType enum | Semantic search built-in, single query, natural fit | Mixes code and non-code data                    | ✅ **SELECTED** |
+| **B: SQLite (Tier 3)**     | New `templates` table in separate SQLite          | Simple, structured queries                          | No semantic search, separate query system       | ❌ Rejected     |
+| **C: Separate redb**       | New vector database                               | Original plan, dedicated storage                    | Extra infrastructure, sync complexity, overkill | ❌ Rejected     |
+| **D: LLM Prompts Only**    | No persistence                                    | Zero maintenance                                    | No learning, expensive repeated calls           | ❌ Rejected     |
+
+### Decision: Option A - Extend GNN with Template Nodes
+
+**Store templates in `.yantra/graph.db` (same database as dependencies) as new node types.**
+
+### Rationale
+
+1. **Semantic search already integrated:**
+   - fastembed-rs (384-dim, all-MiniLM-L6-v2) already generating embeddings
+   - HNSW index already built for fast similarity search
+   - Zero additional infrastructure needed
+
+2. **Templates ARE code patterns:**
+   - Natural semantic fit (same embedding space as actual code)
+   - Example: "authentication" query returns:
+     - Authentication functions (from project code)
+     - Authentication templates (reusable patterns)
+     - Authentication best practices (design patterns)
+     - Known authentication failures (what to avoid)
+
+3. **Single unified query:**
+   - No separate query system
+   - No data sync issues
+   - Templates participate in graph traversal and dependency tracking
+
+4. **Zero additional database files:**
+   - Reuses existing `.yantra/graph.db` (per-project)
+   - Reuses existing persistence layer (`src-tauri/src/gnn/persistence.rs`)
+   - Reuses existing semantic search (`src-tauri/src/gnn/embeddings.rs`)
+
+### Implementation
+
+**1. Extend NodeType Enum (src-tauri/src/gnn/mod.rs):**
+
+```rust
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum NodeType {
+    // Existing code nodes
+    Function,
+    Class,
+    Variable,
+    Import,
+    Module,
+
+    // NEW: Template & pattern nodes (Dec 5, 2025)
+    Template,      // Code template (e.g., "FastAPI CRUD endpoint")
+    Pattern,       // Best practice pattern (e.g., "Repository pattern")
+    FailureCase,   // Known issue + fix (e.g., "Async deadlock pattern")
+}
+```
+
+**2. Storage:**
+
+- **Database:** `.yantra/graph.db` (per-project, Tier 1)
+- **Schema:** Existing `nodes` table accommodates new types
+- **Persistence:** Existing `persistence.rs` handles serialization
+- **Embeddings:** Existing `embeddings.rs` generates semantic vectors
+
+**3. Use Cases:**
+
+| Use Case         | Query                         | Results                                  |
+| ---------------- | ----------------------------- | ---------------------------------------- |
+| Context Assembly | "Show me authentication code" | Functions + Templates + Patterns         |
+| Code Generation  | "Create REST API endpoint"    | Actual code + Templates + Best practices |
+| Error Prevention | "Avoid async deadlocks"       | Known failures + Fix patterns            |
+| Learning         | "How to implement caching?"   | Project examples + Templates + Patterns  |
+
+### Benefits
+
+- ✅ Zero additional database files
+- ✅ Leverages existing semantic search infrastructure
+- ✅ Natural extension of code intelligence
+- ✅ Templates participate in dependency tracking
+- ✅ Single query returns comprehensive results
+- ✅ Automatic sync with codebase changes
+- ✅ Per-project templates (can vary by project type)
+
+### Trade-offs
+
+- ⚠️ Mixes code and non-code data in same graph
+  - **Mitigation:** Clear NodeType distinction, easy filtering
+- ⚠️ Template data might bloat graph
+  - **Mitigation:** Templates are small (few KB each), minimal impact on 100K+ LOC graphs
+
+### Files Affected
+
+**To Be Modified:**
+
+- `src-tauri/src/gnn/mod.rs` - Add Template/Pattern/FailureCase to NodeType enum
+- `src-tauri/src/gnn/persistence.rs` - Update node_type_to_string/string_to_node_type
+- `src-tauri/src/gnn/query.rs` - Add template-specific query filters
+- `src-tauri/src/orchestrator.rs` - Integrate template lookup in context assembly
+
+**New Files:**
+
+- `src-tauri/src/gnn/templates.rs` - Template management (add/remove/search templates)
+
+### Comparison to Known Issues
+
+**Why NOT use `~/.yantra/known_issues.db` for templates?**
+
+| Factor                | `.yantra/graph.db` (GNN)             | `~/.yantra/known_issues.db`    |
+| --------------------- | ------------------------------------ | ------------------------------ |
+| **Scope**             | Per-project                          | Global (user-level)            |
+| **Purpose**           | Code + templates (reusable patterns) | Failure logs (what went wrong) |
+| **Semantic Search**   | ✅ Integrated                        | ❌ Would need to add           |
+| **Query Pattern**     | Single unified search                | Separate lookup system         |
+| **Data Relationship** | Templates ARE code patterns          | Issues are failure records     |
+
+**Decision:** Templates belong with code (per-project GNN), known issues belong globally (user-level failure database).
+
+### Success Metrics
+
+- Template library grows organically from projects
+- Context assembly includes relevant templates
+- Code generation quality improves with best practices
+- Developers can query "show me X pattern" and get templates + code examples
+
+### Next Steps
+
+1. Extend NodeType enum (10 lines of code)
+2. Update persistence layer (20 lines)
+3. Add template management APIs (100 lines)
+4. Integrate into context assembly (50 lines)
+5. Build UI for template browsing (Post-MVP)
 
 ---
 

@@ -46,6 +46,12 @@ impl LLMConfigManager {
         self.save()
     }
 
+    /// Update secondary provider for automatic failover
+    pub fn set_secondary_provider(&mut self, provider: Option<LLMProvider>) -> Result<(), String> {
+        self.config.secondary_provider = provider;
+        self.save()
+    }
+
     /// Set Claude API key
     pub fn set_claude_key(&mut self, api_key: String) -> Result<(), String> {
         self.config.claude_api_key = Some(api_key);

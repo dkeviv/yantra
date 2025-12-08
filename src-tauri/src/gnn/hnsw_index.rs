@@ -27,7 +27,7 @@ use super::CodeNode;
 /// Automatically maintained as nodes are added/removed.
 pub struct HnswIndex {
     /// HNSW index for fast similarity search
-    index: Arc<RwLock<Hnsw<f32, DistCosine>>>,
+    index: Arc<RwLock<Hnsw<'static, f32, DistCosine>>>,
     /// Map from HNSW DataId to node_id (String)
     id_map: Arc<RwLock<Vec<String>>>,
     /// Map from node_id to HNSW DataId for updates
@@ -40,6 +40,18 @@ pub struct HnswIndex {
     ef_construction: usize,
     /// Search ef parameter
     ef_search: usize,
+}
+
+impl std::fmt::Debug for HnswIndex {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HnswIndex")
+            .field("dimensions", &self.dimensions)
+            .field("neighbors", &self.neighbors)
+            .field("ef_construction", &self.ef_construction)
+            .field("ef_search", &self.ef_search)
+            .field("nodes_count", &self.id_map.read().len())
+            .finish()
+    }
 }
 
 impl HnswIndex {
@@ -106,8 +118,7 @@ impl HnswIndex {
         // Insert into HNSW index
         {
             let mut index = self.index.write();
-            index.insert((embedding, data_id))
-                .map_err(|e| format!("HNSW insert failed: {:?}", e))?;
+            index.insert((embedding, data_id));
         }
         
         // Update mappings
@@ -282,8 +293,7 @@ impl HnswIndex {
         // Insert all nodes
         for (data_id, node) in nodes.iter().enumerate() {
             if let Some(embedding) = &node.semantic_embedding {
-                new_index.insert((embedding.as_slice(), data_id))
-                    .map_err(|e| format!("HNSW rebuild insert failed: {:?}", e))?;
+                new_index.insert((embedding.as_slice(), data_id));
                 new_id_map.push(node.id.clone());
                 new_reverse_map.insert(node.id.clone(), data_id);
             }

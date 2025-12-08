@@ -131,7 +131,7 @@ impl DependencyValidator {
         DependencyStatus {
             dependency: dep.clone(),
             installed,
-            installed_version,
+            installed_version: installed_version.clone(),
             satisfies_constraint,
             error: if !installed {
                 Some(format!("{} is not installed", dep.name))

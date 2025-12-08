@@ -2357,21 +2357,38 @@ Yantra can now autonomously generate code from user intent, validate dependencie
 
 #### Description
 
-Yantra automatically generates comprehensive pytest tests for every piece of code it generates. Tests are created using the same LLM that generated the code, ensuring consistency and understanding of the code's intent. Tests are written to `{filename}_test.py` files and automatically executed to verify code quality.
+Yantra automatically generates comprehensive tests for every piece of code it generates across **all 13 supported languages**. Tests are created using the same LLM that generated the code, ensuring consistency and understanding of the code's intent. Each language uses its native test framework and follows language-specific best practices.
+
+**Supported Languages & Frameworks:**
+
+1. **Python** → pytest
+2. **JavaScript/TypeScript** → Jest
+3. **Rust** → cargo test
+4. **Go** → go test
+5. **Java** → JUnit 5
+6. **Kotlin** → JUnit 5
+7. **C** → Unity
+8. **C++** → Google Test
+9. **Ruby** → RSpec
+10. **PHP** → PHPUnit
+11. **Swift** → XCTest
 
 This is the **critical enabler** for Yantra's MVP promise: "95%+ of generated code passes tests without human intervention."
 
+**Unified API:** The new `generator_unified.rs` and `executor_unified.rs` modules provide a single interface that automatically routes to the correct language-specific implementation.
+
 #### User Benefits
 
-- **Zero Manual Test Writing**: Never write tests manually again
+- **Zero Manual Test Writing**: Never write tests manually again - for any language
 - **Guaranteed Coverage**: Every function gets test coverage
 - **Immediate Feedback**: Tests run automatically after generation
 - **Real Confidence Scores**: Confidence based on actual test results, not guesses
 - **Learning from Failures**: Test failures drive automatic code improvements
+- **Multi-Language Support**: Same workflow for Python, JS, Rust, Go, Java, C++, and more
 
 #### Use Cases
 
-**Use Case 1: Simple Function Generation**
+**Use Case 1: Python Function Generation**
 
 ```
 Scenario: User asks "Create an add_numbers function that adds two numbers"
@@ -2395,14 +2412,93 @@ Yantra:
 4. Reports confidence: 95%
 ```
 
+**Use Case 2: Rust Function Generation**
+
+```
+Scenario: User asks "Create a Rust function to calculate factorial"
+
+Yantra:
+1. Generates code in factorial.rs:
+   pub fn factorial(n: u64) -> u64 {
+       match n {
+           0 | 1 => 1,
+           _ => n * factorial(n - 1)
+       }
+   }
+
+2. Automatically generates tests:
+   #[cfg(test)]
+   mod tests {
+       use super::*;
+
+       #[test]
+       fn test_factorial_zero() {
+           assert_eq!(factorial(0), 1);
+       }
+
+       #[test]
+       fn test_factorial_five() {
+           assert_eq!(factorial(5), 120);
+       }
+   }
+
+3. Executes cargo test: All tests passed
+4. Reports confidence: 92%
+```
+
+**Use Case 3: Go Function Generation**
+
+```
+Scenario: User asks "Create a Go function to validate email"
+
+Yantra:
+1. Generates code in email.go:
+   func IsValidEmail(email string) bool {
+       regex := regexp.MustCompile(`^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$`)
+       return regex.MatchString(email)
+   }
+
+2. Automatically generates email_test.go:
+   func TestIsValidEmail(t *testing.T) {
+       tests := []struct {
+           email string
+           want  bool
+       }{
+           {"test@example.com", true},
+           {"invalid.email", false},
+       }
+
+       for _, tt := range tests {
+           got := IsValidEmail(tt.email)
+           if got != tt.want {
+               t.Errorf("IsValidEmail(%q) = %v, want %v", tt.email, got, tt.want)
+           }
+       }
+   }
+
+3. Executes go test: PASS
+4. Reports confidence: 94%
+```
+
 #### Technical Details
 
 - **LLM Used**: Same LLM as code generation (Claude Sonnet 4 or GPT-4 Turbo)
-- **Test Framework**: pytest with standard assertions
-- **Test File Naming**: `{original_file}_test.py`
-- **Coverage Target**: 80% by default
+- **Test Frameworks**:
+  - Python: pytest
+  - JavaScript/TypeScript: Jest
+  - Rust: cargo test (built-in)
+  - Go: go test (built-in)
+  - Java/Kotlin: JUnit 5
+  - C: Unity
+  - C++: Google Test (gtest)
+  - Ruby: RSpec
+  - PHP: PHPUnit
+  - Swift: XCTest
+- **Test File Naming**: Language-specific conventions (e.g., `_test.py`, `.test.js`, `_test.go`)
+- **Coverage Target**: 80% by default, configurable
 - **Generation Time**: ~5-10 seconds
 - **Execution Time**: <30s for typical test suite
+- **Unified API**: Single interface for all languages via `generate_tests_unified()`
 
 #### Metrics Impact
 

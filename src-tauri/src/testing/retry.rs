@@ -248,7 +248,7 @@ impl RetryExecutor {
                 role: "user".to_string(),
                 content: format!(
                     "Original request: {}\n\nCurrent code:\n```\n{}\n```\n\n",
-                    original_request.description,
+                    original_request.intent,
                     current_code
                 ),
             },

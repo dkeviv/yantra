@@ -10,12 +10,12 @@
 
 ### 1. **Post-MVP Dependency Tracking Priorities** ✅
 
-| Feature                         | Priority      | Reasoning                                          |
-|---------------------------------|---------------|----------------------------------------------------|
-| External API Tracking           | **P1 Post-MVP** | Critical for microservices, API contracts          |
-| User → File Tracking            | **P1 Post-MVP** | Important for team collaboration, ownership        |
-| Method Chain Tracking           | **P2 Post-MVP** | Complex, diminishing returns vs. nested functions  |
-| Function → Package Function     | **P2 Post-MVP** | Nice-to-have after basic package tracking works    |
+| Feature                     | Priority        | Reasoning                                         |
+| --------------------------- | --------------- | ------------------------------------------------- |
+| External API Tracking       | **P1 Post-MVP** | Critical for microservices, API contracts         |
+| User → File Tracking        | **P1 Post-MVP** | Important for team collaboration, ownership       |
+| Method Chain Tracking       | **P2 Post-MVP** | Complex, diminishing returns vs. nested functions |
+| Function → Package Function | **P2 Post-MVP** | Nice-to-have after basic package tracking works   |
 
 ### 2. **Blast Radius Analysis Feature** ✅
 
@@ -30,6 +30,7 @@
 **Purpose:** Show users exactly what will be affected BEFORE committing to execution
 
 **Integration:**
+
 ```
 Planning Phase:
 ├─ DependencyAssessment
@@ -40,6 +41,7 @@ Planning Phase:
 ```
 
 **What It Shows:**
+
 ```
 📊 Blast Radius Preview
 
@@ -64,11 +66,13 @@ Approval required: YES
 ```
 
 **Smart Display Logic:**
+
 - **Always show detailed** for: critical files, breaking changes, >10 indirect deps, package upgrades, high risk
 - **Show compact** for: medium changes (2-5 files, <20 tests)
 - **Skip entirely** for: trivial changes (single file, no deps, <5 tests, low risk)
 
 **Approval Gate Triggers:**
+
 ```rust
 fn should_require_approval(analysis: &BlastRadiusAnalysis) -> bool {
     !analysis.critical_files.is_empty() ||       // Core logic affected
@@ -120,6 +124,7 @@ fn should_require_approval(analysis: &BlastRadiusAnalysis) -> bool {
 ### File: `DEPENDENCY_TRACKING_ANALYSIS.md` (Created)
 
 **Content:** Comprehensive 6-part analysis document:
+
 1. What IS implemented (code-to-code dependencies)
 2. What's NOT implemented (package dependencies)
 3. The version-level tracking gap
@@ -132,30 +137,37 @@ fn should_require_approval(analysis: &BlastRadiusAnalysis) -> bool {
 ## Technical Decisions Made ✅
 
 ### Package Version Granularity
+
 **Decision:** Track installed version only for MVP (Option A)  
 **Rationale:** Simpler, sufficient for conflict detection. Add requirement ranges post-MVP.
 
 ### Package Function Depth
+
 **Decision:** Nested attributes (Option B) - `numpy.random.normal`  
 **Rationale:** Catches breaking changes like numpy 2.0 API changes. Skip method chains for MVP.
 
 ### Metadata Sources
+
 **Decision:** Lock files first, fallback to manifests  
 **Rationale:** Lock files have exact versions. Skip runtime inspection for MVP complexity.
 
 ### Transitive Dependencies
+
 **Decision:** Full tree (Option C)  
 **Rationale:** Lock files already have this data. Propagated breaking changes matter.
 
 ### Breaking Change Detection
+
 **Decision:** Semantic versioning + major version warnings (Option A)  
 **Rationale:** Simple, fast, catches 80% of issues. Add changelog scraping post-MVP.
 
 ### Cross-Language Dependencies
+
 **Decision:** Separate graphs per language for MVP (Option A)  
 **Rationale:** Simpler. Cross-language API tracking needs External API feature (P1 Post-MVP).
 
 ### Graph Update Triggers
+
 **Decision:** A + B hybrid - build on project open, rebuild on lock file changes  
 **Rationale:** Watch requirements.txt, package.json, Cargo.toml. Incremental updates for performance.
 
@@ -166,6 +178,7 @@ fn should_require_approval(analysis: &BlastRadiusAnalysis) -> bool {
 ### MVP Package Tracking (P0 - Required)
 
 **Features (6 total):**
+
 1. File → Package@Version tracking
 2. Package → Package tracking (transitive deps)
 3. Version-level node creation
@@ -174,6 +187,7 @@ fn should_require_approval(analysis: &BlastRadiusAnalysis) -> bool {
 6. Query APIs (get_files_using_package, etc.)
 
 **Estimated Effort:**
+
 - Rust code: ~900 lines
   - Extend NodeType enum with TechStack variant: ~50 lines
   - TechStackNode struct + methods: ~150 lines
@@ -188,6 +202,7 @@ fn should_require_approval(analysis: &BlastRadiusAnalysis) -> bool {
 ### Blast Radius Analysis (P0 - Required)
 
 **Features (1 total):**
+
 1. BlastRadiusAnalyzer implementation
 2. Integration with PlanReview state
 3. UI components (BlastRadiusPreview)
@@ -195,6 +210,7 @@ fn should_require_approval(analysis: &BlastRadiusAnalysis) -> bool {
 5. Approval gate triggers
 
 **Estimated Effort:**
+
 - Rust backend: ~500 lines
   - BlastRadiusAnalyzer struct + methods: ~300 lines
   - Critical file detection: ~100 lines
@@ -213,36 +229,40 @@ fn should_require_approval(analysis: &BlastRadiusAnalysis) -> bool {
 ## Corrected Implementation Status
 
 ### Previous Claim
+
 - ✅ 97/97 P0+P1 capabilities complete (100%)
 - ✅ GNN Dependency Tracking: 10/10 (100%)
 
 ### Reality Check (After Analysis)
+
 - 🟡 **82/97 P0+P1 capabilities** complete (85%)
 - ✅ GNN Code Dependencies: 10/10 (100%) - file→file, function→function, test→source
 - ❌ **GNN Package Dependencies: 0/6 (0%)** - NOT STARTED, P0 BLOCKER
 - ❌ **Blast Radius Analysis: 0/1 (0%)** - NOT STARTED, P0 BLOCKER
 
 **Gap Identified:**
+
 - 15 features missing (7 package tracking + 1 blast radius + 7 related capabilities)
 - Cannot guarantee "code that never breaks" without package dependency tracking
 - Previous "97/97" was incorrect - GNN "10/10" referred only to internal code dependencies
 
 ### Updated Breakdown
 
-| Component                          | MVP Status | Details                                     |
-|------------------------------------|------------|---------------------------------------------|
-| GNN Code Dependencies              | ✅ 10/10   | 100% - Verified correct                     |
-| GNN Package Dependencies           | ❌ 0/6     | 0% - File→Package, Package→Package, etc.    |
-| Blast Radius Analysis              | ❌ 0/1     | 0% - PlanReview integration                 |
-| Architecture View                  | 🟡 12/16   | 75% - Versioning workflows pending          |
-| Other P0+P1 Capabilities           | ✅ 60/73   | 82% - Agent modules, LLM, testing, etc.     |
-| **Total P0+P1**                    | **82/97**  | **85% MVP**                                 |
+| Component                | MVP Status | Details                                  |
+| ------------------------ | ---------- | ---------------------------------------- |
+| GNN Code Dependencies    | ✅ 10/10   | 100% - Verified correct                  |
+| GNN Package Dependencies | ❌ 0/6     | 0% - File→Package, Package→Package, etc. |
+| Blast Radius Analysis    | ❌ 0/1     | 0% - PlanReview integration              |
+| Architecture View        | 🟡 12/16   | 75% - Versioning workflows pending       |
+| Other P0+P1 Capabilities | ✅ 60/73   | 82% - Agent modules, LLM, testing, etc.  |
+| **Total P0+P1**          | **82/97**  | **85% MVP**                              |
 
 ---
 
 ## Next Steps (Recommended Priority)
 
 ### Phase 1: Package Dependency Tracking (P0 - Weeks 1-3)
+
 1. Extend GNN with TechStack node type
 2. Parse lock files (package-lock.json, Cargo.lock, poetry.lock, requirements.txt)
 3. Create package nodes + edges (Uses, Requires)
@@ -253,6 +273,7 @@ fn should_require_approval(analysis: &BlastRadiusAnalysis) -> bool {
 **Deliverable:** 6/6 package tracking features complete
 
 ### Phase 2: Blast Radius Analysis (P0 - Weeks 4-5)
+
 1. Implement BlastRadiusAnalyzer (backend)
 2. Integrate with Code Generation State Machine (PlanReview state)
 3. Build BlastRadiusPreview UI component
@@ -262,6 +283,7 @@ fn should_require_approval(analysis: &BlastRadiusAnalysis) -> bool {
 **Deliverable:** 1/1 blast radius feature complete
 
 ### Phase 3: Verification & Polish (Week 6)
+
 1. End-to-end testing with real projects
 2. Performance optimization (<2s blast radius analysis)
 3. Documentation updates (Technical_Guide.md, Features.md)
@@ -274,27 +296,32 @@ fn should_require_approval(analysis: &BlastRadiusAnalysis) -> bool {
 ## Key Takeaways
 
 ### What Works Today ✅
+
 - **Internal code dependencies:** Fully tracked (functions, classes, files, tests)
 - **Multi-language parsing:** 11 languages supported
 - **Semantic search:** HNSW indexing working
 - **Test coverage:** GNN finds all tests for any file
 
 ### Critical Gaps ❌
+
 - **Package dependencies:** Not tracked at all (0%)
 - **Version-level tracking:** Doesn't exist
 - **Blast radius preview:** Not implemented
 - **Breaking change warnings:** No package-level warnings
 
 ### Why This Matters 🎯
+
 **Yantra's promise:** "Code that never breaks"
 
 **Reality without package tracking:**
+
 - ❌ Can't detect: "Upgrading numpy 1.24→2.0 breaks pandas"
 - ❌ Can't answer: "What files will break if I upgrade this package?"
 - ❌ Can't prevent: Version conflicts before they happen
 - ❌ Can't guarantee: Safe refactoring when packages change
 
 **With package tracking:**
+
 - ✅ Detect conflicts BEFORE installation fails
 - ✅ Show blast radius: "47 files affected by numpy upgrade"
 - ✅ Warn: "numpy 2.0 has breaking API changes"
@@ -309,6 +336,7 @@ fn should_require_approval(analysis: &BlastRadiusAnalysis) -> bool {
 **A:** **State Machine (PlanReview state) - PRIMARY LOCATION**
 
 **Reasoning:**
+
 - Fits preventive philosophy (PDC Phase 2: Planning)
 - Happens BEFORE execution (not reactive)
 - Already has approval gate for complex changes
@@ -322,11 +350,13 @@ fn should_require_approval(analysis: &BlastRadiusAnalysis) -> bool {
 **A:** **NO** - Major gaps identified:
 
 **Currently tracked:**
+
 - ✅ File → File (imports)
 - ✅ Function → Function (calls)
 - ✅ Test → Source (coverage)
 
 **NOT tracked:**
+
 - ❌ File → Package@Version
 - ❌ Package → Package (transitive deps)
 - ❌ Function → Package Function (which numpy functions used)

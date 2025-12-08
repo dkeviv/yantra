@@ -11,6 +11,7 @@ export interface LLMConfig {
   has_groq_key: boolean;
   has_gemini_key: boolean;
   primary_provider: 'Claude' | 'OpenAI' | 'OpenRouter' | 'Groq' | 'Gemini';
+  secondary_provider?: 'Claude' | 'OpenAI' | 'OpenRouter' | 'Groq' | 'Gemini' | null;
   max_retries: number;
   timeout_seconds: number;
   selected_models: string[];
@@ -26,11 +27,11 @@ export interface ModelInfo {
 }
 
 export interface ChatMessage {
-  role: string;  // "user" or "assistant"
+  role: string; // "user" or "assistant"
   content: string;
 }
 
-export type Intent = 
+export type Intent =
   | 'code_generation'
   | 'code_modification'
   | 'terminal_command'
@@ -88,9 +89,9 @@ export const llmApi = {
    * @param conversationHistory - Previous messages for context
    */
   async chat(message: string, conversationHistory: ChatMessage[] = []): Promise<ChatResponse> {
-    return await invoke<ChatResponse>('chat_with_agent', { 
-      message, 
-      conversationHistory 
+    return await invoke<ChatResponse>('chat_with_agent', {
+      message,
+      conversationHistory,
     });
   },
 
@@ -98,8 +99,20 @@ export const llmApi = {
    * Set primary LLM provider
    * @param provider - 'claude', 'openai', 'openrouter', 'groq', or 'gemini'
    */
-  async setProvider(provider: 'claude' | 'openai' | 'openrouter' | 'groq' | 'gemini'): Promise<void> {
+  async setProvider(
+    provider: 'claude' | 'openai' | 'openrouter' | 'groq' | 'gemini'
+  ): Promise<void> {
     await invoke('set_llm_provider', { provider });
+  },
+
+  /**
+   * Set secondary LLM provider for automatic failover
+   * @param provider - 'claude', 'openai', 'openrouter', 'groq', 'gemini', or null to disable
+   */
+  async setSecondaryProvider(
+    provider: 'claude' | 'openai' | 'openrouter' | 'groq' | 'gemini' | 'none' | null
+  ): Promise<void> {
+    await invoke('set_secondary_llm_provider', { provider: provider === null ? 'none' : provider });
   },
 
   /**
@@ -154,7 +167,9 @@ export const llmApi = {
    * Get available models for a specific provider
    * @param provider - 'claude', 'openai', 'openrouter', 'groq', or 'gemini'
    */
-  async getAvailableModels(provider: 'claude' | 'openai' | 'openrouter' | 'groq' | 'gemini'): Promise<ModelInfo[]> {
+  async getAvailableModels(
+    provider: 'claude' | 'openai' | 'openrouter' | 'groq' | 'gemini'
+  ): Promise<ModelInfo[]> {
     return await invoke<ModelInfo[]>('get_available_models', { provider });
   },
 
@@ -162,7 +177,9 @@ export const llmApi = {
    * Get default model for a specific provider
    * @param provider - 'claude', 'openai', 'openrouter', 'groq', or 'gemini'
    */
-  async getDefaultModel(provider: 'claude' | 'openai' | 'openrouter' | 'groq' | 'gemini'): Promise<string> {
+  async getDefaultModel(
+    provider: 'claude' | 'openai' | 'openrouter' | 'groq' | 'gemini'
+  ): Promise<string> {
     return await invoke<string>('get_default_model', { provider });
   },
 

@@ -200,6 +200,7 @@ fn node_type_to_string(node_type: &NodeType) -> &str {
         NodeType::Variable => "variable",
         NodeType::Import => "import",
         NodeType::Module => "module",
+        NodeType::Package { .. } => "package",
     }
 }
 
@@ -210,6 +211,7 @@ fn string_to_node_type(s: &str) -> NodeType {
         "variable" => NodeType::Variable,
         "import" => NodeType::Import,
         "module" => NodeType::Module,
+        "package" => NodeType::Module, // Packages will be reconstructed from JSON
         _ => NodeType::Function, // Default fallback
     }
 }
@@ -223,6 +225,9 @@ fn edge_type_to_string(edge_type: &EdgeType) -> &str {
         EdgeType::Defines => "defines",
         EdgeType::Tests => "tests",
         EdgeType::TestDependency => "test_dependency",
+        EdgeType::UsesPackage => "uses_package",
+        EdgeType::DependsOn => "depends_on",
+        EdgeType::ConflictsWith => "conflicts_with",
     }
 }
 
@@ -235,6 +240,9 @@ fn string_to_edge_type(s: &str) -> EdgeType {
         "defines" => EdgeType::Defines,
         "tests" => EdgeType::Tests,
         "test_dependency" => EdgeType::TestDependency,
+        "uses_package" => EdgeType::UsesPackage,
+        "depends_on" => EdgeType::DependsOn,
+        "conflicts_with" => EdgeType::ConflictsWith,
         _ => EdgeType::Calls, // Default fallback
     }
 }

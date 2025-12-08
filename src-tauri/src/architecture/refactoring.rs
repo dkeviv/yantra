@@ -452,9 +452,9 @@ impl NodeType {
             NodeType::Function => "function",
             NodeType::Class => "class",
             NodeType::Variable => "variable",
-            NodeType::Method => "method",
             NodeType::Module => "module",
             NodeType::Import => "import",
+            NodeType::Package { .. } => "package",
         }
     }
 }

@@ -150,7 +150,7 @@ This section documents all 97 P0+P1 agentic capabilities that enable Yantra's au
 2. **Architecture View System (16)** - Visual architecture management
 3. **Multi-LLM Orchestration (13)** - 13 LLM providers with smart routing
 4. **Context System (4)** - Token counting + hierarchical context
-5. **Testing & Validation (6)** - Python + JavaScript testing
+5. **Testing & Validation (6)** - Multi-language testing (13 languages)
 6. **Security Scanning (3)** - Semgrep + auto-fix + secrets
 7. **Browser CDP (8)** - Full browser automation
 8. **Git Integration (2)** - MCP protocol + AI commits
@@ -247,17 +247,32 @@ This section documents all 97 P0+P1 agentic capabilities that enable Yantra's au
 #### 5. Testing & Validation (6 capabilities)
 
 **Location:** `src-tauri/src/testing/`  
-**Files:** `test_generator.rs` (700+ lines), `executor.rs` (400+ lines)  
-**Purpose:** Generate and execute tests for Python and JavaScript
+**Files:** `generator_unified.rs` (700+ lines), `executor_unified.rs` (900+ lines), `generator.rs` (198 lines), `executor.rs` (475 lines), `generator_js.rs` (560 lines), `executor_js.rs` (478 lines)  
+**Purpose:** Generate and execute tests for all 13 supported languages
 
-**Capabilities:** 44. **Python Testing** - pytest integration 45. **JavaScript Testing** - Jest integration 46. **Test Generation** - Auto-generate unit tests from code 47. **Test Execution** - Parallel test running 48. **Coverage Analysis** - pytest-cov integration 49. **Test Tracking** - GNN-based test-to-code mapping
+**Capabilities:** 44. **Multi-Language Test Generation** - Unified interface for all languages 45. **Multi-Language Test Execution** - Native test runner integration 46. **Python Testing** - pytest integration 47. **JavaScript/TypeScript Testing** - Jest integration 48. **Compiled Language Testing** - Rust (cargo test), Go (go test), C++ (gtest), Java/Kotlin (JUnit) 49. **Scripted Language Testing** - Ruby (RSpec), PHP (PHPUnit), Swift (XCTest), C (Unity)
+
+**Supported Test Frameworks:**
+
+- Python → pytest
+- JavaScript/TypeScript → Jest
+- Rust → cargo test
+- Go → go test
+- Java/Kotlin → JUnit 5
+- C → Unity
+- C++ → Google Test
+- Ruby → RSpec
+- PHP → PHPUnit
+- Swift → XCTest
 
 **Technical Implementation:**
 
-- pytest subprocess execution for Python
-- Jest subprocess execution for JavaScript
-- Coverage parsing from pytest-cov output
-- GNN integration for affected test detection
+- **Unified Generator** (`generator_unified.rs`): Routes requests to language-specific generators based on file extension
+- **Unified Executor** (`executor_unified.rs`): Executes native test runners and parses their output (JSON/XML/text)
+- **LLM-Based Generation**: Each language gets tests with framework-specific best practices
+- **Output Parsing**: Framework-specific parsers for test results (pytest JSON, Jest JSON, cargo test output, etc.)
+- **Coverage Integration**: pytest-cov (Python), Jest coverage (JS/TS), go test -coverprofile (Go)
+- **GNN Integration**: Test-to-code mapping for affected test detection across all languages
 
 #### 6. Security Scanning (3 capabilities)
 

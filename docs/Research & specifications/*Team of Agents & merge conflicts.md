@@ -1,4 +1,4 @@
-**Master Role: Work Assignment Only**
+**wMaster Role: Work Assignment Only**
 
 Master analyzes the feature request, decomposes into sub-features, assigns each sub-feature to an agent. Master doesn't coordinate file locks or approve every operation. Master's job is done after assignment.
 
@@ -140,10 +140,7 @@ Works with 2 agents on a laptop. Works with 10 agents across a team. Same mechan
 
 Developers already understand branches and PRs. Coordination branch is inspectable - you can literally read the event log with `git log`. Debugging is straightforward.
 
-
 ---
-
-
 
 ## The Current Problem with Git Merges
 

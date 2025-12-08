@@ -22,6 +22,11 @@ pub mod embeddings;
 pub mod hnsw_index;
 pub mod query;
 pub mod version_tracker;
+pub mod completion;
+pub mod package_tracker;
+
+// Re-export main types
+pub use graph::CodeGraph;
 
 // Re-export query types
 pub use query::{
@@ -52,13 +57,29 @@ pub struct CodeNode {
     pub docstring: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum NodeType {
     Function,
     Class,
     Variable,
     Import,
     Module,
+    Package {
+        name: String,
+        version: String,
+        language: PackageLanguage,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum PackageLanguage {
+    Python,
+    JavaScript,
+    Rust,
+    Go,
+    Java,
+    Ruby,
+    PHP,
 }
 
 impl Default for NodeType {
@@ -85,12 +106,19 @@ pub enum EdgeType {
     Tests,
     /// Test file depends on source file (general relationship)
     TestDependency,
+    /// File uses a package at specific version
+    UsesPackage,
+    /// Package depends on another package (transitive dependency)
+    DependsOn,
+    /// Package conflicts with another package version
+    ConflictsWith,
 }
 
 pub struct GNNEngine {
     graph: graph::CodeGraph,
     db: persistence::Database,
     incremental_tracker: incremental::IncrementalTracker,
+    package_tracker: package_tracker::PackageTracker,
 }
 
 // SAFETY: GNNEngine is always accessed through a Mutex, which provides exclusive access
@@ -107,11 +135,13 @@ impl GNNEngine {
         
         let graph = graph::CodeGraph::new();
         let incremental_tracker = incremental::IncrementalTracker::new();
+        let package_tracker = package_tracker::PackageTracker::new();
         
         Ok(Self { 
             graph, 
             db,
             incremental_tracker,
+            package_tracker,
         })
     }
     
@@ -331,6 +361,11 @@ impl GNNEngine {
         self.graph.get_all_nodes().len()
     }
     
+    /// Get all nodes in the graph
+    pub fn get_all_nodes(&self) -> Vec<&CodeNode> {
+        self.graph.get_all_nodes()
+    }
+    
     /// Identify if a file is a test file based on naming conventions
     pub fn is_test_file(file_path: &Path) -> bool {
         let file_name = file_path.file_name()
@@ -503,6 +538,89 @@ impl GNNEngine {
     /// Get graph edge count
     pub fn edge_count(&self) -> usize {
         self.graph.edge_count()
+    }
+    
+    /// Parse package dependencies and add to graph
+    pub fn parse_packages(&mut self, project_path: &Path) -> Result<usize, String> {
+        // Parse all package manifests
+        let packages = self.package_tracker.parse_project(project_path)?;
+        
+        // Convert packages to nodes
+        for package in &packages {
+            let node = package_tracker::PackageTracker::package_to_node(package);
+            self.graph.add_node(node);
+        }
+        
+        // Create dependency edges between packages
+        let edges = package_tracker::PackageTracker::create_package_edges(&packages);
+        for edge in &edges {
+            // Ignore errors for missing target packages (external dependencies)
+            let _ = self.graph.add_edge(edge.clone());
+        }
+        
+        println!("Parsed {} packages with {} dependency edges", packages.len(), edges.len());
+        
+        Ok(packages.len())
+    }
+    
+    /// Get all packages in the graph
+    pub fn get_packages(&self) -> Vec<&CodeNode> {
+        self.graph.get_all_nodes()
+            .into_iter()
+            .filter(|n| matches!(n.node_type, NodeType::Package { .. }))
+            .collect()
+    }
+    
+    /// Find files using a specific package
+    pub fn get_files_using_package(&self, package_name: &str, version: Option<&str>) -> Vec<String> {
+        let mut files = Vec::new();
+        
+        // Find package node
+        for node in self.graph.get_all_nodes() {
+            if let NodeType::Package { name, version: pkg_version, .. } = &node.node_type {
+                if name == package_name {
+                    if let Some(req_version) = version {
+                        if pkg_version != req_version {
+                            continue;
+                        }
+                    }
+                    
+                    // Find files with UsesPackage edges to this package
+                    let dependents = self.graph.get_dependents(&node.id);
+                    for dep in dependents {
+                        if !matches!(dep.node_type, NodeType::Package { .. }) {
+                            files.push(dep.file_path.clone());
+                        }
+                    }
+                }
+            }
+        }
+        
+        files.sort();
+        files.dedup();
+        files
+    }
+    
+    /// Find packages used by a specific file
+    pub fn get_packages_used_by_file(&self, file_path: &str) -> Vec<String> {
+        let mut packages = Vec::new();
+        
+        // Find nodes in this file
+        let file_nodes = self.graph.get_nodes_in_file(file_path);
+        
+        for node in file_nodes {
+            // Find UsesPackage edges
+            let dependencies = self.graph.get_dependencies(&node.id);
+            for dep in dependencies {
+                if let NodeType::Package { name, version, .. } = &dep.node_type {
+                    packages.push(format!("{}=={}", name, version));
+                }
+            }
+        }
+        
+        packages.sort();
+        packages.dedup();
+        packages
     }
 }
 

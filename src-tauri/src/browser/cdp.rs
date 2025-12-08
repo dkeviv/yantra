@@ -22,8 +22,9 @@ use chromiumoxide::browser::{Browser, BrowserConfig};
 use chromiumoxide::cdp::browser_protocol::page::{
     CaptureScreenshotParams, NavigateParams, PrintToPdfParams,
 };
-use chromiumoxide::cdp::browser_protocol::runtime::ConsoleApiCalledEvent;
-use chromiumoxide::cdp::browser_protocol::network::{RequestWillBeSentEvent, ResponseReceivedEvent};
+// TODO: Fix these imports - chromiumoxide 0.5 may have different paths
+// use chromiumoxide::cdp::browser_protocol::runtime::ConsoleApiCalledEvent;
+// use chromiumoxide::cdp::browser_protocol::network::{RequestWillBeSentEvent, ResponseReceivedEvent};
 use chromiumoxide::page::Page;
 use chromiumoxide::error::CdpError;
 use futures::StreamExt;
@@ -124,7 +125,7 @@ impl BrowserSession {
         // Spawn handler task
         tokio::spawn(async move {
             loop {
-                if let Err(e) = handler.next().await {
+                if let Some(Err(e)) = handler.next().await {
                     eprintln!("Browser handler error: {:?}", e);
                     break;
                 }

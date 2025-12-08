@@ -1,7 +1,7 @@
 // Affected Tests Runner: Smart test selection based on code changes
 // Purpose: Run only tests affected by code changes using GNN dependency tracking
 
-use crate::gnn::GraphNeuralNetwork;
+use crate::gnn::GNNEngine;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -28,13 +28,13 @@ pub enum FilterStrategy {
 
 /// Affected Tests Runner
 pub struct AffectedTestsRunner {
-    gnn: GraphNeuralNetwork,
+    gnn: GNNEngine,
     test_pattern: String,
 }
 
 impl AffectedTestsRunner {
     /// Create new runner
-    pub fn new(gnn: GraphNeuralNetwork, test_pattern: String) -> Self {
+    pub fn new(gnn: GNNEngine, test_pattern: String) -> Self {
         Self { gnn, test_pattern }
     }
     
@@ -90,25 +90,23 @@ impl AffectedTestsRunner {
         strategy: &FilterStrategy,
     ) -> Result<bool, String> {
         // Get dependencies of test file
-        let test_deps = self.gnn.get_dependencies(test_file)
-            .map_err(|e| format!("Failed to get test dependencies: {}", e))?;
+        let test_deps = self.gnn.get_dependencies(test_file);
         
         match strategy {
             FilterStrategy::Direct => {
                 // Check if changed file is a direct dependency
-                Ok(test_deps.contains(&changed_file.to_string()))
+                Ok(test_deps.iter().any(|node| node.file_path == changed_file))
             }
             FilterStrategy::Transitive => {
                 // Check direct dependencies and their dependencies (1 level)
-                if test_deps.contains(&changed_file.to_string()) {
+                if test_deps.iter().any(|node| node.file_path == changed_file) {
                     return Ok(true);
                 }
                 
                 for dep in &test_deps {
-                    let dep_deps = self.gnn.get_dependencies(dep)
-                        .unwrap_or_default();
+                    let dep_deps = self.gnn.get_dependencies(&dep.id);
                     
-                    if dep_deps.contains(&changed_file.to_string()) {
+                    if dep_deps.iter().any(|node| node.file_path == changed_file) {
                         return Ok(true);
                     }
                 }
@@ -242,7 +240,7 @@ mod tests {
     #[test]
     fn test_is_test_file_python() {
         let runner = AffectedTestsRunner {
-            gnn: GraphNeuralNetwork::new("test".to_string()),
+            gnn: GNNEngine::new("test".to_string()),
             test_pattern: String::new(),
         };
         
@@ -254,7 +252,7 @@ mod tests {
     #[test]
     fn test_is_test_file_javascript() {
         let runner = AffectedTestsRunner {
-            gnn: GraphNeuralNetwork::new("test".to_string()),
+            gnn: GNNEngine::new("test".to_string()),
             test_pattern: String::new(),
         };
         
@@ -267,7 +265,7 @@ mod tests {
     #[test]
     fn test_generate_test_command_python() {
         let runner = AffectedTestsRunner {
-            gnn: GraphNeuralNetwork::new("test".to_string()),
+            gnn: GNNEngine::new("test".to_string()),
             test_pattern: String::new(),
         };
         

@@ -25,11 +25,12 @@ use super::chroma_client::{ChromaClient, Collection, Document, QueryResult};
 use crate::gnn::embeddings::EmbeddingGenerator;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::cell::RefCell;
 
 /// RAG system for code pattern learning
 pub struct RAGSystem {
     chroma: ChromaClient,
-    embedder: EmbeddingGenerator,
+    embedder: RefCell<EmbeddingGenerator>,
     code_collection: Option<String>,
     test_collection: Option<String>,
     fix_collection: Option<String>,
@@ -40,7 +41,7 @@ impl RAGSystem {
     pub fn new(chroma_url: Option<String>) -> Self {
         RAGSystem {
             chroma: ChromaClient::new(chroma_url),
-            embedder: EmbeddingGenerator::default(),
+            embedder: RefCell::new(EmbeddingGenerator::default()),
             code_collection: None,
             test_collection: None,
             fix_collection: None,
@@ -100,7 +101,7 @@ impl RAGSystem {
             .ok_or("RAG system not initialized")?;
 
         // Generate embedding for intent
-        let embedding = self.embedder.generate_text_embedding(&pattern.intent)?;
+        let embedding = self.embedder.borrow_mut().generate_text_embedding(&pattern.intent)?;
 
         // Prepare metadata
         let mut metadata = HashMap::new();
@@ -134,7 +135,7 @@ impl RAGSystem {
         let collection_id = self.test_collection.as_ref()
             .ok_or("RAG system not initialized")?;
 
-        let embedding = self.embedder.generate_text_embedding(&format!(
+        let embedding = self.embedder.borrow_mut().generate_text_embedding(&format!(
             "{} {} test",
             pattern.language, pattern.test_type
         ))?;
@@ -164,7 +165,7 @@ impl RAGSystem {
         let collection_id = self.fix_collection.as_ref()
             .ok_or("RAG system not initialized")?;
 
-        let embedding = self.embedder.generate_text_embedding(&pattern.error_type)?;
+        let embedding = self.embedder.borrow_mut().generate_text_embedding(&pattern.error_type)?;
 
         let mut metadata = HashMap::new();
         metadata.insert("error_type".to_string(), pattern.error_type.clone());
@@ -201,7 +202,7 @@ impl RAGSystem {
             .ok_or("RAG system not initialized")?;
 
         // Generate query embedding
-        let query_embedding = self.embedder.generate_text_embedding(intent)?;
+        let query_embedding = self.embedder.borrow_mut().generate_text_embedding(intent)?;
 
         // Build filter
         let mut filter = HashMap::new();
@@ -234,7 +235,7 @@ impl RAGSystem {
             .ok_or("RAG system not initialized")?;
 
         let query_text = format!("{} {} test", language, framework);
-        let query_embedding = self.embedder.generate_text_embedding(&query_text)?;
+        let query_embedding = self.embedder.borrow_mut().generate_text_embedding(&query_text)?;
 
         let mut filter = HashMap::new();
         filter.insert("language".to_string(), language.to_string());
@@ -262,7 +263,7 @@ impl RAGSystem {
         let collection_id = self.fix_collection.as_ref()
             .ok_or("RAG system not initialized")?;
 
-        let query_embedding = self.embedder.generate_text_embedding(error_type)?;
+        let query_embedding = self.embedder.borrow_mut().generate_text_embedding(error_type)?;
 
         let mut filter = HashMap::new();
         filter.insert("language".to_string(), language.to_string());

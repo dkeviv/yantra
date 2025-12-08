@@ -158,7 +158,7 @@ impl QueryFilter {
             QueryFilter::LineRange(start, end) => {
                 node.line_start >= *start && node.line_end <= *end
             }
-            QueryFilter::HasEmbedding(has) => node.embedding.is_some() == *has,
+            QueryFilter::HasEmbedding(has) => node.semantic_embedding.is_some() == *has,
             QueryFilter::And(filters) => filters.iter().all(|f| f.matches(node)),
             QueryFilter::Or(filters) => filters.iter().any(|f| f.matches(node)),
             QueryFilter::Not(filter) => !filter.matches(node),
@@ -230,7 +230,8 @@ impl Aggregator {
 
     /// Calculate average lines per function
     pub fn avg_function_lines(graph: &CodeGraph) -> f64 {
-        let functions: Vec<_> = graph.get_all_nodes()
+        let all_nodes = graph.get_all_nodes();
+        let functions: Vec<_> = all_nodes
             .iter()
             .filter(|n| matches!(n.node_type, NodeType::Function))
             .collect();
@@ -277,7 +278,7 @@ impl<'a> PathFinder<'a> {
     pub fn find_shortest_path(&self, start_id: &str, end_id: &str) -> Option<Vec<String>> {
         let mut queue = std::collections::VecDeque::new();
         let mut visited = HashSet::new();
-        let mut parent = HashMap::new();
+        let mut parent: HashMap<String, String> = HashMap::new();
 
         queue.push_back(start_id.to_string());
         visited.insert(start_id.to_string());
@@ -300,7 +301,7 @@ impl<'a> PathFinder<'a> {
 
             // Get neighbors (nodes this depends on)
             if let Some(node) = self.graph.get_all_nodes().iter().find(|n| n.id == current) {
-                for dep in self.graph.get_node_dependencies(&node.id) {
+                for dep in self.graph.get_dependencies(&node.id) {
                     if !visited.contains(&dep.id) {
                         visited.insert(dep.id.clone());
                         parent.insert(dep.id.clone(), current.clone());
@@ -326,7 +327,7 @@ impl<'a> PathFinder<'a> {
                 neighborhood.insert(id.clone());
                 
                 if let Some(node) = self.graph.get_all_nodes().iter().find(|n| n.id == *id) {
-                    for dep in self.graph.get_node_dependencies(&node.id) {
+                    for dep in self.graph.get_dependencies(&node.id) {
                         if !neighborhood.contains(&dep.id) {
                             next_level.insert(dep.id.clone());
                         }
@@ -361,7 +362,7 @@ impl<'a> PathFinder<'a> {
             paths.push(path.clone());
         } else {
             if let Some(node) = self.graph.get_all_nodes().iter().find(|n| n.id == current) {
-                for dep in self.graph.get_node_dependencies(&node.id) {
+                for dep in self.graph.get_dependencies(&node.id) {
                     if !visited.contains(&dep.id) {
                         self.dfs_paths(&dep.id, target, path, visited, max_depth, paths);
                     }
@@ -455,7 +456,9 @@ mod tests {
             file_path: "test.py".to_string(),
             line_start: 1,
             line_end: 10,
-            embedding: None,
+            semantic_embedding: None,
+            code_snippet: None,
+            docstring: None,
         }
     }
 

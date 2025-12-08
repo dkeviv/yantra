@@ -8711,6 +8711,8 @@ dependencies = [
  "dirs",
  "docx-rs",
  "fastembed",
+ "futures",
+ "glob",
  "governor",
  "hnsw_rs",
  "lopdf",
@@ -8723,6 +8725,7 @@ dependencies = [
  "r2d2",
  "r2d2_postgres",
  "r2d2_sqlite",
+ "rand 0.8.5",
  "redis",
  "regex",
  "reqwest 0.12.24",
@@ -8753,6 +8756,7 @@ dependencies = [
  "tree-sitter-swift",
  "tree-sitter-typescript",
  "uuid",
+ "walkdir",
 ]
 
 [[package]]

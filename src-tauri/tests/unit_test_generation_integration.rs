@@ -25,6 +25,7 @@ fn test_llm_config_has_required_fields() {
     // Verify LLMConfig structure for test generation
     let config = LLMConfig {
         primary_provider: LLMProvider::Claude,
+        secondary_provider: None,
         claude_api_key: Some("test-key".to_string()),
         openai_api_key: None,
         openrouter_api_key: None,

@@ -39,6 +39,7 @@ pub struct RateLimitInfo {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RateLimitTracker {
     limits: HashMap<String, RateLimitInfo>,
+    #[serde(skip)]
     request_counts: HashMap<String, Vec<Instant>>,
 }
 

@@ -359,7 +359,7 @@ pub fn assemble_4_level_context(
             if let Ok(similar_nodes) = graph.find_similar_in_neighborhood(
                 &target.id,
                 3, // max 3 hops
-                config.similarity_threshold,
+                config.similarity_threshold as f32,
                 config.max_semantic_results,
             ) {
                 for (similar_node, similarity) in similar_nodes {
@@ -382,7 +382,7 @@ pub fn assemble_4_level_context(
                         depth: 4,
                         priority,
                         token_count: tokens,
-                        similarity: Some(similarity),
+                        similarity: Some(similarity as f64),
                     });
                     
                     l4_tokens += tokens;
@@ -415,7 +415,7 @@ fn format_node_with_impl(node: &CodeNode, include_impl: bool) -> String {
 
 /// Format node as signature only (compact)
 fn format_node_signature(node: &CodeNode) -> String {
-    match node.node_type {
+    match &node.node_type {
         NodeType::Import => {
             format!("# Import: {} ({})", node.name, node.file_path)
         }
@@ -437,6 +437,9 @@ fn format_node_signature(node: &CodeNode) -> String {
         NodeType::Module => {
             format!("# Module: {} ({})", node.name, node.file_path)
         }
+        NodeType::Package { name, version, language } => {
+            format!("# Package: {}=={} ({})", name, version, format!("{:?}", language))
+        }
     }
 }
 
@@ -455,6 +458,7 @@ fn calculate_priority(node_type: &NodeType, depth: usize) -> u32 {
         NodeType::Class => 70,
         NodeType::Variable => 60,
         NodeType::Module => 50,
+        NodeType::Package { .. } => 85, // Package dependencies are high priority
     };
     
     // Reduce by 10 per depth level

@@ -99,9 +99,12 @@ impl IntelligentExecutor {
         let output = if let Some(timeout_secs) = classification.timeout_seconds {
             let result = timeout(
                 Duration::from_secs(timeout_secs),
-                Command::new(cmd)
-                    .args(args)
-                    .output()
+                async {
+                    Command::new(cmd)
+                        .args(args)
+                        .output()
+                        .await
+                }
             ).await;
             
             match result {
@@ -124,6 +127,7 @@ impl IntelligentExecutor {
             Command::new(cmd)
                 .args(args)
                 .output()
+                .await
                 .map_err(|e| format!("Execution failed: {}", e))?
         };
         

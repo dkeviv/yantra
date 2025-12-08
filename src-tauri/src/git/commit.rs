@@ -20,7 +20,7 @@ impl CommitManager {
         }
     }
 
-    pub async fn auto_commit(&self, changes: &[String]) -> Result<CommitResult, String> {
+    pub async fn auto_commit(&mut self, changes: &[String]) -> Result<CommitResult, String> {
         // Generate commit message based on changes
         let message = self.generate_commit_message(changes).await?;
 
@@ -61,7 +61,7 @@ mod tests {
     #[test]
     fn test_commit_manager_creation() {
         let temp_dir = TempDir::new().unwrap();
-        let manager = CommitManager::new(temp_dir.path().to_path_buf());
+        let mut manager = CommitManager::new(temp_dir.path().to_path_buf());
         assert!(!manager.has_changes());
     }
 }

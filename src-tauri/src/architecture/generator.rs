@@ -271,6 +271,7 @@ mod tests {
             groq_api_key: None,
             gemini_api_key: None,
             primary_provider: LLMProvider::Claude,
+            secondary_provider: None,
             max_retries: 3,
             timeout_seconds: 30,
             selected_models: vec![],

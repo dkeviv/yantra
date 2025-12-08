@@ -10,4 +10,4 @@ pub use connection_manager::{
     QueryResult, SchemaInfo, TableInfo, ColumnInfo, ForeignKeyInfo,
 };
 pub use schema_tracker::{SchemaTracker, SchemaChange, SchemaVersion};
-pub use migration_manager::{MigrationManager, Migration, MigrationStatus, MigrationResult};
+pub use migration_manager::{MigrationManager, Migration, MigrationDirection, MigrationResult};

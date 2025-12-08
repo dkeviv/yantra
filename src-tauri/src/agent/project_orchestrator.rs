@@ -586,7 +586,7 @@ Include proper test files."#;
         println!("📤 Committing project to git...");
         
         // Initialize git repository
-        let git_mcp = GitMcp::new(plan.root_dir.clone());
+        let mut git_mcp = GitMcp::new(plan.root_dir.clone());
 
         // Convert String paths to relative paths
         let file_paths: Vec<String> = generated_files

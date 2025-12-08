@@ -90,9 +90,10 @@ impl SecretsManager {
         
         // Update last accessed
         secret.last_accessed = Some(chrono::Utc::now().to_rfc3339());
+        let encrypted_value = secret.value.clone();
         self.save_vault(&vault)?;
         
-        self.decrypt(&secret.value)
+        self.decrypt(&encrypted_value)
     }
     
     /// Delete secret

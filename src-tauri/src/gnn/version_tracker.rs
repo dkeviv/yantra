@@ -89,8 +89,8 @@ impl VersionTracker {
             timestamp: chrono::Utc::now().to_rfc3339(),
             content,
             file_path: node.file_path.clone(),
-            line_start: node.line_start,
-            line_end: node.line_end,
+            line_start: node.line_start as u32,
+            line_end: node.line_end as u32,
             author,
             commit_hash,
             change_reason,
@@ -228,7 +228,7 @@ impl VersionTracker {
         
         for (node_id, history) in &self.histories {
             if let Some(version) = history.versions.last() {
-                if version.timestamp >= start_time && version.timestamp <= end_time {
+                if version.timestamp.as_str() >= start_time && version.timestamp.as_str() <= end_time {
                     modified.push(node_id.clone());
                 }
             }
