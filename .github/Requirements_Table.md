@@ -41,9 +41,9 @@ Complete requirements with implementation status tracking based on comprehensive
 | ------- | ------------------------------------------------------------------------ | ----- | ------------------- | ------ | --------------------------------------------------------------------------------------------------------------- |
 | DEP-001 | Track file-to-file dependencies (import/include relationships)           | 3.1.2 | Phase 1 - MVP       | ✅     | **COMPLETE**: `src-tauri/src/gnn/graph.rs` tracks imports. `EdgeType::Imports` implemented.                     |
 | DEP-002 | Track code symbol dependencies (function calls, class usage, methods)    | 3.1.2 | Phase 1 - MVP       | ✅     | **COMPLETE**: `EdgeType::Calls`, `EdgeType::Uses`, `EdgeType::Defines`. Function/class tracking in all parsers. |
-| DEP-003 | Track exact package versions as separate nodes (numpy==1.24.0 vs 1.26.0) | 3.1.2 | Phase 1 - MVP       | ❌     | **NOT IMPLEMENTED**: Package nodes don't include version info. Critical gap for version conflict detection.     |
+| DEP-003 | Track exact package versions as separate nodes (numpy==1.24.0 vs 1.26.0) | 3.1.2 | Phase 1 - MVP       | ✅     | **COMPLETE**: `src-tauri/src/gnn/package_tracker.rs` (530 lines). NodeType::Package with version field. Parses requirements.txt, package.json, package-lock.json, Cargo.lock. 17 tests passing. Dec 8, 2025. |
 | DEP-004 | Track tool dependencies (webpack→babel, test frameworks, linters)        | 3.1.2 | Phase 1 - MVP       | ❌     | **NOT IMPLEMENTED**: No tool chain tracking found. Would need separate node type.                               |
-| DEP-005 | Track package-to-file mapping (which files use which packages)           | 3.1.2 | Phase 1 - MVP       | 🟡     | **PARTIAL**: Import tracking exists but not aggregated at package level. Query layer needed.                    |
+| DEP-005 | Track package-to-file mapping (which files use which packages)           | 3.1.2 | Phase 1 - MVP       | ✅     | **COMPLETE**: `package_tracker.rs` tracks file → package edges via `EdgeType::UsesPackage`. Query methods: get_files_using_package(), get_packages_used_by_file(). |
 | DEP-006 | Track user-to-file (active work tracking)                                | 3.1.2 | Phase 2A - Post-MVP | ⚪     | **PLANNED**: Phase 2A feature for team coordination.                                                            |
 | DEP-007 | Track Git checkout level modifications                                   | 3.1.2 | Phase 2A - Post-MVP | ⚪     | **PLANNED**: Phase 2A feature with Git coordination branch.                                                     |
 | DEP-008 | Track external API endpoints as nodes                                    | 3.1.2 | Phase 3 - Post-MVP  | ⚪     | **PLANNED**: Phase 3 enterprise automation feature.                                                             |
@@ -189,8 +189,8 @@ Complete requirements with implementation status tracking based on comprehensive
 
 **Status Overview (48 requirements):**
 
-- ✅ Fully Implemented: 18 (38%)
-- 🟡 Partially Implemented: 15 (31%)
+- ✅ Fully Implemented: 20 (42%)
+- 🟡 Partially Implemented: 13 (27%)
 - ❌ Not Implemented: 10 (21%)
 - ⚪ Planned Post-MVP: 5 (10%)
 
@@ -198,17 +198,17 @@ Complete requirements with implementation status tracking based on comprehensive
 
 1. 🔴 **YDoc System (9 requirements)** - Completely missing, major v4.0 feature
 2. � **Yantra Codex (6 requirements)** - **DEFERRED TO STRETCH GOAL** - MVP works without it using LLM-only approach
-3. 🔴 **Storage Optimizations** - WAL mode, connection pooling missing
+3. ✅ ~~**Storage Optimizations**~~ - WAL mode + connection pooling COMPLETE (Dec 8, 2025)
 4. 🔴 **LSP Integration** - Not implemented
-5. 🔴 **Package Version Tracking** - Version conflicts undetectable
+5. ✅ ~~ **Package Version Tracking** - Version conflicts undetectable - ~~
 6. 🔴 **Completion System** - Monaco integration missing
 
 **Recommendations:**
 
-1. **Immediate**: Enable WAL mode + connection pooling (performance critical)
+1. ~~**Immediate**: Enable WAL mode + connection pooling (performance critical)~~ - ✅ COMPLETE Dec 8, 2025
 2. **Immediate**: Implement YDoc SQLite schema (foundation for traceability)
 3. **High Priority**: Complete Monaco completion provider integration
-4. **High Priority**: Add package version tracking to dependency graph
+4. ~~**High Priority**: Add package version tracking to dependency graph~~ - ✅ COMPLETE Dec 8, 2025
 5. **Medium Priority**: LSP integration for better autocomplete
 6. **Stretch Goal**: Build Yantra Codex infrastructure (post-MVP optimization)
 
@@ -542,7 +542,7 @@ Complete requirements with implementation status tracking based on comprehensive
 **Priority 1 - Foundation (Immediate):**
 
 1. **YDoc SQLite Schema** - Foundation for documentation system (create documents/blocks/edges tables)
-2. **Package Version Tracking** - Version conflict detection impossible without this
+2. ~~**Package Version Tracking**~~ - ✅ **COMPLETED** Dec 8, 2025
 3. ~~**WAL Mode for SQLite**~~ - ✅ **COMPLETED** Dec 8, 2025
 4. ~~**Connection Pooling**~~ - ✅ **COMPLETED** Dec 8, 2025
 
@@ -575,7 +575,7 @@ Complete requirements with implementation status tracking based on comprehensive
 
 1. ~~Enable WAL mode in SQLite persistence layer~~ - ✅ **COMPLETED** Dec 8, 2025
 2. ~~Add connection pooling (r2d2 for SQLite)~~ - ✅ **COMPLETED** Dec 8, 2025
-3. Implement package version tracking in dependency graph
+3. ~~Implement package version tracking in dependency graph~~ - ✅ **COMPLETED** Dec 8, 2025
 4. Create YDoc SQLite schema (tables + indices)
 
 **Next Sprint:**
