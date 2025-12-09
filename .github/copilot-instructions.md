@@ -22,18 +22,19 @@ Yantra is an AI-first development platform that generates production-quality cod
 
 All documentation follows a strict Single Source of Truth (SSOT) policy to prevent confusion and duplication. Always reference these canonical paths:
 
-| Document | SSOT Location | Description | Last Updated |
-|----------|---------------|-------------|--------------|
-| **Specifications** | `.github/Specifications.md` | Product specifications, features, all phases (1-4), pair programming, Clean Code Mode | Nov 26, 2025 |
-| **Technical Guide** | `Technical_Guide.md` (root) | Implementation details, architecture decisions, 15 components with code references, Data Storage Architecture | Dec 8, 2025 |
-| **Requirements Tracking** | `.github/Requirements_Table.md` | **PRIMARY TRACKING DOCUMENT**: All 577 requirements with implementation status, file paths, gaps. Replaces deprecated IMPLEMENTATION_STATUS.md. Use this for all status tracking and planning. | Dec 8, 2025 |
-| **Features** | `Features.md` (root) | User-facing feature documentation (25 features, 100% MVP complete) | Nov 29, 2025 |
-| **UX Guide** | `UX.md` (root) | User flows from user perspective (admin + end-user), New UI Features section | Nov 29, 2025 |
-| **File Registry** | `File_Registry.md` (root) | File inventory, purposes, dependencies, deprecation tracking | Nov 29, 2025 |
-| **Decision Log** | `Decision_Log.md` (root) | Architecture and design decision history | Nov 28, 2025 |
-| **Known Issues** | `Known_Issues.md` (root) | Bug tracking and fixes | Dec 8, 2025 |
+| Document                  | SSOT Location                   | Description                                                                                                                                                                                    | Last Updated |
+| ------------------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| **Specifications**        | `.github/Specifications.md`     | Product specifications, features, all phases (1-4), pair programming, Clean Code Mode                                                                                                          | Nov 26, 2025 |
+| **Technical Guide**       | `Technical_Guide.md` (root)     | Implementation details, architecture decisions, 15 components with code references, Data Storage Architecture                                                                                  | Dec 8, 2025  |
+| **Requirements Tracking** | `.github/Requirements_Table.md` | **PRIMARY TRACKING DOCUMENT**: All 577 requirements with implementation status, file paths, gaps. Replaces deprecated IMPLEMENTATION_STATUS.md. Use this for all status tracking and planning. | Dec 8, 2025  |
+| **Features**              | `Features.md` (root)            | User-facing feature documentation (25 features, 100% MVP complete)                                                                                                                             | Nov 29, 2025 |
+| **UX Guide**              | `UX.md` (root)                  | User flows from user perspective (admin + end-user), New UI Features section                                                                                                                   | Nov 29, 2025 |
+| **File Registry**         | `File_Registry.md` (root)       | File inventory, purposes, dependencies, deprecation tracking                                                                                                                                   | Nov 29, 2025 |
+| **Decision Log**          | `Decision_Log.md` (root)        | Architecture and design decision history                                                                                                                                                       | Nov 28, 2025 |
+| **Known Issues**          | `Known_Issues.md` (root)        | Bug tracking and fixes                                                                                                                                                                         | Dec 8, 2025  |
 
 **DEPRECATED FILES (Keep for historical reference, DO NOT UPDATE):**
+
 - ~~`Project_Plan.md`~~ - Replaced by `IMPLEMENTATION_STATUS.md` (Nov 27, 2025), then by `.github/Requirements_Table.md` (Dec 8, 2025). Reason: Duplicate timelines, verbose (2,708 lines), hard to maintain.
 - ~~`IMPLEMENTATION_STATUS.md`~~ - Archived to `docs/archive/IMPLEMENTATION_STATUS_Dec4_2025.md` (Dec 8, 2025). Reason: Redundant with Requirements_Table.md (4,701 lines vs 577 lines). Requirements_Table.md provides superior granularity, specification traceability, and table format. Both tracked same information, violating SSOT principle.
 - ~~`docs/Decision_Log.md`~~ - Archived to `docs/archive/Decision_Log_Nov20_2025.md` (Nov 29, 2025). Reason: Duplicate of root Decision_Log.md. Root file is SSOT (3,906 lines, updated Nov 28, 2025), contains all decisions. Docs version was outdated (1,547 lines, Nov 20, 2025).
@@ -211,29 +212,28 @@ All documentation follows a strict Single Source of Truth (SSOT) policy to preve
 ### Core Components
 
 1. **User Interface (AI-First)**
-
    - Chat/Task Interface (primary - 60% screen)
    - Code Viewer (secondary - 25% screen)
    - Browser Preview (live - 15% screen)
-2. **Orchestration Layer**
 
+2. **Orchestration Layer**
    - Multi-LLM Manager (Claude primary, GPT-4 secondary)
    - Routing and failover logic
    - Cost optimization through smart routing
-3. **Intelligence Layer**
 
+3. **Intelligence Layer**
    - Graph Neural Network (GNN) for dependencies
    - Vector Database (RAG) for templates and patterns
    - External API tracking
    - Data flow analysis
-4. **Validation Layer**
 
+4. **Validation Layer**
    - Testing engine (pytest/jest)
    - Security scanner (Semgrep)
    - Browser integration (CDP)
    - Dependency validator (GNN)
-5. **Integration Layer**
 
+5. **Integration Layer**
    - Git (MCP Protocol)
    - File system operations
    - External APIs
@@ -440,14 +440,12 @@ yantra/
 
 - 20 beta users successfully generating code
 - > 90% of generated code passes tests
-  >
 - NPS >40
 
 ### Month 6
 
 - 10,000 active users
 - > 95% code success rate
-  >
 - 50%+ user retention
 
 ### Month 12
@@ -469,4 +467,4 @@ yantra/
 
 ---
 
-*This document should be updated as the project evolves and new patterns/issues are discovered.*
+_This document should be updated as the project evolves and new patterns/issues are discovered._

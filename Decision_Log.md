@@ -52,6 +52,7 @@
 ### Context
 
 We had two tracking documents:
+
 1. **IMPLEMENTATION_STATUS.md** (4,701 lines) - Achievement-focused narrative format
 2. **Requirements_Table.md** (577 lines) - Specification-driven table format
 
@@ -72,6 +73,7 @@ Both tracked the same information (implementation status), violating SSOT princi
 ### Rationale
 
 **Requirements_Table.md Advantages:**
+
 - ✅ **Specification-driven** - Each requirement maps to Specifications.md (Req # → Spec section)
 - ✅ **Granular** - 577 individual requirements vs. broad categories
 - ✅ **Table format** - Easier to scan, update, and maintain
@@ -81,6 +83,7 @@ Both tracked the same information (implementation status), violating SSOT princi
 - ✅ **Updated** - Currently Dec 8, 2025 (vs Dec 4 for IMPLEMENTATION_STATUS)
 
 **IMPLEMENTATION_STATUS.md Issues:**
+
 - ❌ **Verbose** - 4,701 lines of narrative text
 - ❌ **Achievement-focused** - Celebrates milestones but less useful for planning
 - ❌ **Outdated** - Last updated Dec 4, 2025
@@ -108,6 +111,7 @@ Both tracked the same information (implementation status), violating SSOT princi
 ### Consequences
 
 **Positive:**
+
 - Single source of truth for implementation tracking
 - Less maintenance overhead (update one file, not two)
 - Better traceability (requirements → specs → code)
@@ -115,10 +119,12 @@ Both tracked the same information (implementation status), violating SSOT princi
 - Easier to scan and update (table format)
 
 **Negative:**
+
 - Loss of achievement/milestone narratives (preserved in archive)
 - Less historical context (git history still available)
 
 **Neutral:**
+
 - File moved to `.github/` folder (centralized with Specifications.md)
 
 ### Related Decisions
