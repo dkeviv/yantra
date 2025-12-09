@@ -1,12 +1,30 @@
 # Yantra - File Registry
 
 **Version:** MVP 1.0  
-**Last Updated:** November 29, 2025 - 3:30 PM  
+**Last Updated:** December 8, 2025 - 4:00 PM  
 **Purpose:** Track all project files, their purposes, implementations, and dependencies
 
 ---
 
-## 🔥 Recent Major Updates (Dec 5, 2025)
+## 🔥 Recent Major Updates (Dec 8, 2025)
+
+**LATEST: YDoc Documentation System Foundation Complete (Dec 8, 2025)**
+
+- ✅ **YDoc Foundation Implemented** - Complete database schema for full requirements-to-code traceability
+- ✅ **3 SQLite Tables Created** - documents, blocks, graph_edges with comprehensive metadata
+- ✅ **FTS5 Full-Text Search** - Instant content search across all documentation blocks
+- ✅ **Connection Pooling** - r2d2 with 5 max connections for concurrent access
+- ✅ **WAL Mode Enabled** - SQLite journaling for concurrent read/write operations
+- ✅ **Module Structure Complete** - 6 modules: mod.rs, database.rs, parser.rs, manager.rs, file_ops.rs, traceability.rs
+- ✅ **Type System Defined** - 12 DocumentTypes (REQ, ADR, ARCH, SPEC, etc.), BlockType, BlockStatus enums
+- ✅ **504 Lines Database Code** - Complete CRUD operations, query methods, transaction support
+- ✅ **Stub Modules Created** - Parser, manager, file_ops, traceability ready for implementation
+- 📊 **Status**: 2/10 YDoc tasks complete (database + module structure)
+- 🎯 **Next Steps**: Implement parser (.ydoc file I/O), file_ops (folder structure), traceability (graph queries)
+- 📝 **Files Added**: 6 new Rust modules in src-tauri/src/ydoc/ (1,592 lines total)
+- 🔗 **Traceability Ready**: 6 edge types defined (traces_to, implements, realized_in, tested_by, documents, has_issue)
+
+**PREVIOUS: Unified GNN Storage Architecture Decision (Dec 5, 2025)
 
 **LATEST: Unified GNN Storage Architecture Decision (Dec 5, 2025)**
 
@@ -466,6 +484,103 @@
   - Week 2: React Flow UI, hierarchical tabs, component editing
   - Week 3: AI generation (LLM-based from intent, GNN-based from code)
   - Week 4: Validation integration, pre-commit hooks, orchestrator integration
+
+### YDoc Module (Dec 8, 2025) - 🚧 FOUNDATION COMPLETE (2/10 tasks)
+
+| File                                    | Status          | Purpose                                                                          | Dependencies                          | Last Updated |
+| --------------------------------------- | --------------- | -------------------------------------------------------------------------------- | ------------------------------------- | ------------ |
+| `src-tauri/src/ydoc/mod.rs`             | ✅ Complete     | YDoc module root with types (DocumentType, BlockType, BlockStatus) + exports    | All YDoc submodules                   | Dec 8, 2025  |
+| `src-tauri/src/ydoc/database.rs`        | ✅ Complete     | SQLite schema (documents, blocks, graph_edges) + FTS5 + connection pooling      | rusqlite, r2d2, r2d2_sqlite, serde    | Dec 8, 2025  |
+| `src-tauri/src/ydoc/parser.rs`          | ⚪ Stub created | .ydoc file I/O (ipynb-compatible JSON), parse/serialize                         | serde, serde_json                     | Dec 8, 2025  |
+| `src-tauri/src/ydoc/manager.rs`         | ⚪ Stub created | High-level document management (create, load, save, delete)                     | database, parser                      | Dec 8, 2025  |
+| `src-tauri/src/ydoc/file_ops.rs`        | ⚪ Stub created | File operations (folder structure, export/import Markdown/HTML)                 | std::fs, std::path                    | Dec 8, 2025  |
+| `src-tauri/src/ydoc/traceability.rs`    | ⚪ Stub created | Query layer (requirement→code, impact analysis, test coverage)                  | database                              | Dec 8, 2025  |
+
+**Implementation Details:**
+
+- **mod.rs (116 lines, Dec 8)**: Module structure with type definitions:
+  - **DocumentType enum** (12 types): Requirements, ADR, Architecture, TechSpec, ProjectPlan, TechGuide, APIGuide, UserGuide, TestingPlan, TestResults, ChangeLog, DecisionsLog
+  - **BlockType enum** (12 types): Requirement, ADR, Architecture, Specification, Task, TechDoc, APIDoc, UserDoc, TestPlan, TestResult, Change, Decision
+  - **BlockStatus enum** (4 states): Draft, Review, Approved, Deprecated
+  - Code mappings: `code()` and `from_code()` for type conversion (e.g., "REQ" ↔ Requirements)
+  - Public exports for all sub-modules
+
+- **database.rs (504 lines, Dec 8)**: Complete SQLite schema with full traceability:
+  - **3 Tables**:
+    1. `documents`: id, doc_type, title, file_path, created_by, created_at, modified_at, version, status
+    2. `blocks`: id, doc_id, cell_index, cell_type, yantra_type, content, created_by/at, modified_by/at, modifier_id, status
+    3. `graph_edges`: id, source_id, source_type, target_id, target_type, edge_type, created_at, metadata
+  - **FTS5 Full-Text Search**: Virtual table `blocks_fts` for content search across all blocks
+  - **Connection Pooling**: r2d2 with max 5 connections, min 2 idle (concurrent access support)
+  - **WAL Mode**: Enabled from day one (`PRAGMA journal_mode=WAL`, `PRAGMA synchronous=NORMAL`)
+  - **Comprehensive Indices**: 9 indices for fast lookups (doc_type, file_path, created_at, status, yantra_type, edges)
+  - **CRUD Operations**: 
+    - Documents: `create_document()`, `get_document()`, `update_document()`, `delete_document()`, `list_documents()`
+    - Blocks: `create_block()`, `get_blocks_for_document()`, `update_block()`, `delete_block()`
+    - Edges: `create_edge()`, `get_edges_for_source()`, `get_edges_for_target()`
+  - **Query Methods**:
+    - `search_blocks(query)`: FTS5 full-text search
+    - `get_traceability_chain(entity_id, edge_types)`: Traverse graph edges for impact analysis
+  - **Transaction Support**: Connection pooling with automatic transaction management
+
+- **parser.rs (stub, Dec 8)**: Placeholder for .ydoc file I/O
+  - Parse ipynb-compatible JSON format
+  - Extract cells with metadata (yantra_id, yantra_type, created_by, graph_edges)
+  - Serialize YDoc structures to JSON
+  - TODO: Implement YDocParser, YDocFile, YDocCell structures
+
+- **manager.rs (stub, Dec 8)**: Placeholder for document management
+  - `create_document()`: Create new YDoc with metadata
+  - `load_document()`: Read .ydoc file from disk and sync to DB
+  - `save_document()`: Write DB changes back to .ydoc file
+  - `delete_document()`: Remove from DB and optionally disk
+  - TODO: Implement coordination between database, parser, and file operations
+
+- **file_ops.rs (stub, Dec 8)**: Placeholder for file operations
+  - `initialize_ydoc_folder()`: Create /ydocs folder structure (12 subfolders)
+  - `export_to_markdown()`, `export_to_html()`: Export formats
+  - `import_from_markdown()`: Import existing docs
+  - TODO: Implement YDocFileOps structure
+
+- **traceability.rs (stub, Dec 8)**: Placeholder for query layer
+  - `find_code_for_requirement(req_id)`: REQ → ARCH → SPEC → Code traversal
+  - `find_docs_for_code(code_id)`: Reverse traversal (Code → SPEC → ARCH → REQ)
+  - `impact_analysis(entity_id)`: Find all affected entities
+  - `find_tests_for_code(code_id)`: Code → tested_by → Test
+  - `find_untested_requirements()`: REQ without tested_by edge
+  - TODO: Implement TraceabilityQuery with graph traversal algorithms
+
+**Features:**
+- ✅ **12 Document Types**: REQ, ADR, ARCH, SPEC, PLAN, TECH, API, USER, TEST, RESULT, CHANGE, DECISION
+- ✅ **Block-Based Documentation**: Each block has unique ID, yantra_type, metadata, graph_edges
+- ✅ **Graph-Native Traceability**: 6 edge types (traces_to, implements, realized_in, tested_by, documents, has_issue)
+- ✅ **Full-Text Search**: FTS5 for instant content search across all documentation
+- ✅ **WAL Mode**: Concurrent read/write access with SQLite journaling
+- ✅ **Connection Pooling**: Multi-threaded database access with r2d2 (5 connections)
+- ⏳ **File I/O**: .ydoc format (ipynb-compatible JSON) - Parser pending
+- ⏳ **Export/Import**: Markdown, HTML, Confluence - File ops pending
+- ⏳ **UI Integration**: Monaco editor, document browser - UI components pending
+- ⏳ **Tauri Commands**: Frontend API - Commands pending
+
+**Status: Foundation complete (2/10 tasks)**
+- ✅ Task 1: Database schema (504 lines, 3 tables, FTS5, pooling, WAL)
+- ✅ Task 2: Module structure (mod.rs with types, all stubs created)
+- ⏳ Task 3: Parser implementation (.ydoc file I/O)
+- ⏳ Task 4: File operations (folder structure, export/import)
+- ⏳ Task 5: Traceability query layer (graph traversal)
+- ⏳ Task 6: Manager implementation (CRUD coordination)
+- ⏳ Task 7: Tauri commands (frontend API)
+- ⏳ Task 8: Monaco integration (.ydoc editor)
+- ⏳ Task 9: UI components (browser, editor, visualization)
+- ⏳ Task 10: Tests and documentation
+
+**Next Steps:**
+- Task 3: Implement parser (parse/serialize .ydoc JSON, YDocDocument/YDocBlock structures)
+- Task 4: Implement file_ops (initialize folders, export Markdown/HTML, import)
+- Task 5: Implement traceability (graph traversal, impact analysis queries)
+- Task 6: Complete manager (coordinate DB ↔ file sync, transaction management)
+
+**Specification**: See Specifications.md Section 3.1.4 (YDoc System, lines 573-800)
 
 ### LLM Module (Week 5-6) - ✅ 95% COMPLETE (Nov 29, 2025)
 

@@ -555,6 +555,233 @@ During WAL mode implementation, test suite revealed 11 pre-existing bugs in test
 
 ---
 
+#### 15. YDoc Documentation System (9 capabilities)
+
+**Location:** `src-tauri/src/ydoc/`  
+**Files:** 6 modules, 1,592 lines total  
+**Status:** 🚧 Foundation Complete (2/10 tasks) - December 8, 2025  
+**Purpose:** Full traceability from requirements to code with graph-native documentation
+
+**Capabilities:**
+98. **Document Creation** - Create requirements, ADR, architecture, specs  
+99. **Block Management** - Add/edit/delete blocks with metadata  
+100. **Graph Edges** - Link docs → code → tests with traceability edges  
+101. **Full-Text Search** - FTS5 search across all documentation  
+102. **Impact Analysis** - Find affected entities when changes occur  
+103. **Requirement Tracking** - REQ → ARCH → SPEC → Code → Test chains  
+104. **Export/Import** - Markdown, HTML, Confluence formats  
+105. **Version Control** - Document versioning with created_by/modified_by  
+106. **Folder Structure** - Initialize /ydocs with 12 subfolders  
+
+**Technical Implementation:**
+
+**Database Schema (database.rs - 504 lines, ✅ COMPLETE):**
+```sql
+-- 3 tables for complete traceability
+CREATE TABLE documents (
+    id TEXT PRIMARY KEY,              -- UUID
+    doc_type TEXT NOT NULL,           -- REQ, ADR, ARCH, SPEC, etc.
+    title TEXT NOT NULL,
+    file_path TEXT NOT NULL,          -- Relative path to .ydoc file
+    created_by TEXT NOT NULL,         -- "user" or "agent"
+    created_at TEXT NOT NULL,
+    modified_at TEXT NOT NULL,
+    version TEXT DEFAULT '1.0.0',
+    status TEXT DEFAULT 'draft'
+);
+
+CREATE TABLE blocks (
+    id TEXT PRIMARY KEY,              -- UUID
+    doc_id TEXT NOT NULL,             -- Foreign key to documents
+    cell_index INTEGER NOT NULL,      -- Position in document
+    cell_type TEXT NOT NULL,          -- markdown, code, raw
+    yantra_type TEXT NOT NULL,        -- requirement, spec, adr, etc.
+    content TEXT NOT NULL,            -- Block content
+    created_by TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    modified_by TEXT NOT NULL,
+    modified_at TEXT NOT NULL,
+    modifier_id TEXT NOT NULL,        -- "user" or "agent"
+    status TEXT DEFAULT 'draft',
+    FOREIGN KEY (doc_id) REFERENCES documents(id)
+);
+
+CREATE TABLE graph_edges (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_id TEXT NOT NULL,          -- Can be block ID or code entity ID
+    source_type TEXT NOT NULL,        -- "block" or "code"
+    target_id TEXT NOT NULL,
+    target_type TEXT NOT NULL,        -- "block" or "code"
+    edge_type TEXT NOT NULL,          -- traces_to, implements, etc.
+    created_at TEXT NOT NULL,
+    metadata TEXT                     -- JSON for additional data
+);
+
+-- FTS5 for full-text search
+CREATE VIRTUAL TABLE blocks_fts USING fts5(
+    id UNINDEXED,
+    content,
+    content=blocks,
+    content_rowid=rowid
+);
+```
+
+**Key Features:**
+
+1. **Connection Pooling (r2d2):**
+   - Max 5 connections, min 2 idle
+   - Concurrent access support
+   - Thread-safe database operations
+
+2. **WAL Mode (Write-Ahead Logging):**
+   - `PRAGMA journal_mode=WAL`
+   - Concurrent reads + single writer
+   - Better performance than rollback mode
+
+3. **Full-Text Search (FTS5):**
+   - Instant content search across all blocks
+   - Virtual table for efficient indexing
+   - `search_blocks(query)` method
+
+4. **Traceability Edges (6 types):**
+   - `traces_to`: Requirement → Spec
+   - `implements`: Spec → Code
+   - `realized_in`: Architecture → Code
+   - `tested_by`: Code → Test
+   - `documents`: Any → Documentation
+   - `has_issue`: Any → Known Issue
+
+5. **CRUD Operations:**
+   - Documents: create, get, update, delete, list
+   - Blocks: create, get (by doc), update, delete
+   - Edges: create, get (by source/target)
+   - All operations return `Result<T, String>` for error handling
+
+6. **Query Methods:**
+   - `search_blocks(query)`: FTS5 full-text search
+   - `get_traceability_chain(entity_id, edge_types)`: Graph traversal for impact analysis
+
+**Module Structure:**
+
+- **mod.rs (116 lines)**: Type definitions
+  - `DocumentType` enum: 12 types (Requirements, ADR, Architecture, TechSpec, ProjectPlan, TechGuide, APIGuide, UserGuide, TestingPlan, TestResults, ChangeLog, DecisionsLog)
+  - `BlockType` enum: 12 types matching document types
+  - `BlockStatus` enum: 4 states (Draft, Review, Approved, Deprecated)
+  - Code conversion: `code()` → "REQ", `from_code("REQ")` → Requirements
+
+- **database.rs (504 lines, ✅ COMPLETE)**: SQLite operations
+  - Connection pooling with r2d2
+  - WAL mode enabled
+  - FTS5 full-text search
+  - 9 comprehensive indices
+  - Complete CRUD operations
+  - Transaction support
+
+- **parser.rs (stub, ⏳ PENDING)**: .ydoc file I/O
+  - Parse ipynb-compatible JSON format
+  - Extract cells with metadata (yantra_id, yantra_type, graph_edges)
+  - Serialize YDoc structures to JSON
+  - TODO: Implement YDocParser, YDocFile, YDocCell
+
+- **manager.rs (stub, ⏳ PENDING)**: Document management
+  - Coordinate DB ↔ file sync
+  - `create_document()`, `load_document()`, `save_document()`, `delete_document()`
+  - Transaction management
+  - TODO: Implement YDocManager with full coordination logic
+
+- **file_ops.rs (stub, ⏳ PENDING)**: File operations
+  - Initialize /ydocs folder structure (12 subfolders)
+  - Export to Markdown, HTML
+  - Import from Markdown, Confluence
+  - TODO: Implement YDocFileOps
+
+- **traceability.rs (stub, ⏳ PENDING)**: Query layer
+  - `find_code_for_requirement(req_id)`: REQ → ARCH → SPEC → Code
+  - `find_docs_for_code(code_id)`: Code → SPEC → ARCH → REQ
+  - `impact_analysis(entity_id)`: Find affected entities
+  - `find_tests_for_code(code_id)`, `find_untested_requirements()`
+  - TODO: Implement TraceabilityQuery with graph algorithms
+
+**Usage Example:**
+```rust
+// Create YDoc database
+let db = YDocDatabase::new(Path::new(".yantra/ydocs.db"))?;
+
+// Create a requirement document
+let doc_id = db.create_document(
+    DocumentType::Requirements,
+    "User Authentication".to_string(),
+    "requirements/auth.ydoc".to_string(),
+    "user".to_string(),
+)?;
+
+// Add a requirement block
+let block_id = db.create_block(
+    &doc_id,
+    0,
+    "markdown".to_string(),
+    "requirement".to_string(),
+    "User must be able to login with email/password".to_string(),
+    "user".to_string(),
+)?;
+
+// Link requirement to code
+db.create_edge(
+    &block_id,
+    "block".to_string(),
+    "auth.py:login_function".to_string(),
+    "code".to_string(),
+    "implements".to_string(),
+)?;
+
+// Search documentation
+let results = db.search_blocks("authentication")?;
+
+// Get traceability chain
+let chain = db.get_traceability_chain(
+    &block_id,
+    &["implements", "tested_by"]
+)?;
+```
+
+**Implementation Status:**
+- ✅ Database schema (504 lines, 3 tables, FTS5, pooling, WAL)
+- ✅ Module structure (mod.rs with types, all stubs created)
+- ⏳ Parser (parse/serialize .ydoc JSON)
+- ⏳ File operations (folder structure, export/import)
+- ⏳ Traceability queries (graph traversal algorithms)
+- ⏳ Manager (coordinate DB ↔ file sync)
+- ⏳ Tauri commands (frontend API)
+- ⏳ Monaco integration (.ydoc editor)
+- ⏳ UI components (browser, editor, visualization)
+- ⏳ Tests and documentation
+
+**Next Steps:**
+1. Implement parser for .ydoc file I/O (ipynb-compatible JSON)
+2. Implement file_ops for folder structure and export/import
+3. Implement traceability query layer with graph traversal
+4. Complete manager for DB ↔ file coordination
+5. Create Tauri commands for frontend
+6. Integrate Monaco editor for .ydoc files
+7. Build UI components (browser, editor, graph viz)
+8. Write comprehensive tests
+9. Update documentation
+
+**Specification Reference:** See Specifications.md Section 3.1.4 (YDoc System, lines 573-800)
+
+**Files:**
+- `src-tauri/src/ydoc/mod.rs` (116 lines)
+- `src-tauri/src/ydoc/database.rs` (504 lines)
+- `src-tauri/src/ydoc/parser.rs` (stub)
+- `src-tauri/src/ydoc/manager.rs` (stub)
+- `src-tauri/src/ydoc/file_ops.rs` (stub)
+- `src-tauri/src/ydoc/traceability.rs` (stub)
+- `src-tauri/src/lib.rs` (added `pub mod ydoc`)
+
+**Git Commit:** `a373fb6` (December 8, 2025)
+
+---
+
 ## 🎉 Phase 7: Agent Modules (36 Capabilities - Dec 3-4, 2025)
 
 **Status:** ✅ All 36 P0+P1 capabilities implemented (December 4, 2025)  
