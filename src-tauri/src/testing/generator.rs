@@ -1,7 +1,8 @@
 // File: src-tauri/src/testing/generator.rs
 // Purpose: Generate pytest tests from code using LLM
-// Last Updated: November 21, 2025
+// Last Updated: December 9, 2025
 
+use crate::agent::conversation_integration::ConversationContext;
 use crate::llm::{CodeGenerationRequest, LLMConfig};
 use crate::llm::orchestrator::LLMOrchestrator;
 use crate::testing::{TestGenerationRequest, TestGenerationResponse};
@@ -11,8 +12,36 @@ pub async fn generate_tests(
     request: TestGenerationRequest,
     llm_config: LLMConfig,
 ) -> Result<TestGenerationResponse, String> {
+    generate_tests_with_conversation(request, llm_config, None).await
+}
+
+/// Generate pytest tests with conversation context (State 1 and State 5)
+pub async fn generate_tests_with_conversation(
+    request: TestGenerationRequest,
+    llm_config: LLMConfig,
+    conversation_context: Option<&ConversationContext>,
+) -> Result<TestGenerationResponse, String> {
+    // State 1: Test Intelligence - Extract test oracle from conversation
+    let conversation_ctx = if let Some(ctx) = conversation_context {
+        match ctx.get_recent_context(5).await {
+            Ok(context_str) => {
+                if !context_str.is_empty() {
+                    Some(context_str)
+                } else {
+                    None
+                }
+            }
+            Err(e) => {
+                eprintln!("Warning: Failed to get conversation context: {}", e);
+                None
+            }
+        }
+    } else {
+        None
+    };
+
     // Create prompt for test generation
-    let test_prompt = build_test_generation_prompt(&request);
+    let test_prompt = build_test_generation_prompt(&request, conversation_ctx.as_deref());
     
     // Create LLM request
     let llm_request = CodeGenerationRequest {
@@ -37,6 +66,15 @@ pub async fn generate_tests(
     let test_count = count_test_functions(test_code);
     let fixtures = extract_fixtures(test_code);
     
+    // State 5: Link test generation to conversation
+    if let Some(ctx) = conversation_context {
+        // Generate a session ID for this test generation
+        let session_id = format!("test-{}", uuid::Uuid::new_v4());
+        if let Err(e) = ctx.link_testing(&session_id, test_code, test_count).await {
+            eprintln!("Warning: Failed to link test generation to conversation: {}", e);
+        }
+    }
+    
     Ok(TestGenerationResponse {
         tests: test_code.clone(),
         test_count,
@@ -45,9 +83,9 @@ pub async fn generate_tests(
     })
 }
 
-/// Build prompt for test generation
-fn build_test_generation_prompt(request: &TestGenerationRequest) -> String {
-    format!(
+/// Build prompt for test generation with optional conversation context
+fn build_test_generation_prompt(request: &TestGenerationRequest, conversation_context: Option<&str>) -> String {
+    let base_prompt = format!(
         r#"Generate comprehensive pytest tests for the following {} code.
 
 Requirements:
@@ -58,7 +96,19 @@ Requirements:
 5. Use pytest fixtures where appropriate
 6. Add clear docstrings for each test
 7. Mock external dependencies
-8. Follow pytest best practices
+8. Follow pytest best practices"#,
+        request.language,
+        request.coverage_target * 100.0,
+    );
+
+    let context_section = if let Some(ctx) = conversation_context {
+        format!("\n\nUser conversation context (use this to understand test intent):\n{}\n", ctx)
+    } else {
+        String::new()
+    };
+
+    format!(
+        r#"{}{}
 
 Code to test:
 ```{}
@@ -66,8 +116,8 @@ Code to test:
 ```
 
 Generate ONLY the test code, with proper imports and fixtures."#,
-        request.language,
-        request.coverage_target * 100.0,
+        base_prompt,
+        context_section,
         request.language,
         request.code
     )
@@ -185,7 +235,7 @@ def function3():
             coverage_target: 0.9,
         };
         
-        let prompt = build_test_generation_prompt(&request);
+        let prompt = build_test_generation_prompt(&request, None);
         assert!(prompt.contains("90%"));
         assert!(prompt.contains("pytest"));
         assert!(prompt.contains("def add(a, b)"));

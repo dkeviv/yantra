@@ -23,10 +23,13 @@ pub mod file_ops;
 pub mod traceability;
 
 pub use database::{YDocDatabase, DocumentMetadata, BlockMetadata, TraceabilityEdge};
-pub use parser::{YDocParser, YDocFile, YDocCell};
-pub use manager::YDocManager;
-pub use file_ops::YDocFileOps;
-pub use traceability::TraceabilityQuery;
+pub use parser::{
+    YDocFile, YDocCell, YDocError, YantraMetadata, GraphEdge, CellMetadata,
+    parse_ydoc_file, parse_ydoc_content, serialize_ydoc, write_ydoc_file
+};
+pub use manager::{YDocManager, ManagerError};
+pub use file_ops::{YDocFileOps, FileOpsError};
+pub use traceability::{TraceabilityQuery, TraceabilityEntity, TraceabilityEdgeInfo, TraceabilityError};
 
 /// Document types supported by YDoc
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]

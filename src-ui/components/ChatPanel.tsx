@@ -40,23 +40,22 @@ const ChatPanel: Component = () => {
     try {
       // Get all available models
       const allModels = await llmApi.getAvailableModels(provider as any);
-      
+
       // Get user's selected models
       const selectedIds = await llmApi.getSelectedModels();
-      
+
       // Filter: Show selected models only, or all if no selection
-      const modelsToShow = selectedIds.length > 0
-        ? allModels.filter(m => selectedIds.includes(m.id))
-        : allModels;
-      
+      const modelsToShow =
+        selectedIds.length > 0 ? allModels.filter((m) => selectedIds.includes(m.id)) : allModels;
+
       setAvailableModels(modelsToShow);
-      
+
       // Set default model if no model is selected
       if (!selectedModel() && modelsToShow.length > 0) {
         const defaultModel = await llmApi.getDefaultModel(provider as any);
         // Use default if it's in the filtered list, otherwise use first
-        const modelToUse = modelsToShow.find(m => m.id === defaultModel) 
-          ? defaultModel 
+        const modelToUse = modelsToShow.find((m) => m.id === defaultModel)
+          ? defaultModel
           : modelsToShow[0].id;
         setSelectedModel(modelToUse);
       }
@@ -96,9 +95,10 @@ const ChatPanel: Component = () => {
 
     try {
       // Prepare conversation history for LLM
-      const conversationHistory: ChatMessage[] = appStore.messages()
-        .filter(msg => msg.role !== 'system')
-        .map(msg => ({
+      const conversationHistory: ChatMessage[] = appStore
+        .messages()
+        .filter((msg) => msg.role !== 'system')
+        .map((msg) => ({
           role: msg.role,
           content: msg.content,
         }));
@@ -146,27 +146,29 @@ const ChatPanel: Component = () => {
           // Check if this is a full project creation request
           const intent = action.parameters.intent || '';
           const lowerIntent = intent.toLowerCase();
-          
+
           // Detect project creation keywords
-          const isProjectCreation = 
+          const isProjectCreation =
             lowerIntent.includes('create a project') ||
             lowerIntent.includes('create an app') ||
             lowerIntent.includes('build a') ||
             lowerIntent.includes('generate a project') ||
-            (lowerIntent.includes('create') && (
-              lowerIntent.includes('api') ||
-              lowerIntent.includes('application') ||
-              lowerIntent.includes('website') ||
-              lowerIntent.includes('service')
-            ));
+            (lowerIntent.includes('create') &&
+              (lowerIntent.includes('api') ||
+                lowerIntent.includes('application') ||
+                lowerIntent.includes('website') ||
+                lowerIntent.includes('service')));
 
           if (isProjectCreation) {
             // E2E project creation
             appStore.addMessage('assistant', '� Starting autonomous project creation...');
-            
+
             // Determine template from intent
             let template: string | undefined;
-            if (lowerIntent.includes('express') || (lowerIntent.includes('rest') && lowerIntent.includes('api'))) {
+            if (
+              lowerIntent.includes('express') ||
+              (lowerIntent.includes('rest') && lowerIntent.includes('api'))
+            ) {
               template = 'express-api';
             } else if (lowerIntent.includes('react')) {
               template = 'react-app';
@@ -178,15 +180,15 @@ const ChatPanel: Component = () => {
 
             // Ask for project directory if not in workspace
             const projectDir = appStore.projectPath() || '/tmp/yantra-project';
-            
+
             try {
               const result = await llmApi.createProjectAutonomous(intent, projectDir, template);
-              
+
               if (result.success) {
                 let response = `✅ Project created successfully!\n\n`;
                 response += `📁 Location: ${result.project_dir}\n`;
                 response += `📝 Generated ${result.generated_files.length} files\n`;
-                
+
                 if (result.test_results) {
                   response += `🧪 Tests: ${result.test_results.passed}/${result.test_results.total} passed`;
                   if (result.test_results.coverage_percent) {
@@ -194,13 +196,13 @@ const ChatPanel: Component = () => {
                   }
                   response += '\n';
                 }
-                
-                response += `\nFiles created:\n${result.generated_files.map(f => `  - ${f}`).join('\n')}`;
-                
+
+                response += `\nFiles created:\n${result.generated_files.map((f) => `  - ${f}`).join('\n')}`;
+
                 appStore.addMessage('assistant', response);
               } else {
                 let response = `❌ Project creation encountered issues:\n\n`;
-                response += result.errors.map(e => `  - ${e}`).join('\n');
+                response += result.errors.map((e) => `  - ${e}`).join('\n');
                 response += `\n\n${result.generated_files.length} files were created before errors occurred.`;
                 appStore.addMessage('assistant', response);
               }
@@ -209,7 +211,10 @@ const ChatPanel: Component = () => {
             }
           } else {
             // Single file generation (existing behavior)
-            appStore.addMessage('assistant', '🔧 Single-file code generation will be available soon!');
+            appStore.addMessage(
+              'assistant',
+              '🔧 Single-file code generation will be available soon!'
+            );
           }
           break;
         }
@@ -227,28 +232,31 @@ const ChatPanel: Component = () => {
   };
 
   return (
-    <div class="flex flex-col h-full bg-gray-900">
+    <div class="flex flex-col h-full" style={{ 'background-color': 'var(--bg-primary)' }}>
       {/* Header - Model selection in top right */}
-      <div class="px-3 py-2 border-b border-gray-700 flex items-center justify-between"
-           style={{
-             "background-color": "var(--bg-secondary)",
-             "border-bottom-color": "var(--border-primary)"
-           }}>
+      <div
+        class="px-3 py-2 flex items-center justify-between"
+        style={{
+          'background-color': 'var(--bg-secondary)',
+          'border-bottom': '1px solid var(--border-primary)',
+        }}
+      >
         <div class="flex items-center gap-2">
-          <h2 class="text-base font-bold" style={{ "color": "var(--text-primary)" }}>Agent</h2>
-          <StatusIndicator 
-            status={appStore.isGenerating() ? 'running' : 'idle'}
-            size="small"
-          />
+          <h2 class="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
+            Agent
+          </h2>
+          <StatusIndicator status={appStore.isGenerating() ? 'running' : 'idle'} size="small" />
           {/* Expand Button */}
           <button
             onClick={() => layoutStore.togglePanelExpansion('agent')}
             class="ml-1 px-1.5 py-0.5 text-xs rounded hover:opacity-70 transition-opacity"
             style={{
-              "background-color": layoutStore.isExpanded('agent') ? "var(--accent-primary)" : "var(--bg-tertiary)",
-              "color": "var(--text-primary)",
+              'background-color': layoutStore.isExpanded('agent')
+                ? 'var(--accent-primary)'
+                : 'var(--bg-tertiary)',
+              color: 'var(--text-primary)',
             }}
-            title={layoutStore.isExpanded('agent') ? "Collapse panel" : "Expand panel"}
+            title={layoutStore.isExpanded('agent') ? 'Collapse panel' : 'Expand panel'}
           >
             {layoutStore.isExpanded('agent') ? '◀' : '▶'}
           </button>
@@ -258,7 +266,12 @@ const ChatPanel: Component = () => {
           <select
             value={selectedModel()}
             onChange={(e) => setSelectedModel(e.currentTarget.value)}
-            class="bg-gray-700 text-white text-[11px] px-2 py-1 rounded border border-gray-600 focus:border-primary-500 focus:outline-none"
+            class="text-[11px] px-2 py-1 rounded focus:outline-none"
+            style={{
+              'background-color': 'var(--bg-tertiary)',
+              color: 'var(--text-primary)',
+              border: '1px solid var(--border-secondary)',
+            }}
             title="Select LLM model"
             aria-label="Select LLM model"
             disabled={availableModels().length === 0}
@@ -279,7 +292,10 @@ const ChatPanel: Component = () => {
           {/* API Config Button */}
           <button
             onClick={() => setShowApiConfig(!showApiConfig())}
-            class="p-1 text-gray-400 hover:text-white transition-colors"
+            class="p-1 transition-colors"
+            style={{
+              color: 'var(--text-tertiary)',
+            }}
             title="API Configuration"
           >
             ⚙️
@@ -292,33 +308,53 @@ const ChatPanel: Component = () => {
         <For each={appStore.messages()}>
           {(message) => (
             <div class="font-mono text-[11px] leading-relaxed">
-              <span class={message.role === 'user' ? 'text-green-400' : 'text-blue-400'}>
+              <span
+                style={{
+                  color:
+                    message.role === 'user' ? 'var(--status-success)' : 'var(--accent-primary)',
+                }}
+              >
                 {message.role === 'user' ? 'You' : 'Yantra'}
               </span>
-              <span class="text-gray-500 mx-1">›</span>
-              <span class="text-gray-200">{message.content}</span>
+              <span style={{ color: 'var(--text-tertiary)' }} class="mx-1">
+                ›
+              </span>
+              <span style={{ color: 'var(--text-secondary)' }}>{message.content}</span>
             </div>
           )}
         </For>
 
         {appStore.isGenerating() && (
           <div class="font-mono text-[11px] leading-relaxed">
-            <span class="text-blue-400">Yantra</span>
-            <span class="text-gray-500 mx-1">›</span>
-            <span class="text-gray-400 animate-pulse">Generating...</span>
+            <span style={{ color: 'var(--accent-primary)' }}>Yantra</span>
+            <span style={{ color: 'var(--text-tertiary)' }} class="mx-1">
+              ›
+            </span>
+            <span style={{ color: 'var(--text-tertiary)' }} class="animate-pulse">
+              Generating...
+            </span>
           </div>
         )}
       </div>
 
       {/* API Config Modal */}
       <Show when={showApiConfig()}>
-        <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div class="bg-gray-800 rounded-lg p-4 max-w-lg w-full mx-4">
+        <div
+          class="absolute inset-0 flex items-center justify-center z-50"
+          style={{ 'background-color': 'rgba(0, 0, 0, 0.5)' }}
+        >
+          <div
+            class="rounded-lg p-4 max-w-lg w-full mx-4"
+            style={{ 'background-color': 'var(--bg-secondary)' }}
+          >
             <div class="flex items-center justify-between mb-4">
-              <h3 class="text-sm font-bold text-white">API Configuration</h3>
+              <h3 class="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+                API Configuration
+              </h3>
               <button
                 onClick={() => setShowApiConfig(false)}
-                class="text-gray-400 hover:text-white"
+                class="transition-colors"
+                style={{ color: 'var(--text-tertiary)' }}
               >
                 ✕
               </button>
@@ -329,8 +365,8 @@ const ChatPanel: Component = () => {
       </Show>
 
       {/* Input Area - Send button inside textarea */}
-      <div class="px-3 py-2 border-t border-gray-700">
-        <div class="bg-gray-800 rounded-lg p-2">
+      <div class="px-3 py-2" style={{ 'border-top': '1px solid var(--border-primary)' }}>
+        <div class="rounded-lg p-2" style={{ 'background-color': 'var(--bg-secondary)' }}>
           {/* Textarea with inline send button */}
           <div class="relative">
             <textarea
@@ -338,14 +374,21 @@ const ChatPanel: Component = () => {
               onInput={(e) => setInput(e.currentTarget.value)}
               onKeyPress={handleKeyPress}
               placeholder="Type your message... (Enter to send, Shift+Enter for new line)"
-              class="w-full bg-transparent text-white text-[11px] placeholder-gray-500 focus:outline-none resize-none pr-10"
+              class="w-full bg-transparent text-[11px] focus:outline-none resize-none pr-10"
+              style={{
+                color: 'var(--text-primary)',
+              }}
               rows="3"
             />
             {/* Send button inside textarea container */}
             <button
               onClick={handleSend}
               disabled={!input().trim() || appStore.isGenerating()}
-              class="absolute right-1 bottom-1 p-1.5 rounded bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              class="absolute right-1 bottom-1 p-1.5 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              style={{
+                'background-color': 'var(--accent-primary)',
+                color: 'var(--text-inverse)',
+              }}
               title="Send message (Enter)"
             >
               ▶

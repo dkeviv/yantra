@@ -1,6 +1,6 @@
 /**
  * ArchitectureCanvas - Main canvas for architecture visualization using Cytoscape
- * 
+ *
  * Features:
  * - Interactive drag-and-drop component positioning
  * - Zoom and pan controls
@@ -11,12 +11,12 @@
 import { createEffect, onMount, onCleanup, Show } from 'solid-js';
 import cytoscape, { Core, ElementDefinition } from 'cytoscape';
 
-import { 
-  architectureState, 
-  updateComponent, 
+import {
+  architectureState,
+  updateComponent,
   getFilteredComponents,
   selectComponent,
-  selectConnection 
+  selectConnection,
 } from '../../stores/architectureStore';
 import type { Component as ArchComponent } from '../../api/architecture';
 import * as archAPI from '../../api/architecture';
@@ -33,7 +33,7 @@ function componentToNode(component: ArchComponent): ElementDefinition {
   const statusIndicator = archAPI.getStatusIndicator(component.component_type);
   const statusText = archAPI.getStatusText(component.component_type);
   const isSelected = component.id === architectureState.selectedComponentId;
-  
+
   return {
     group: 'nodes',
     data: {
@@ -53,7 +53,7 @@ function componentToNode(component: ArchComponent): ElementDefinition {
 function connectionToEdge(connection: any): ElementDefinition {
   const color = archAPI.getConnectionColor(connection.connection_type);
   const isSelected = architectureState.selectedConnectionId === connection.id;
-  
+
   return {
     group: 'edges',
     data: {
@@ -84,25 +84,25 @@ export default function ArchitectureCanvas() {
     // Initialize cytoscape
     cy = cytoscape({
       container: containerRef,
-      
+
       style: [
         // Node styles
         {
           selector: 'node',
           style: {
-            'label': 'data(label)',
+            label: 'data(label)',
             'text-valign': 'center',
             'text-halign': 'center',
             'background-color': 'data(background-color)',
             'border-width': 2,
             'border-color': 'data(border-color)',
-            'width': 180,
-            'height': 80,
-            'font-size': '12px',
-            'color': '#ffffff',
+            width: 180,
+            height: 80,
+            'font-size': '11px',
+            color: '#ffffff',
             'text-wrap': 'wrap',
             'text-max-width': '160px',
-            'shape': 'roundrectangle',
+            shape: 'roundrectangle',
           },
         },
         {
@@ -116,15 +116,15 @@ export default function ArchitectureCanvas() {
         {
           selector: 'edge',
           style: {
-            'width': 2,
+            width: 2,
             'line-color': 'data(line-color)',
             'target-arrow-color': 'data(line-color)',
             'target-arrow-shape': 'triangle',
             'curve-style': 'bezier',
-            'label': 'data(label)',
+            label: 'data(label)',
             'font-size': '10px',
-            'color': '#9ca3af',
-            'text-background-color': '#1f2937',
+            color: 'var(--text-secondary)',
+            'text-background-color': 'var(--bg-secondary)',
             'text-background-opacity': 1,
             'text-background-padding': '3px',
           },
@@ -132,8 +132,8 @@ export default function ArchitectureCanvas() {
         {
           selector: 'edge.selected',
           style: {
-            'width': 3,
-            'opacity': 1,
+            width: 3,
+            opacity: 1,
             'line-color': '#3b82f6',
             'target-arrow-color': '#3b82f6',
           },
@@ -176,7 +176,7 @@ export default function ArchitectureCanvas() {
     cy.on('dragfree', 'node', async (event) => {
       const node = event.target;
       const position = node.position();
-      
+
       try {
         await updateComponent(node.id(), {
           position: { x: position.x, y: position.y },
@@ -242,7 +242,7 @@ export default function ArchitectureCanvas() {
   // ============================================================================
 
   return (
-    <div class="w-full h-full bg-gray-900 relative">
+    <div class="w-full h-full relative" style={{ 'background-color': 'var(--bg-primary)' }}>
       <Show
         when={architectureState.current && !architectureState.isLoading}
         fallback={
@@ -250,30 +250,11 @@ export default function ArchitectureCanvas() {
             <Show
               when={architectureState.isLoading}
               fallback={
-                <div class="text-gray-400 text-center max-w-md">
+                <div class="text-center max-w-md" style={{ color: 'var(--text-secondary)' }}>
                   <div class="text-6xl mb-6">🏗️</div>
-                  <p class="text-xl mb-3 font-semibold">No Architecture Yet</p>
-                  <p class="text-sm mb-4 leading-relaxed">
-                    Tell me in <span class="text-blue-400 font-medium">chat</span> what you want to build, 
-                    and I'll generate the architecture diagram for you automatically.
+                  <p class="text-xl mb-3 font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    No Architecture Yet
                   </p>
-                  <div class="bg-gray-800/50 border border-gray-700 rounded-lg p-4 text-left">
-                    <div class="text-xs text-gray-500 mb-2">Example prompts:</div>
-                    <div class="space-y-2 text-sm">
-                      <div class="flex items-start gap-2">
-                        <span class="text-blue-400">💬</span>
-                        <span>"Create a REST API with JWT authentication"</span>
-                      </div>
-                      <div class="flex items-start gap-2">
-                        <span class="text-blue-400">💬</span>
-                        <span>"Build a 3-tier web app with React and FastAPI"</span>
-                      </div>
-                      <div class="flex items-start gap-2">
-                        <span class="text-blue-400">💬</span>
-                        <span>"Add Redis caching to my architecture"</span>
-                      </div>
-                    </div>
-                  </div>
                 </div>
               }
             >
@@ -296,44 +277,63 @@ export default function ArchitectureCanvas() {
         </Show>
 
         {/* Architecture info overlay */}
-        <div class="absolute top-4 left-4 bg-gray-800/90 backdrop-blur border border-gray-700 rounded-lg shadow-lg px-4 py-3">
-          <h2 class="text-white font-semibold text-lg mb-1">
+        <div
+          class="absolute top-4 left-4 backdrop-blur border rounded-lg shadow-lg px-4 py-3"
+          style={{
+            'background-color': 'var(--bg-secondary-transparent)',
+            'border-color': 'var(--border-primary)',
+          }}
+        >
+          <h2 class="font-semibold text-lg mb-1" style={{ color: 'var(--text-primary)' }}>
             {architectureState.current?.name}
           </h2>
           <Show when={architectureState.current?.description}>
-            <p class="text-gray-400 text-sm mb-2">
+            <p class="text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
               {architectureState.current?.description}
             </p>
           </Show>
-          <div class="flex gap-4 text-sm">
-            <span class="text-gray-400">
-              Components: <span class="text-white">{getFilteredComponents().length}</span>
+          <div class="flex gap-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
+            <span>
+              Components:{' '}
+              <span style={{ color: 'var(--text-primary)' }}>{getFilteredComponents().length}</span>
             </span>
-            <span class="text-gray-400">
-              Connections: <span class="text-white">{architectureState.current?.connections.length || 0}</span>
+            <span>
+              Connections:{' '}
+              <span style={{ color: 'var(--text-primary)' }}>
+                {architectureState.current?.connections.length || 0}
+              </span>
             </span>
           </div>
         </div>
 
         {/* Controls overlay */}
-        <div class="absolute bottom-4 left-4 bg-gray-800/90 backdrop-blur border border-gray-700 rounded-lg shadow-lg p-2 flex flex-col gap-2">
+        <div
+          class="absolute bottom-4 left-4 backdrop-blur border rounded-lg shadow-lg p-2 flex flex-col gap-2"
+          style={{
+            'background-color': 'var(--bg-secondary-transparent)',
+            'border-color': 'var(--border-primary)',
+          }}
+        >
           <button
             onClick={() => cy?.fit(undefined, 50)}
-            class="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm transition-colors"
+            class="px-3 py-2 rounded text-sm transition-colors"
+            style={{ 'background-color': 'var(--bg-tertiary)', color: 'var(--text-primary)' }}
             title="Fit to view"
           >
             🎯 Fit
           </button>
           <button
             onClick={() => cy?.zoom(cy.zoom() * 1.2)}
-            class="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm transition-colors"
+            class="px-3 py-2 rounded text-sm transition-colors"
+            style={{ 'background-color': 'var(--bg-tertiary)', color: 'var(--text-primary)' }}
             title="Zoom in"
           >
             ➕
           </button>
           <button
             onClick={() => cy?.zoom(cy.zoom() / 1.2)}
-            class="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm transition-colors"
+            class="px-3 py-2 rounded text-sm transition-colors"
+            style={{ 'background-color': 'var(--bg-tertiary)', color: 'var(--text-primary)' }}
             title="Zoom out"
           >
             ➖

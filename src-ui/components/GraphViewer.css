@@ -1,0 +1,138 @@
+/* File: src-ui/components/GraphViewer.css */
+/* Purpose: Styles for unified graph viewer with tabs */
+/* Last Updated: December 9, 2025 */
+
+.graph-viewer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: var(--bg-primary);
+}
+
+/* Tab Bar */
+.graph-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 8px 12px 0 12px;
+  background: var(--bg-secondary);
+  border-bottom: 2px solid var(--border-primary);
+}
+
+.tab-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-tertiary);
+  border: none;
+  border-radius: 6px 6px 0 0;
+  padding: 8px 16px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.tab-button:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.tab-button.active {
+  background: var(--bg-primary);
+  color: var(--accent-primary);
+  border-bottom: 2px solid var(--accent-primary);
+  font-weight: 600;
+}
+
+.tab-button.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent-primary);
+}
+
+.tab-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.tab-label {
+  line-height: 1;
+  font-size: 11px;
+}
+
+/* Graph Content Area */
+.graph-content {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-primary);
+  pointer-events: auto;
+  z-index: 1;
+}
+
+/* Quick Help Bar */
+.graph-help {
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-primary);
+  padding: 8px 12px;
+  font-size: 11px;
+}
+
+.help-text {
+  color: var(--text-secondary);
+  line-height: 1.4;
+  font-size: 11px;
+}
+
+.help-text strong {
+  color: var(--text-primary);
+  font-weight: 600;
+  margin-right: 6px;
+  font-size: 11px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .tab-button {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .tab-label {
+    display: none;
+  }
+
+  .tab-icon {
+    font-size: 16px;
+  }
+
+  .graph-help {
+    display: none;
+  }
+}
+
+/* Keyboard Navigation */
+.tab-button:focus {
+  outline: 2px solid var(--color-blue-500, #3b82f6);
+  outline-offset: -2px;
+}
+
+/* Loading State */
+.graph-content.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.graph-content.loading::after {
+  content: 'Loading graph...';
+  color: var(--color-gray-400, #9ca3af);
+  font-size: 14px;
+}

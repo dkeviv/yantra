@@ -32,10 +32,22 @@ const isExpanded = (panel: PanelType): boolean => {
 
 // File Explorer width management
 const updateFileExplorerWidth = (width: number) => {
-  // Clamp width between 200px and 500px
-  const clampedWidth = Math.max(200, Math.min(500, width));
+  const windowWidth = window.innerWidth;
+  const tenPercent = windowWidth * 0.1;
+
+  // If width becomes less than 10% of window, auto-close the panel
+  if (width < tenPercent) {
+    // Signal to close the panel - will be handled by App.tsx
+    window.dispatchEvent(new CustomEvent('close-file-explorer'));
+    return;
+  }
+
+  // Clamp width between 10% and 60% of window width, with max 600px
+  const minWidth = Math.max(tenPercent, 150); // At least 150px even if 10% is smaller
+  const maxWidth = Math.min(windowWidth * 0.6, 600);
+  const clampedWidth = Math.max(minWidth, Math.min(maxWidth, width));
   setFileExplorerWidth(clampedWidth);
-  
+
   // Persist to localStorage
   try {
     localStorage.setItem('yantra-fileexplorer-width', clampedWidth.toString());
@@ -49,8 +61,11 @@ const loadFileExplorerWidth = () => {
     const saved = localStorage.getItem('yantra-fileexplorer-width');
     if (saved) {
       const width = parseInt(saved, 10);
+      const windowWidth = window.innerWidth;
+      const minWidth = Math.max(windowWidth * 0.1, 150);
+      const maxWidth = Math.min(windowWidth * 0.6, 600);
       if (!isNaN(width)) {
-        setFileExplorerWidth(Math.max(200, Math.min(500, width)));
+        setFileExplorerWidth(Math.max(minWidth, Math.min(maxWidth, width)));
       }
     }
   } catch (error) {
@@ -65,7 +80,7 @@ export const layoutStore = {
   // State getters
   expandedPanel,
   fileExplorerWidth,
-  
+
   // Actions
   togglePanelExpansion,
   collapseAll,

@@ -1,6 +1,6 @@
 /**
  * HierarchicalTabs - Sliding tab navigation for filtering components
- * 
+ *
  * Tabs:
  * - Complete (show all)
  * - Frontend
@@ -33,9 +33,14 @@ export default function HierarchicalTabs() {
   };
 
   return (
-    <div class="bg-gray-800 border-b border-gray-700 shadow-lg">
+    <div
+      class="border-b shadow-lg"
+      style={{ 'background-color': 'var(--bg-secondary)', 'border-color': 'var(--border-primary)' }}
+    >
       <div class="flex items-center gap-2 px-4 py-2 overflow-x-auto">
-        <span class="text-gray-400 text-sm mr-2">View:</span>
+        <span class="text-sm mr-2" style={{ color: 'var(--text-secondary)' }}>
+          View:
+        </span>
         <For each={tabs}>
           {(tab) => (
             <button
@@ -44,12 +49,16 @@ export default function HierarchicalTabs() {
                 px-4 py-2 rounded-lg text-sm font-medium
                 transition-all duration-200
                 flex items-center gap-2 whitespace-nowrap
-                ${
-                  currentMode() === tab.mode
-                    ? 'bg-blue-600 text-white shadow-lg scale-105'
-                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
-                }
               `}
+              style={{
+                'background-color':
+                  currentMode() === tab.mode ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
+                color:
+                  currentMode() === tab.mode ? 'var(--text-on-accent)' : 'var(--text-secondary)',
+                'box-shadow':
+                  currentMode() === tab.mode ? '0 4px 6px -1px rgb(0 0 0 / 0.1)' : 'none',
+                transform: currentMode() === tab.mode ? 'scale(1.05)' : 'scale(1)',
+              }}
             >
               <span>{tab.icon}</span>
               <span>{tab.label}</span>

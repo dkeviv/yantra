@@ -12,3 +12,4 @@ pub mod git;
 pub mod bridge;
 pub mod architecture;
 pub mod ydoc;
+pub mod ydoc_commands;

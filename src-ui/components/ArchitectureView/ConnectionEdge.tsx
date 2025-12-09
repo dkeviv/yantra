@@ -1,6 +1,6 @@
 /**
  * ConnectionEdge - Custom React Flow edge for architecture connections
- * 
+ *
  * Displays:
  * - Connection type with appropriate arrow style
  * - Color-coded by connection type
@@ -97,23 +97,22 @@ export default function ConnectionEdge({
             onClick={handleClick}
             class={`
               px-3 py-1 rounded-full text-xs font-medium
-              bg-gray-800 border-2 shadow-lg
+              border-2 shadow-lg
               transition-all duration-200
               hover:scale-110 cursor-pointer
-              ${isSelected ? 'border-blue-500 ring-2 ring-blue-500/50' : 'border-gray-700'}
             `}
             style={{
+              'background-color': 'var(--bg-secondary)',
+              'border-color': isSelected ? 'var(--accent-primary)' : color,
+              'box-shadow': isSelected ? '0 0 0 2px var(--accent-primary-transparent)' : undefined,
               color: color,
-              'border-color': isSelected ? '#3b82f6' : color,
             }}
           >
             {/* Connection type arrow */}
             <span class="mr-1">{arrow}</span>
 
             {/* Connection label or type name */}
-            <span>
-              {connection.description || connection.connection_type}
-            </span>
+            <span>{connection.description || connection.connection_type}</span>
 
             {/* Delete button (shown on hover or when selected) */}
             <Show when={isSelected}>

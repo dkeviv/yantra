@@ -1,7 +1,7 @@
 // File: src-ui/components/FileTree.tsx
-// Purpose: File tree component with recursive folder navigation
+// Purpose: File tree component with recursive folder navigation and .ydoc file support
 // Dependencies: solid-js, tauri utils
-// Last Updated: November 28, 2025
+// Last Updated: December 9, 2025
 
 import { Component, createSignal, For, Show, onMount, onCleanup, type JSX } from 'solid-js';
 import { FileEntry, readDir, selectFolder, readFile } from '../utils/tauri';
@@ -25,9 +25,9 @@ const FileTree: Component = () => {
       setTreeNodes([]);
       setError(null);
     };
-    
+
     window.addEventListener('close-project', handleCloseProject);
-    
+
     onCleanup(() => {
       window.removeEventListener('close-project', handleCloseProject);
     });
@@ -44,7 +44,7 @@ const FileTree: Component = () => {
           }
           return a.name.localeCompare(b.name);
         })
-        .map(entry => ({
+        .map((entry) => ({
           ...entry,
           children: entry.is_directory ? [] : undefined,
           isExpanded: false,
@@ -66,7 +66,10 @@ const FileTree: Component = () => {
         setTreeNodes(nodes);
         appStore.loadProject(folder);
         // Notify chat that project is loaded
-        appStore.addMessage('system', `✅ Project opened: ${folder}\n\nI'm ready to help you build. What would you like to create?`);
+        appStore.addMessage(
+          'system',
+          `✅ Project opened: ${folder}\n\nI'm ready to help you build. What would you like to create?`
+        );
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to open folder');
@@ -79,7 +82,7 @@ const FileTree: Component = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Let user select where to create the project
       const parentFolder = await selectFolder();
       if (!parentFolder) {
@@ -88,14 +91,16 @@ const FileTree: Component = () => {
       }
 
       // Ask for project name via chat
-      appStore.addMessage('system', '📁 Creating new project...\n\nPlease tell me:\n1. What should we name this project?\n2. What type of project? (e.g., Python web app, React frontend, API server, etc.)\n3. What will it do?');
-      
+      appStore.addMessage(
+        'system',
+        '📁 Creating new project...\n\nPlease tell me:\n1. What should we name this project?\n2. What type of project? (e.g., Python web app, React frontend, API server, etc.)\n3. What will it do?'
+      );
+
       // For now, just open the folder - the agent will guide through chat
       setRootPath(parentFolder);
       const nodes = await loadDirectory(parentFolder);
       setTreeNodes(nodes);
       appStore.loadProject(parentFolder);
-      
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create project');
     } finally {
@@ -108,12 +113,12 @@ const FileTree: Component = () => {
 
     const newTree = [...treeNodes()];
     let current: TreeNode[] = newTree;
-    
+
     // Navigate to the parent node
     for (let i = 0; i < path.length - 1; i++) {
       current = current[path[i]].children!;
     }
-    
+
     const nodeIndex = path[path.length - 1];
     const targetNode = current[nodeIndex];
 
@@ -154,62 +159,65 @@ const FileTree: Component = () => {
     if (node.is_directory) {
       return { text: '', isFolder: true, expanded: node.isExpanded, color: '' };
     }
-    
+
     const ext = node.name.split('.').pop()?.toLowerCase();
     const iconMap: Record<string, { text: string; color: string }> = {
       // JavaScript/TypeScript
-      'js': { text: 'JS', color: '#f7df1e' },
-      'jsx': { text: 'JSX', color: '#61dafb' },
-      'ts': { text: 'TS', color: '#3178c6' },
-      'tsx': { text: 'TSX', color: '#3178c6' },
-      'mjs': { text: 'MJS', color: '#f7df1e' },
-      
+      js: { text: 'JS', color: '#f7df1e' },
+      jsx: { text: 'JSX', color: '#61dafb' },
+      ts: { text: 'TS', color: '#3178c6' },
+      tsx: { text: 'TSX', color: '#3178c6' },
+      mjs: { text: 'MJS', color: '#f7df1e' },
+
       // Python
-      'py': { text: 'PY', color: '#3776ab' },
-      'pyw': { text: 'PY', color: '#3776ab' },
-      
+      py: { text: 'PY', color: '#3776ab' },
+      pyw: { text: 'PY', color: '#3776ab' },
+
       // Rust
-      'rs': { text: 'RS', color: '#ce422b' },
-      'toml': { text: 'TOML', color: '#9c4221' },
-      
+      rs: { text: 'RS', color: '#ce422b' },
+      toml: { text: 'TOML', color: '#9c4221' },
+
       // Web
-      'html': { text: 'HTML', color: '#e34c26' },
-      'htm': { text: 'HTM', color: '#e34c26' },
-      'css': { text: 'CSS', color: '#1572b6' },
-      'scss': { text: 'SCSS', color: '#cc6699' },
-      'sass': { text: 'SASS', color: '#cc6699' },
-      'less': { text: 'LESS', color: '#1d365d' },
-      
+      html: { text: 'HTML', color: '#e34c26' },
+      htm: { text: 'HTM', color: '#e34c26' },
+      css: { text: 'CSS', color: '#1572b6' },
+      scss: { text: 'SCSS', color: '#cc6699' },
+      sass: { text: 'SASS', color: '#cc6699' },
+      less: { text: 'LESS', color: '#1d365d' },
+
       // Data/Config
-      'json': { text: 'JSON', color: '#fbca04' },
-      'yaml': { text: 'YAML', color: '#cb171e' },
-      'yml': { text: 'YML', color: '#cb171e' },
-      'xml': { text: 'XML', color: '#e34c26' },
-      'md': { text: 'MD', color: '#083fa1' },
-      'txt': { text: 'TXT', color: '#6b7280' },
-      'csv': { text: 'CSV', color: '#0f9d58' },
-      
+      json: { text: 'JSON', color: '#fbca04' },
+      yaml: { text: 'YAML', color: '#cb171e' },
+      yml: { text: 'YML', color: '#cb171e' },
+      xml: { text: 'XML', color: '#e34c26' },
+      md: { text: 'MD', color: '#083fa1' },
+      txt: { text: 'TXT', color: '#6b7280' },
+      csv: { text: 'CSV', color: '#0f9d58' },
+
+      // YDoc files (Yantra Documentation)
+      ydoc: { text: '📄', color: '#8b5cf6' },
+
       // Other languages
-      'go': { text: 'GO', color: '#00add8' },
-      'java': { text: 'JAVA', color: '#007396' },
-      'c': { text: 'C', color: '#555555' },
-      'cpp': { text: 'CPP', color: '#00599c' },
-      'h': { text: 'H', color: '#555555' },
-      'sh': { text: 'SH', color: '#4eaa25' },
-      'bash': { text: 'BASH', color: '#4eaa25' },
-      'sql': { text: 'SQL', color: '#e38c00' },
-      'php': { text: 'PHP', color: '#777bb4' },
-      'rb': { text: 'RB', color: '#cc342d' },
-      'swift': { text: 'SWIFT', color: '#f05138' },
-      'kt': { text: 'KT', color: '#7f52ff' },
-      
+      go: { text: 'GO', color: '#00add8' },
+      java: { text: 'JAVA', color: '#007396' },
+      c: { text: 'C', color: '#555555' },
+      cpp: { text: 'CPP', color: '#00599c' },
+      h: { text: 'H', color: '#555555' },
+      sh: { text: 'SH', color: '#4eaa25' },
+      bash: { text: 'BASH', color: '#4eaa25' },
+      sql: { text: 'SQL', color: '#e38c00' },
+      php: { text: 'PHP', color: '#777bb4' },
+      rb: { text: 'RB', color: '#cc342d' },
+      swift: { text: 'SWIFT', color: '#f05138' },
+      kt: { text: 'KT', color: '#7f52ff' },
+
       // Build/Config files
-      'lock': { text: 'LOCK', color: '#6b7280' },
-      'env': { text: 'ENV', color: '#ecd53f' },
-      'gitignore': { text: 'GIT', color: '#f05033' },
-      'dockerfile': { text: 'DOCK', color: '#2496ed' },
+      lock: { text: 'LOCK', color: '#6b7280' },
+      env: { text: 'ENV', color: '#ecd53f' },
+      gitignore: { text: 'GIT', color: '#f05033' },
+      dockerfile: { text: 'DOCK', color: '#2496ed' },
     };
-    
+
     const icon = iconMap[ext || ''] || { text: ext?.toUpperCase() || 'FILE', color: '#6b7280' };
     return { ...icon, isFolder: false, expanded: false };
   };
@@ -225,34 +233,58 @@ const FileTree: Component = () => {
               <li>
                 <button
                   onClick={() => handleFileClick(node, currentPath)}
-                  class="w-full px-2 py-1 text-left text-sm text-gray-300 hover:bg-gray-800 transition-colors flex items-center gap-2"
-                  style={{ 'padding-left': `${depth * 16 + 8}px` }}
+                  class="w-full px-2 py-0.5 text-left text-xs transition-colors flex items-center gap-1.5"
+                  style={{
+                    'padding-left': `${depth * 12 + 8}px`,
+                    'background-color':
+                      appStore.openFiles().find((f) => f.path === node.path) &&
+                      appStore.activeFileIndex() ===
+                        appStore.openFiles().findIndex((f) => f.path === node.path)
+                        ? 'var(--bg-tertiary)'
+                        : 'transparent',
+                    color: 'var(--text-primary)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+                  }}
+                  onMouseLeave={(e) => {
+                    const isActive =
+                      appStore.openFiles().find((f) => f.path === node.path) &&
+                      appStore.activeFileIndex() ===
+                        appStore.openFiles().findIndex((f) => f.path === node.path);
+                    e.currentTarget.style.backgroundColor = isActive
+                      ? 'var(--bg-tertiary)'
+                      : 'transparent';
+                  }}
                 >
                   {/* Icon/Badge */}
                   <Show
                     when={icon.isFolder}
                     fallback={
-                      <span 
-                        class="text-[9px] font-bold px-1 py-0.5 rounded opacity-90"
-                        style={{ 
+                      <span
+                        class="text-[7px] font-bold px-0.5 py-0.5 rounded"
+                        style={{
                           color: icon.color,
                           border: `1px solid ${icon.color}`,
-                          'min-width': '28px',
-                          'text-align': 'center'
+                          'min-width': '20px',
+                          'max-width': '20px',
+                          'text-align': 'center',
+                          opacity: '1',
+                          filter: 'brightness(1.4)',
                         }}
                       >
                         {icon.text}
                       </span>
                     }
                   >
-                    <span class="text-base">
+                    <span class="text-sm" style={{ filter: 'brightness(1.3)' }}>
                       {icon.expanded ? '📂' : '📁'}
                     </span>
                   </Show>
-                  
+
                   <span class="flex-1 truncate">{node.name}</span>
                   <Show when={!node.is_directory && node.size}>
-                    <span class="text-xs text-gray-500">
+                    <span class="text-xs" style={{ color: 'var(--text-tertiary)' }}>
                       {(node.size! / 1024).toFixed(1)}KB
                     </span>
                   </Show>
@@ -269,16 +301,20 @@ const FileTree: Component = () => {
   };
 
   return (
-    <div class="flex flex-col h-full bg-gray-800">
+    <div class="flex flex-col h-full" style={{ 'background-color': 'var(--bg-secondary)' }}>
       {/* Header - Show different buttons based on project state */}
-      <div class="px-4 py-3 border-b border-gray-700">
-        <Show 
+      <div class="px-4 py-3" style={{ 'border-bottom': '1px solid var(--border-primary)' }}>
+        <Show
           when={rootPath()}
           fallback={
             <div class="space-y-2">
               <button
                 onClick={handleOpenFolder}
-                class="w-full px-4 py-2 text-sm bg-primary-600 text-white rounded hover:bg-primary-700 transition-colors flex items-center justify-center gap-2"
+                class="w-full px-4 py-2 text-sm rounded hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                style={{
+                  'background-color': 'var(--accent-primary)',
+                  color: 'var(--text-inverse)',
+                }}
                 disabled={loading()}
               >
                 <span>📁</span>
@@ -286,7 +322,11 @@ const FileTree: Component = () => {
               </button>
               <button
                 onClick={handleCreateNewProject}
-                class="w-full px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                class="w-full px-4 py-2 text-sm rounded hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                style={{
+                  'background-color': 'var(--status-success)',
+                  color: 'var(--text-inverse)',
+                }}
                 disabled={loading()}
               >
                 <span>✨</span>
@@ -296,8 +336,10 @@ const FileTree: Component = () => {
           }
         >
           {/* Project is open - show minimal info */}
-          <div class="text-xs text-gray-400">
-            <div class="font-medium text-gray-300 mb-1">Project Open</div>
+          <div class="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+            <div class="font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
+              Project Open
+            </div>
             <div class="truncate" title={rootPath() || ''}>
               {rootPath()}
             </div>
@@ -307,8 +349,16 @@ const FileTree: Component = () => {
 
       {/* Error Display */}
       <Show when={error()}>
-        <div class="px-4 py-2 bg-red-900/20 border-b border-red-700/50">
-          <p class="text-sm text-red-400">{error()}</p>
+        <div
+          class="px-4 py-2"
+          style={{
+            'background-color': 'rgba(239, 68, 68, 0.15)',
+            'border-bottom': '1px solid var(--status-error)',
+          }}
+        >
+          <p class="text-sm" style={{ color: 'var(--status-error)' }}>
+            {error()}
+          </p>
         </div>
       </Show>
 
@@ -317,14 +367,15 @@ const FileTree: Component = () => {
         <Show
           when={treeNodes().length > 0}
           fallback={
-            <div class="flex items-center justify-center h-full text-gray-500 text-sm px-4 text-center">
+            <div
+              class="flex items-center justify-center h-full text-sm px-4 text-center"
+              style={{ color: 'var(--text-tertiary)' }}
+            >
               {loading() ? 'Loading files...' : 'Open or create a project to get started'}
             </div>
           }
         >
-          <ul class="py-2">
-            {renderTree(treeNodes())}
-          </ul>
+          <ul class="py-1">{renderTree(treeNodes())}</ul>
         </Show>
       </div>
     </div>

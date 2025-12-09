@@ -24,9 +24,13 @@ pub mod query;
 pub mod version_tracker;
 pub mod completion;
 pub mod package_tracker;
+pub mod auto_refresh;
+pub mod file_watcher;
 
 // Re-export main types
 pub use graph::CodeGraph;
+pub use auto_refresh::{AutoRefreshManager, FileTracker, RefreshResult, RefreshStats};
+pub use file_watcher::FileWatcher;
 
 // Re-export query types
 pub use query::{
@@ -34,7 +38,7 @@ pub use query::{
     Aggregator, PathFinder, TransactionManager,
 };
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -538,6 +542,45 @@ impl GNNEngine {
     /// Get graph edge count
     pub fn edge_count(&self) -> usize {
         self.graph.edge_count()
+    }
+    
+    /// Refresh graph if files are stale (DEP-028, DEP-029)
+    /// Checks all tracked files and updates those that changed
+    pub fn refresh_if_stale(&mut self) -> Result<usize, String> {
+        let mut updated_count = 0;
+        
+        // Get list of all files from graph
+        let all_files = self.list_all_files()?;
+        
+        // Check each file and update if dirty
+        for file_path_str in all_files {
+            let file_path = PathBuf::from(&file_path_str);
+            
+            // Check if file exists and is dirty
+            if file_path.exists() {
+                match self.is_file_dirty(&file_path) {
+                    Ok(true) => {
+                        // File is dirty, update it
+                        match self.incremental_update_file(&file_path) {
+                            Ok(_metrics) => {
+                                updated_count += 1;
+                            }
+                            Err(e) => {
+                                eprintln!("Failed to update {}: {}", file_path.display(), e);
+                            }
+                        }
+                    }
+                    Ok(false) => {
+                        // File is clean, skip
+                    }
+                    Err(e) => {
+                        eprintln!("Failed to check if {} is dirty: {}", file_path.display(), e);
+                    }
+                }
+            }
+        }
+        
+        Ok(updated_count)
     }
     
     /// Parse package dependencies and add to graph

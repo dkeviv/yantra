@@ -27,38 +27,43 @@ export const DocumentationPanels: Component = () => {
   const filteredFeatures = createMemo(() => {
     const query = searchQuery().toLowerCase();
     if (!query) return documentationStore.features();
-    return documentationStore.features().filter(f =>
-      f.title.toLowerCase().includes(query) ||
-      f.description.toLowerCase().includes(query)
-    );
+    return documentationStore
+      .features()
+      .filter(
+        (f) => f.title.toLowerCase().includes(query) || f.description.toLowerCase().includes(query)
+      );
   });
 
   const filteredDecisions = createMemo(() => {
     const query = searchQuery().toLowerCase();
     if (!query) return documentationStore.decisions();
-    return documentationStore.decisions().filter(d =>
-      d.title.toLowerCase().includes(query) ||
-      d.context.toLowerCase().includes(query) ||
-      d.decision.toLowerCase().includes(query) ||
-      d.rationale.toLowerCase().includes(query)
-    );
+    return documentationStore
+      .decisions()
+      .filter(
+        (d) =>
+          d.title.toLowerCase().includes(query) ||
+          d.context.toLowerCase().includes(query) ||
+          d.decision.toLowerCase().includes(query) ||
+          d.rationale.toLowerCase().includes(query)
+      );
   });
 
   const filteredChanges = createMemo(() => {
     const query = searchQuery().toLowerCase();
     if (!query) return documentationStore.changes();
-    return documentationStore.changes().filter(c =>
-      c.description.toLowerCase().includes(query) ||
-      c.files.some(f => f.toLowerCase().includes(query))
-    );
+    return documentationStore
+      .changes()
+      .filter(
+        (c) =>
+          c.description.toLowerCase().includes(query) ||
+          c.files.some((f) => f.toLowerCase().includes(query))
+      );
   });
 
   const filteredTasks = createMemo(() => {
     const query = searchQuery().toLowerCase();
     if (!query) return documentationStore.tasks();
-    return documentationStore.tasks().filter(t =>
-      t.title.toLowerCase().includes(query)
-    );
+    return documentationStore.tasks().filter((t) => t.title.toLowerCase().includes(query));
   });
 
   const handleUserActionClick = (task: Task) => {
@@ -69,46 +74,75 @@ export const DocumentationPanels: Component = () => {
   };
 
   return (
-    <div class="h-full flex flex-col bg-gray-800">
+    <div class="h-full flex flex-col" style={{ 'background-color': 'var(--bg-secondary)' }}>
       {/* Tab Navigation - Reduced padding for minimal UI */}
-      <div class="flex border-b border-gray-700">
+      <div class="flex" style={{ 'border-bottom': '1px solid var(--border-primary)' }}>
         <button
-          onClick={() => { setActivePanel('features'); setSearchQuery(''); }}
-          class={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
-            activePanel() === 'features'
-              ? 'bg-gray-700 text-white border-b-2 border-primary-500'
-              : 'text-gray-400 hover:text-white'
-          }`}
+          onClick={() => {
+            setActivePanel('features');
+            setSearchQuery('');
+          }}
+          class="flex-1 px-3 py-2 text-xs font-medium transition-colors"
+          style={{
+            'background-color': activePanel() === 'features' ? 'var(--bg-tertiary)' : 'transparent',
+            color: activePanel() === 'features' ? 'var(--text-primary)' : 'var(--text-tertiary)',
+            'border-bottom':
+              activePanel() === 'features'
+                ? '2px solid var(--accent-primary)'
+                : '2px solid transparent',
+          }}
         >
           📋 Features
         </button>
         <button
-          onClick={() => { setActivePanel('decisions'); setSearchQuery(''); }}
-          class={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
-            activePanel() === 'decisions'
-              ? 'bg-gray-700 text-white border-b-2 border-primary-500'
-              : 'text-gray-400 hover:text-white'
-          }`}
+          onClick={() => {
+            setActivePanel('decisions');
+            setSearchQuery('');
+          }}
+          class="flex-1 px-3 py-2 text-xs font-medium transition-colors"
+          style={{
+            'background-color':
+              activePanel() === 'decisions' ? 'var(--bg-tertiary)' : 'transparent',
+            color: activePanel() === 'decisions' ? 'var(--text-primary)' : 'var(--text-tertiary)',
+            'border-bottom':
+              activePanel() === 'decisions'
+                ? '2px solid var(--accent-primary)'
+                : '2px solid transparent',
+          }}
         >
           💡 Decisions
         </button>
         <button
-          onClick={() => { setActivePanel('changes'); setSearchQuery(''); }}
-          class={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
-            activePanel() === 'changes'
-              ? 'bg-gray-700 text-white border-b-2 border-primary-500'
-              : 'text-gray-400 hover:text-white'
-          }`}
+          onClick={() => {
+            setActivePanel('changes');
+            setSearchQuery('');
+          }}
+          class="flex-1 px-3 py-2 text-xs font-medium transition-colors"
+          style={{
+            'background-color': activePanel() === 'changes' ? 'var(--bg-tertiary)' : 'transparent',
+            color: activePanel() === 'changes' ? 'var(--text-primary)' : 'var(--text-tertiary)',
+            'border-bottom':
+              activePanel() === 'changes'
+                ? '2px solid var(--accent-primary)'
+                : '2px solid transparent',
+          }}
         >
           📝 Changes
         </button>
         <button
-          onClick={() => { setActivePanel('plan'); setSearchQuery(''); }}
-          class={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
-            activePanel() === 'plan'
-              ? 'bg-gray-700 text-white border-b-2 border-primary-500'
-              : 'text-gray-400 hover:text-white'
-          }`}
+          onClick={() => {
+            setActivePanel('plan');
+            setSearchQuery('');
+          }}
+          class="flex-1 px-3 py-2 text-xs font-medium transition-colors"
+          style={{
+            'background-color': activePanel() === 'plan' ? 'var(--bg-tertiary)' : 'transparent',
+            color: activePanel() === 'plan' ? 'var(--text-primary)' : 'var(--text-tertiary)',
+            'border-bottom':
+              activePanel() === 'plan'
+                ? '2px solid var(--accent-primary)'
+                : '2px solid transparent',
+          }}
         >
           🎯 Plan
         </button>
@@ -121,9 +155,11 @@ export const DocumentationPanels: Component = () => {
           <div class="space-y-2">
             {/* Natural language explanation */}
             <div class="text-[11px] text-gray-400 italic mb-2 px-1">
-              Features are automatically extracted from your chat conversations. As you describe what you want to build, Yantra identifies and tracks features, updating their status as implementation progresses.
+              Features are automatically extracted from your chat conversations. As you describe
+              what you want to build, Yantra identifies and tracks features, updating their status
+              as implementation progresses.
             </div>
-            
+
             {/* Search bar */}
             <div class="mb-2">
               <input
@@ -146,15 +182,23 @@ export const DocumentationPanels: Component = () => {
                 {(feature) => (
                   <div class="bg-gray-700 rounded-lg p-2">
                     <div class="flex items-start justify-between mb-1">
-                      <h4 class="text-xs font-medium text-white flex-1 break-words pr-2">{feature.title}</h4>
-                      <span class={`text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 ${
-                        feature.status === 'completed' ? 'bg-green-600 text-white' :
-                        feature.status === 'in-progress' ? 'bg-yellow-600 text-white' :
-                        'bg-gray-600 text-gray-300'
-                      }`}>
-                        {feature.status === 'completed' ? '✅ Done' :
-                         feature.status === 'in-progress' ? '🔄 In Progress' :
-                         '⏳ Planned'}
+                      <h4 class="text-xs font-medium text-white flex-1 break-words pr-2">
+                        {feature.title}
+                      </h4>
+                      <span
+                        class={`text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 ${
+                          feature.status === 'completed'
+                            ? 'bg-green-600 text-white'
+                            : feature.status === 'in-progress'
+                              ? 'bg-yellow-600 text-white'
+                              : 'bg-gray-600 text-gray-300'
+                        }`}
+                      >
+                        {feature.status === 'completed'
+                          ? '✅ Done'
+                          : feature.status === 'in-progress'
+                            ? '🔄 In Progress'
+                            : '⏳ Planned'}
                       </span>
                     </div>
                     <p class="text-[11px] text-gray-300 mb-1">{feature.description}</p>
@@ -163,7 +207,9 @@ export const DocumentationPanels: Component = () => {
                 )}
               </For>
               <Show when={filteredFeatures().length === 0 && searchQuery()}>
-                <div class="text-xs text-gray-400 text-center py-4">No features found matching "{searchQuery()}"</div>
+                <div class="text-xs text-gray-400 text-center py-4">
+                  No features found matching "{searchQuery()}"
+                </div>
               </Show>
             </Show>
           </div>
@@ -174,9 +220,11 @@ export const DocumentationPanels: Component = () => {
           <div class="space-y-2">
             {/* Natural language explanation */}
             <div class="text-[11px] text-gray-400 italic mb-2 px-1">
-              Critical technical decisions are logged here with full context. Each decision includes why it was made, what alternatives were considered, and the rationale behind the choice.
+              Critical technical decisions are logged here with full context. Each decision includes
+              why it was made, what alternatives were considered, and the rationale behind the
+              choice.
             </div>
-            
+
             {/* Search bar */}
             <div class="mb-2">
               <input
@@ -192,7 +240,9 @@ export const DocumentationPanels: Component = () => {
               <For each={filteredDecisions()}>
                 {(decision) => (
                   <div class="bg-gray-700 rounded-lg p-2">
-                    <h4 class="text-xs font-medium text-white mb-1.5 break-words">{decision.title}</h4>
+                    <h4 class="text-xs font-medium text-white mb-1.5 break-words">
+                      {decision.title}
+                    </h4>
                     <div class="space-y-1.5 text-[11px]">
                       <div>
                         <span class="text-gray-400 font-medium">Context:</span>
@@ -214,7 +264,9 @@ export const DocumentationPanels: Component = () => {
                 )}
               </For>
               <Show when={filteredDecisions().length === 0 && searchQuery()}>
-                <div class="text-xs text-gray-400 text-center py-4">No decisions found matching "{searchQuery()}"</div>
+                <div class="text-xs text-gray-400 text-center py-4">
+                  No decisions found matching "{searchQuery()}"
+                </div>
               </Show>
             </Show>
           </div>
@@ -225,9 +277,10 @@ export const DocumentationPanels: Component = () => {
           <div class="space-y-2">
             {/* Natural language explanation */}
             <div class="text-[11px] text-gray-400 italic mb-2 px-1">
-              Complete audit trail of all code changes. Track what files were added, modified, or deleted, along with timestamps and descriptions.
+              Complete audit trail of all code changes. Track what files were added, modified, or
+              deleted, along with timestamps and descriptions.
             </div>
-            
+
             {/* Search bar */}
             <div class="mb-2">
               <input
@@ -244,12 +297,17 @@ export const DocumentationPanels: Component = () => {
                 {(change) => (
                   <div class="bg-gray-700 rounded-lg p-2">
                     <div class="flex items-start justify-between mb-1">
-                      <span class={`text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 ${
-                        change.changeType === 'file-added' ? 'bg-green-600 text-white' :
-                        change.changeType === 'file-modified' ? 'bg-blue-600 text-white' :
-                        change.changeType === 'file-deleted' ? 'bg-red-600 text-white' :
-                        'bg-purple-600 text-white'
-                      }`}>
+                      <span
+                        class={`text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 ${
+                          change.changeType === 'file-added'
+                            ? 'bg-green-600 text-white'
+                            : change.changeType === 'file-modified'
+                              ? 'bg-blue-600 text-white'
+                              : change.changeType === 'file-deleted'
+                                ? 'bg-red-600 text-white'
+                                : 'bg-purple-600 text-white'
+                        }`}
+                      >
                         {change.changeType}
                       </span>
                       <span class="text-[10px] text-gray-500">
@@ -266,7 +324,9 @@ export const DocumentationPanels: Component = () => {
                 )}
               </For>
               <Show when={filteredChanges().length === 0 && searchQuery()}>
-                <div class="text-xs text-gray-400 text-center py-4">No changes found matching "{searchQuery()}"</div>
+                <div class="text-xs text-gray-400 text-center py-4">
+                  No changes found matching "{searchQuery()}"
+                </div>
               </Show>
             </Show>
           </div>
@@ -277,9 +337,10 @@ export const DocumentationPanels: Component = () => {
           <div class="space-y-2">
             {/* Natural language explanation */}
             <div class="text-[11px] text-gray-400 italic mb-2 px-1">
-              Your project plan with tasks organized by milestones. Dependencies are tracked automatically, and tasks requiring your input are highlighted.
+              Your project plan with tasks organized by milestones. Dependencies are tracked
+              automatically, and tasks requiring your input are highlighted.
             </div>
-            
+
             {/* Search bar */}
             <div class="mb-2">
               <input
@@ -303,24 +364,32 @@ export const DocumentationPanels: Component = () => {
                       {(task) => (
                         <div class="bg-gray-700 rounded-lg p-2">
                           <div class="flex items-start justify-between mb-1">
-                            <h5 class="text-xs font-medium text-white flex-1 break-words pr-2">{task.title}</h5>
-                            <span class={`text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 ${
-                              task.status === 'completed' ? 'bg-green-600 text-white' :
-                              task.status === 'in-progress' ? 'bg-yellow-600 text-white' :
-                              'bg-gray-600 text-gray-300'
-                            }`}>
-                              {task.status === 'completed' ? '✅' :
-                               task.status === 'in-progress' ? '🔄' :
-                               '⏳'}
+                            <h5 class="text-xs font-medium text-white flex-1 break-words pr-2">
+                              {task.title}
+                            </h5>
+                            <span
+                              class={`text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 ${
+                                task.status === 'completed'
+                                  ? 'bg-green-600 text-white'
+                                  : task.status === 'in-progress'
+                                    ? 'bg-yellow-600 text-white'
+                                    : 'bg-gray-600 text-gray-300'
+                              }`}
+                            >
+                              {task.status === 'completed'
+                                ? '✅'
+                                : task.status === 'in-progress'
+                                  ? '🔄'
+                                  : '⏳'}
                             </span>
                           </div>
-                          
+
                           <Show when={task.dependencies.length > 0}>
                             <div class="text-[11px] text-gray-400 mb-1 truncate">
                               Depends on: {task.dependencies.join(', ')}
                             </div>
                           </Show>
-                          
+
                           <Show when={task.requiresUserAction}>
                             <button
                               onClick={() => handleUserActionClick(task)}
@@ -333,8 +402,15 @@ export const DocumentationPanels: Component = () => {
                         </div>
                       )}
                     </For>
-                    <Show when={filteredTasks().filter((t: Task) => t.milestone === 'MVP').length === 0 && searchQuery()}>
-                      <div class="text-xs text-gray-400 text-center py-4">No tasks found matching "{searchQuery()}"</div>
+                    <Show
+                      when={
+                        filteredTasks().filter((t: Task) => t.milestone === 'MVP').length === 0 &&
+                        searchQuery()
+                      }
+                    >
+                      <div class="text-xs text-gray-400 text-center py-4">
+                        No tasks found matching "{searchQuery()}"
+                      </div>
                     </Show>
                   </div>
                 </div>

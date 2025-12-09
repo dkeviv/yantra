@@ -26,9 +26,26 @@ mod terminal;
 mod architecture;
 mod browser;
 mod security;
+mod ydoc;
+mod ydoc_commands;
+mod code_intelligence;
 
 use terminal::TerminalManager;
 use architecture::commands as arch_commands;
+use ydoc_commands::YDocState;
+
+// State for managing file watcher
+struct FileWatcherState {
+    watcher: TokioMutex<Option<gnn::file_watcher::FileWatcher>>,
+}
+
+impl FileWatcherState {
+    fn new() -> Self {
+        Self {
+            watcher: TokioMutex::new(None),
+        }
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 struct FileEntry {
@@ -143,6 +160,58 @@ fn get_file_info(path: String) -> Result<FileEntry, String> {
     })
 }
 
+/// Copy file or directory
+#[tauri::command]
+fn file_copy(source: String, destination: String) -> Result<FileOperationResult, String> {
+    let source_path = PathBuf::from(&source);
+    let dest_path = PathBuf::from(&destination);
+    
+    if !source_path.exists() {
+        return Err(format!("Source path does not exist: {}", source));
+    }
+    
+    if source_path.is_file() {
+        // Copy single file
+        fs::copy(&source_path, &dest_path)
+            .map_err(|e| format!("Failed to copy file: {}", e))?;
+        Ok(FileOperationResult {
+            success: true,
+            message: format!("File copied from {} to {}", source, destination),
+        })
+    } else {
+        // Copy directory recursively
+        copy_dir_recursive(&source_path, &dest_path)?;
+        Ok(FileOperationResult {
+            success: true,
+            message: format!("Directory copied from {} to {}", source, destination),
+        })
+    }
+}
+
+/// Helper function to copy directory recursively
+fn copy_dir_recursive(source: &Path, destination: &Path) -> Result<(), String> {
+    if !destination.exists() {
+        fs::create_dir_all(destination)
+            .map_err(|e| format!("Failed to create destination directory: {}", e))?;
+    }
+    
+    for entry in fs::read_dir(source)
+        .map_err(|e| format!("Failed to read source directory: {}", e))? {
+        let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+        let source_path = entry.path();
+        let dest_path = destination.join(entry.file_name());
+        
+        if source_path.is_dir() {
+            copy_dir_recursive(&source_path, &dest_path)?;
+        } else {
+            fs::copy(&source_path, &dest_path)
+                .map_err(|e| format!("Failed to copy file: {}", e))?;
+        }
+    }
+    
+    Ok(())
+}
+
 // GNN commands
 
 /// Analyze a project and build the dependency graph
@@ -194,6 +263,64 @@ fn find_node(project_path: String, name: String, file_path: Option<String>) -> R
     
     let file_path_str = file_path.as_deref();
     Ok(engine.find_node(&name, file_path_str).cloned())
+}
+
+// Code Intelligence commands
+
+/// Parse AST from a file
+#[tauri::command]
+fn parse_ast(file_path: String) -> Result<code_intelligence::ASTNode, String> {
+    let mut parser = code_intelligence::ast_parser::ASTParser::new();
+    parser.parse_file(&file_path)
+}
+
+/// Parse AST from code snippet
+#[tauri::command]
+fn parse_ast_snippet(code: String, language: String) -> Result<code_intelligence::ASTNode, String> {
+    let mut parser = code_intelligence::ast_parser::ASTParser::new();
+    parser.parse_snippet(&code, &language)
+}
+
+/// Extract symbols from a file
+#[tauri::command]
+fn get_symbols(file_path: String) -> Result<Vec<code_intelligence::Symbol>, String> {
+    let mut extractor = code_intelligence::symbol_extractor::SymbolExtractor::new();
+    extractor.extract_symbols(&file_path)
+}
+
+/// Find all references to a symbol in a file
+#[tauri::command]
+fn get_references(file_path: String, symbol_name: String) -> Result<Vec<code_intelligence::Reference>, String> {
+    let mut finder = code_intelligence::reference_finder::ReferenceFinder::new();
+    finder.find_references_in_file(&file_path, &symbol_name)
+}
+
+/// Find all references to a symbol across project
+#[tauri::command]
+fn find_all_references(project_path: String, symbol_name: String) -> Result<Vec<code_intelligence::Reference>, String> {
+    let mut finder = code_intelligence::reference_finder::ReferenceFinder::new();
+    finder.find_references_in_project(&project_path, &symbol_name)
+}
+
+/// Find definition of a symbol in a file
+#[tauri::command]
+fn get_definition(file_path: String, symbol_name: String) -> Result<Option<code_intelligence::Reference>, String> {
+    let mut finder = code_intelligence::reference_finder::ReferenceFinder::new();
+    finder.find_definition_in_file(&file_path, &symbol_name)
+}
+
+/// Get scope information at a specific position
+#[tauri::command]
+fn get_scope(file_path: String, line: usize, column: usize) -> Result<code_intelligence::ScopeInfo, String> {
+    let mut analyzer = code_intelligence::scope_analyzer::ScopeAnalyzer::new();
+    analyzer.get_scope_at_position(&file_path, line, column)
+}
+
+/// Get all scopes in a file
+#[tauri::command]
+fn get_all_scopes(file_path: String) -> Result<Vec<code_intelligence::ScopeInfo>, String> {
+    let mut analyzer = code_intelligence::scope_analyzer::ScopeAnalyzer::new();
+    analyzer.get_all_scopes(&file_path)
 }
 
 /// Get code completions using Tree-sitter and GNN
@@ -1278,6 +1405,7 @@ async fn generate_code(
     intent: String,
     file_path: Option<String>,
     target_node: Option<String>,
+    gnn_state: State<'_, Arc<TokioMutex<gnn::GNNEngine>>>,
 ) -> Result<llm::CodeGenerationResponse, String> {
     use llm::context::assemble_context;
     use llm::CodeGenerationRequest;
@@ -1295,13 +1423,26 @@ async fn generate_code(
         return Err("No LLM API keys configured. Please configure at least one provider in settings.".to_string());
     }
     
-    // Initialize GNN engine for context
-    let data_dir = app_handle.path_resolver()
-        .app_data_dir()
-        .ok_or_else(|| "Failed to get data directory".to_string())?;
+    // INTEGRATION 3: Ensure graph is fresh before context assembly
+    {
+        let mut engine = gnn_state.lock().await;
+        engine.refresh_if_stale()
+            .map_err(|e| format!("Failed to refresh graph: {}", e))?;
+    }
     
-    let db_path = data_dir.join("gnn.db");
-    let engine = gnn::GNNEngine::new(&db_path)?;
+    // Get engine for context assembly (immutable borrow after refresh)
+    let engine = {
+        let locked = gnn_state.lock().await;
+        // We need to clone the engine or work with it directly
+        // For now, let's create a new instance from the same DB
+        // This is not ideal but works around borrow checker
+        let data_dir = app_handle.path_resolver()
+            .app_data_dir()
+            .ok_or_else(|| "Failed to get data directory".to_string())?;
+        
+        let db_path = data_dir.join("gnn.db");
+        gnn::GNNEngine::new(&db_path)?
+    };
     
     // Assemble context from GNN
     let context = assemble_context(
@@ -1335,7 +1476,15 @@ async fn generate_tests(
     language: String,
     file_path: String,
     coverage_target: Option<f32>,
+    gnn_state: State<'_, Arc<TokioMutex<gnn::GNNEngine>>>,
 ) -> Result<testing::TestGenerationResponse, String> {
+    // INTEGRATION 2: Ensure graph is fresh before test generation
+    {
+        let mut engine = gnn_state.lock().await;
+        engine.refresh_if_stale()
+            .map_err(|e| format!("Failed to refresh graph: {}", e))?;
+    }
+    
     // Get configuration
     let config_dir = app_handle.path_resolver()
         .app_config_dir()
@@ -1873,6 +2022,416 @@ fn get_task_stats(app_handle: tauri::AppHandle) -> Result<agent::TaskStats, Stri
     Ok(queue.get_stats())
 }
 
+// File Watcher Commands
+
+/// Start file system watcher for automatic graph synchronization
+#[tauri::command]
+async fn start_file_watcher(
+    workspace_path: String,
+    gnn_state: State<'_, Arc<TokioMutex<gnn::GNNEngine>>>,
+    watcher_state: State<'_, FileWatcherState>,
+) -> Result<String, String> {
+    // Check if watcher is already running
+    {
+        let current_watcher = watcher_state.watcher.lock().await;
+        if current_watcher.is_some() {
+            return Err("File watcher is already running. Stop it first.".to_string());
+        }
+    }
+    
+    let graph = Arc::clone(&gnn_state.inner());
+    let workspace = PathBuf::from(&workspace_path);
+    
+    let mut watcher = gnn::file_watcher::FileWatcher::new(workspace.clone(), graph)
+        .map_err(|e| format!("Failed to create file watcher: {}", e))?;
+    
+    watcher.start()
+        .map_err(|e| format!("Failed to start file watcher: {}", e))?;
+    
+    // Store the watcher in state so it stays alive
+    let mut state_watcher = watcher_state.watcher.lock().await;
+    *state_watcher = Some(watcher);
+    
+    Ok(format!("File watcher started for: {}", workspace_path))
+}
+
+/// Stop file system watcher
+#[tauri::command]
+async fn stop_file_watcher(
+    watcher_state: State<'_, FileWatcherState>,
+) -> Result<String, String> {
+    let mut state_watcher = watcher_state.watcher.lock().await;
+    
+    if let Some(mut watcher) = state_watcher.take() {
+        watcher.stop();
+        Ok("File watcher stopped successfully".to_string())
+    } else {
+        Err("File watcher is not running".to_string())
+    }
+}
+
+/// Get file watcher status
+#[tauri::command]
+async fn get_file_watcher_status(
+    watcher_state: State<'_, FileWatcherState>,
+) -> Result<bool, String> {
+    let state_watcher = watcher_state.watcher.lock().await;
+    Ok(state_watcher.is_some())
+}
+
+// Code Validation Commands
+
+/// Validate code file for syntax, type, and import errors
+#[tauri::command]
+async fn validate_code_file(
+    file_path: String,
+    workspace_path: String,
+    gnn_state: State<'_, Arc<TokioMutex<gnn::GNNEngine>>>,
+) -> Result<agent::CodeValidationResult, String> {
+    // INTEGRATION 2 & 3: Ensure graph is fresh before validation
+    {
+        let mut engine = gnn_state.lock().await;
+        engine.refresh_if_stale()
+            .map_err(|e| format!("Failed to refresh graph: {}", e))?;
+    }
+    
+    let validator = agent::CodeValidator::new(PathBuf::from(workspace_path));
+    validator.validate_file(&PathBuf::from(file_path))
+        .await
+        .map_err(|e| format!("Code validation failed: {}", e))
+}
+
+// Conversation Memory Commands
+
+/// Create a new conversation
+#[tauri::command]
+async fn create_conversation(
+    app_handle: tauri::AppHandle,
+    initial_title: Option<String>,
+) -> Result<agent::Conversation, String> {
+    let db_path = app_handle.path_resolver()
+        .app_data_dir()
+        .ok_or_else(|| "Failed to get app data directory".to_string())?
+        .join("conversations.db");
+    
+    let memory = agent::ConversationMemory::new(&db_path)
+        .map_err(|e| format!("Failed to initialize conversation memory: {}", e))?;
+    
+    memory.create_conversation(initial_title)
+        .map_err(|e| format!("Failed to create conversation: {}", e))
+}
+
+/// Save a message to a conversation
+#[tauri::command]
+async fn save_message(
+    app_handle: tauri::AppHandle,
+    conversation_id: String,
+    role: String,
+    content: String,
+    parent_message_id: Option<String>,
+    tokens: Option<usize>,
+    metadata: Option<String>,
+) -> Result<agent::Message, String> {
+    let db_path = app_handle.path_resolver()
+        .app_data_dir()
+        .ok_or_else(|| "Failed to get app data directory".to_string())?
+        .join("conversations.db");
+    
+    let memory = agent::ConversationMemory::new(&db_path)
+        .map_err(|e| format!("Failed to initialize conversation memory: {}", e))?;
+    
+    let message_role = match role.to_lowercase().as_str() {
+        "user" => agent::MessageRole::User,
+        "assistant" => agent::MessageRole::Assistant,
+        "system" => agent::MessageRole::System,
+        _ => return Err(format!("Invalid message role: {}", role)),
+    };
+    
+    let metadata_json = metadata.and_then(|m| serde_json::from_str(&m).ok());
+    
+    memory.save_message(
+        &conversation_id,
+        message_role,
+        content,
+        tokens.unwrap_or(0),
+        parent_message_id,
+        metadata_json,
+    ).map_err(|e| format!("Failed to save message: {}", e))
+}
+
+/// Load a conversation with its messages
+#[tauri::command]
+async fn load_conversation(
+    app_handle: tauri::AppHandle,
+    conversation_id: String,
+    limit: Option<usize>,
+    offset: Option<usize>,
+) -> Result<(agent::Conversation, Vec<agent::Message>), String> {
+    let db_path = app_handle.path_resolver()
+        .app_data_dir()
+        .ok_or_else(|| "Failed to get app data directory".to_string())?
+        .join("conversations.db");
+    
+    let memory = agent::ConversationMemory::new(&db_path)
+        .map_err(|e| format!("Failed to initialize conversation memory: {}", e))?;
+    
+    // load_conversation only takes conversation_id
+    let conversation = memory.load_conversation(&conversation_id)
+        .map_err(|e| format!("Failed to load conversation: {}", e))?;
+    
+    // Use load_recent_messages for paginated message retrieval
+    let messages = memory.load_recent_messages(&conversation_id, limit.unwrap_or(50))
+        .map_err(|e| format!("Failed to load messages: {}", e))?;
+    
+    Ok((conversation, messages))
+}
+
+/// Get the last active conversation
+#[tauri::command]
+async fn get_last_active_conversation(
+    app_handle: tauri::AppHandle,
+) -> Result<Option<agent::Conversation>, String> {
+    let db_path = app_handle.path_resolver()
+        .app_data_dir()
+        .ok_or_else(|| "Failed to get app data directory".to_string())?
+        .join("conversations.db");
+    
+    let memory = agent::ConversationMemory::new(&db_path)
+        .map_err(|e| format!("Failed to initialize conversation memory: {}", e))?;
+    
+    memory.get_last_active_conversation()
+        .map_err(|e| format!("Failed to get last active conversation: {}", e))
+}
+
+/// Load recent messages from a conversation
+#[tauri::command]
+async fn load_recent_messages(
+    app_handle: tauri::AppHandle,
+    conversation_id: String,
+    count: usize,
+) -> Result<Vec<agent::Message>, String> {
+    let db_path = app_handle.path_resolver()
+        .app_data_dir()
+        .ok_or_else(|| "Failed to get app data directory".to_string())?
+        .join("conversations.db");
+    
+    let memory = agent::ConversationMemory::new(&db_path)
+        .map_err(|e| format!("Failed to initialize conversation memory: {}", e))?;
+    
+    memory.load_recent_messages(&conversation_id, count)
+        .map_err(|e| format!("Failed to load recent messages: {}", e))
+}
+
+/// Search conversations by keyword, date range, tags, or session type
+#[tauri::command]
+async fn search_conversations(
+    app_handle: tauri::AppHandle,
+    keyword: Option<String>,
+    start_date: Option<String>,
+    end_date: Option<String>,
+    tags: Option<Vec<String>>,
+    session_type: Option<String>,
+) -> Result<Vec<agent::Conversation>, String> {
+    let db_path = app_handle.path_resolver()
+        .app_data_dir()
+        .ok_or_else(|| "Failed to get app data directory".to_string())?
+        .join("conversations.db");
+    
+    let memory = agent::ConversationMemory::new(&db_path)
+        .map_err(|e| format!("Failed to initialize conversation memory: {}", e))?;
+    
+    let session_type_enum = match session_type {
+        Some(st) => Some(match st.to_lowercase().as_str() {
+            "codegeneration" => agent::SessionType::CodeGeneration,
+            "testing" => agent::SessionType::Testing,
+            "deployment" => agent::SessionType::Deployment,
+            "documentation" => agent::SessionType::Documentation,
+            _ => return Err(format!("Invalid session type: {}", st)),
+        }),
+        None => None,
+    };
+    
+    // Parse date strings to DateTime<Utc>
+    let parsed_start_date = start_date
+        .and_then(|d| chrono::DateTime::parse_from_rfc3339(&d).ok())
+        .map(|d| d.with_timezone(&chrono::Utc));
+    
+    let parsed_end_date = end_date
+        .and_then(|d| chrono::DateTime::parse_from_rfc3339(&d).ok())
+        .map(|d| d.with_timezone(&chrono::Utc));
+    
+    let filter = agent::SearchFilter {
+        keyword,
+        start_date: parsed_start_date,
+        end_date: parsed_end_date,
+        tags: tags.unwrap_or_else(Vec::new),
+        session_type: session_type_enum,
+    };
+    
+    memory.search_conversations(&filter)
+        .map_err(|e| format!("Failed to search conversations: {}", e))
+}
+
+/// Link a conversation to a session (code generation, testing, etc.)
+#[tauri::command]
+async fn link_to_session(
+    app_handle: tauri::AppHandle,
+    conversation_id: String,
+    message_id: String,
+    session_type: String,
+    session_id: String,
+    metadata: Option<String>,
+) -> Result<agent::SessionLink, String> {
+    let db_path = app_handle.path_resolver()
+        .app_data_dir()
+        .ok_or_else(|| "Failed to get app data directory".to_string())?
+        .join("conversations.db");
+    
+    let memory = agent::ConversationMemory::new(&db_path)
+        .map_err(|e| format!("Failed to initialize conversation memory: {}", e))?;
+    
+    let session_type_enum = match session_type.to_lowercase().as_str() {
+        "codegeneration" => agent::SessionType::CodeGeneration,
+        "testing" => agent::SessionType::Testing,
+        "deployment" => agent::SessionType::Deployment,
+        "documentation" => agent::SessionType::Documentation,
+        _ => return Err(format!("Invalid session type: {}", session_type)),
+    };
+    
+    let metadata_json = metadata.and_then(|m| serde_json::from_str(&m).ok());
+    
+    memory.link_to_session(
+        &conversation_id,
+        &message_id,
+        session_type_enum,
+        &session_id,
+        metadata_json,
+    ).map_err(|e| format!("Failed to link to session: {}", e))
+}
+
+/// Get session links for a conversation
+#[tauri::command]
+async fn get_session_links(
+    app_handle: tauri::AppHandle,
+    conversation_id: String,
+) -> Result<Vec<agent::SessionLink>, String> {
+    let db_path = app_handle.path_resolver()
+        .app_data_dir()
+        .ok_or_else(|| "Failed to get app data directory".to_string())?
+        .join("conversations.db");
+    
+    let memory = agent::ConversationMemory::new(&db_path)
+        .map_err(|e| format!("Failed to initialize conversation memory: {}", e))?;
+    
+    memory.get_session_links(&conversation_id)
+        .map_err(|e| format!("Failed to get session links: {}", e))
+}
+
+/// Export conversation to file format (markdown, json, plaintext)
+#[tauri::command]
+async fn export_conversation(
+    app_handle: tauri::AppHandle,
+    conversation_id: String,
+    format: String,
+    output_path: String,
+) -> Result<String, String> {
+    let db_path = app_handle.path_resolver()
+        .app_data_dir()
+        .ok_or_else(|| "Failed to get app data directory".to_string())?
+        .join("conversations.db");
+    
+    let memory = agent::ConversationMemory::new(&db_path)
+        .map_err(|e| format!("Failed to initialize conversation memory: {}", e))?;
+    
+    let export_format = match format.to_lowercase().as_str() {
+        "markdown" | "md" => agent::ExportFormat::Markdown,
+        "json" => agent::ExportFormat::Json,
+        "plaintext" | "txt" => agent::ExportFormat::PlainText,
+        _ => return Err(format!("Invalid export format: {}", format)),
+    };
+    
+    let content = memory.export_conversation(&conversation_id, export_format)
+        .map_err(|e| format!("Failed to export conversation: {}", e))?;
+    
+    // Write content to output path
+    std::fs::write(&output_path, content)
+        .map_err(|e| format!("Failed to write export file: {}", e))?;
+    
+    Ok(output_path)
+}
+
+/// Build semantic search index for conversations
+#[tauri::command]
+async fn build_semantic_search_index(
+    app_handle: tauri::AppHandle,
+) -> Result<usize, String> {
+    let db_path = app_handle.path_resolver()
+        .app_data_dir()
+        .ok_or_else(|| "Failed to get app data directory".to_string())?
+        .join("conversations.db");
+    
+    let memory = agent::ConversationMemory::new(&db_path)
+        .map_err(|e| format!("Failed to initialize conversation memory: {}", e))?;
+    
+    let search = agent::ConversationSemanticSearch::new()
+        .map_err(|e| format!("Failed to create semantic search: {}", e))?;
+    
+    search.build_index(&memory)
+        .map_err(|e| format!("Failed to build index: {}", e))
+}
+
+/// Search conversations using semantic similarity
+#[tauri::command]
+async fn semantic_search_conversations(
+    app_handle: tauri::AppHandle,
+    query: String,
+    top_k: usize,
+) -> Result<Vec<(String, f32)>, String> {
+    let db_path = app_handle.path_resolver()
+        .app_data_dir()
+        .ok_or_else(|| "Failed to get app data directory".to_string())?
+        .join("conversations.db");
+    
+    let memory = agent::ConversationMemory::new(&db_path)
+        .map_err(|e| format!("Failed to initialize conversation memory: {}", e))?;
+    
+    let search = agent::ConversationSemanticSearch::new()
+        .map_err(|e| format!("Failed to create semantic search: {}", e))?;
+    
+    // Build index if not already built
+    let _ = search.build_index(&memory);
+    
+    search.search(&query, top_k)
+        .map_err(|e| format!("Semantic search failed: {}", e))
+}
+
+/// Hybrid search combining keyword and semantic matching
+#[tauri::command]
+async fn hybrid_search_conversations(
+    app_handle: tauri::AppHandle,
+    query: String,
+    keyword_weight: f32,
+    semantic_weight: f32,
+    top_k: usize,
+) -> Result<Vec<(String, f32)>, String> {
+    let db_path = app_handle.path_resolver()
+        .app_data_dir()
+        .ok_or_else(|| "Failed to get app data directory".to_string())?
+        .join("conversations.db");
+    
+    let memory = agent::ConversationMemory::new(&db_path)
+        .map_err(|e| format!("Failed to initialize conversation memory: {}", e))?;
+    
+    let search = agent::ConversationSemanticSearch::new()
+        .map_err(|e| format!("Failed to create semantic search: {}", e))?;
+    
+    // Build index if not already built
+    let _ = search.build_index(&memory);
+    
+    search.hybrid_search(&memory, &query, keyword_weight, semantic_weight, top_k)
+        .map_err(|e| format!("Hybrid search failed: {}", e))
+}
+
 fn main() {
     // Build minimal custom menu
     let file_menu = Submenu::new(
@@ -1959,6 +2518,9 @@ fn main() {
     };
     let llm = Arc::new(tokio::sync::Mutex::new(llm::orchestrator::LLMOrchestrator::new(llm_config)));
     
+    // Clone GNN for shared usage
+    let gnn_for_state = gnn.clone();
+    
     let arch_state = arch_commands::ArchitectureState::new(gnn, llm)
         .expect("Failed to initialize architecture state");
 
@@ -1970,12 +2532,21 @@ fn main() {
     // Initialize status emitter
     let status_emitter = Arc::new(tokio::sync::Mutex::new(agent::status_emitter::StatusEmitter::new()));
 
+    // Initialize YDoc state
+    let ydoc_state = YDocState::new();
+    
+    // Initialize file watcher state
+    let file_watcher_state = FileWatcherState::new();
+
     tauri::Builder::default()
         .menu(menu)
         .manage(terminal_manager)
+        .manage(gnn_for_state) // GNN state for auto-refresh integration
         .manage(arch_state)
         .manage(db_manager)
         .manage(status_emitter)
+        .manage(ydoc_state)
+        .manage(file_watcher_state)
         .on_menu_event(|event| {
             handle_menu_event(event);
         })
@@ -1991,6 +2562,14 @@ fn main() {
             get_dependencies,
             get_dependents,
             find_node,
+            parse_ast,
+            parse_ast_snippet,
+            get_symbols,
+            get_references,
+            find_all_references,
+            get_definition,
+            get_scope,
+            get_all_scopes,
             get_code_completions,
             get_llm_config,
             set_llm_provider,
@@ -2124,6 +2703,23 @@ fn main() {
             update_task_status,
             complete_task,
             get_task_stats,
+            // YDoc commands
+            ydoc_commands::ydoc_initialize,
+            ydoc_commands::ydoc_create_document,
+            ydoc_commands::ydoc_create_block,
+            ydoc_commands::ydoc_create_edge,
+            ydoc_commands::ydoc_load_document,
+            ydoc_commands::ydoc_list_documents,
+            ydoc_commands::ydoc_get_document_metadata,
+            ydoc_commands::ydoc_search_blocks,
+            ydoc_commands::ydoc_get_traceability_chain,
+            ydoc_commands::ydoc_get_coverage_stats,
+            ydoc_commands::ydoc_export_to_markdown,
+            ydoc_commands::ydoc_export_to_html,
+            ydoc_commands::ydoc_delete_document,
+            ydoc_commands::ydoc_archive_old_test_results,
+            ydoc_commands::ydoc_get_archived_test_results,
+            ydoc_commands::ydoc_cleanup_archive,
             // Architecture View commands
             arch_commands::generate_architecture_from_intent,
             arch_commands::generate_architecture_from_code,
@@ -2132,6 +2728,26 @@ fn main() {
             arch_commands::review_existing_code,
             arch_commands::analyze_requirement_impact,
             arch_commands::is_project_initialized,
+            // File watcher commands
+            start_file_watcher,
+            stop_file_watcher,
+            get_file_watcher_status,
+            // Code validation commands
+            validate_code_file,
+            // Conversation memory commands
+            create_conversation,
+            save_message,
+            load_conversation,
+            get_last_active_conversation,
+            load_recent_messages,
+            search_conversations,
+            link_to_session,
+            get_session_links,
+            export_conversation,
+            // Semantic search commands
+            build_semantic_search_index,
+            semantic_search_conversations,
+            hybrid_search_conversations,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

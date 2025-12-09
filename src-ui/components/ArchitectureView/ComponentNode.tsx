@@ -1,6 +1,6 @@
 /**
  * ComponentNode - Custom React Flow node for architecture components
- * 
+ *
  * Displays:
  * - Component name and type
  * - Status indicator with emoji (📋🔄✅⚠️)
@@ -26,7 +26,7 @@ export default function ComponentNode({ data }: NodeProps<ComponentNodeData>) {
 
   // Get status text from component_type
   const statusText = archAPI.getStatusText(component.component_type);
-  
+
   // Calculate status color
   const statusColor = archAPI.getStatusColor(component.component_type);
   const statusIndicator = archAPI.getStatusIndicator(component.component_type);
@@ -70,25 +70,20 @@ export default function ComponentNode({ data }: NodeProps<ComponentNodeData>) {
       onClick={handleClick}
       class={`
         min-w-[200px] max-w-[300px]
-        bg-gray-800 border-2 rounded-lg shadow-lg
+        border-2 rounded-lg shadow-lg
         transition-all duration-200
         hover:shadow-xl hover:scale-105
         cursor-pointer
-        ${isSelected ? 'border-blue-500 ring-2 ring-blue-500/50' : 'border-gray-700'}
       `}
-      style={{ 'border-color': isSelected ? '#3b82f6' : statusColor }}
+      style={{
+        'background-color': 'var(--bg-secondary)',
+        'border-color': isSelected ? 'var(--accent-primary)' : statusColor,
+        'box-shadow': isSelected ? '0 0 0 2px var(--accent-primary-transparent)' : undefined,
+      }}
     >
       {/* Connection handles */}
-      <Handle
-        type="target"
-        position={Position.Top}
-        className="w-3 h-3 !bg-blue-500"
-      />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        className="w-3 h-3 !bg-green-500"
-      />
+      <Handle type="target" position={Position.Top} className="w-3 h-3 !bg-blue-500" />
+      <Handle type="source" position={Position.Bottom} className="w-3 h-3 !bg-green-500" />
 
       {/* Header with status */}
       <div
@@ -135,9 +130,7 @@ export default function ComponentNode({ data }: NodeProps<ComponentNodeData>) {
 
         {/* Description */}
         <Show when={component.description}>
-          <div class="text-sm text-gray-300 mt-2 line-clamp-2">
-            {component.description}
-          </div>
+          <div class="text-sm text-gray-300 mt-2 line-clamp-2">{component.description}</div>
         </Show>
 
         {/* Files list (if any) */}
@@ -151,9 +144,7 @@ export default function ComponentNode({ data }: NodeProps<ComponentNodeData>) {
                 </li>
               ))}
               {component.files.length > 3 && (
-                <li class="text-gray-600">
-                  + {component.files.length - 3} more...
-                </li>
+                <li class="text-gray-600">+ {component.files.length - 3} more...</li>
               )}
             </ul>
           </div>

@@ -57,11 +57,16 @@ pub struct TraceabilityEdge {
 /// YDoc database with connection pooling + WAL mode
 pub struct YDocDatabase {
     pool: Pool<SqliteConnectionManager>,
+    pub db_path: String,
 }
 
 impl YDocDatabase {
     /// Create new YDoc database with WAL mode and connection pooling
     pub fn new(db_path: &Path) -> Result<Self, String> {
+        let db_path_str = db_path.to_str()
+            .ok_or_else(|| "Invalid database path".to_string())?
+            .to_string();
+        
         let manager = SqliteConnectionManager::file(db_path)
             .with_init(|conn| {
                 // Enable WAL mode for concurrent reads/writes
@@ -80,7 +85,10 @@ impl YDocDatabase {
             .build(manager)
             .map_err(|e| format!("Failed to create connection pool: {}", e))?;
 
-        let db = Self { pool };
+        let db = Self { 
+            pool,
+            db_path: db_path_str,
+        };
         db.create_tables()?;
         Ok(db)
     }
@@ -89,6 +97,11 @@ impl YDocDatabase {
     fn get_conn(&self) -> Result<PooledConnection<SqliteConnectionManager>, String> {
         self.pool.get()
             .map_err(|e| format!("Failed to get database connection: {}", e))
+    }
+
+    /// Get a direct rusqlite connection (for manager operations)
+    pub fn get_connection(&self) -> Result<Connection, rusqlite::Error> {
+        Connection::open(&self.db_path)
     }
 
     /// Create all YDoc tables with FTS5 for full-text search
@@ -454,6 +467,141 @@ impl YDocDatabase {
             params![doc.title, doc.modified_at, doc.version, doc.status, doc.id],
         ).map_err(|e| format!("Failed to update document: {}", e))?;
         Ok(())
+    }
+
+    /// Archive old test results (>30 days) with summary statistics
+    /// Returns number of archived documents
+    pub fn archive_old_test_results(&self, days_threshold: i64) -> Result<usize, String> {
+        let conn = self.get_conn()?;
+        
+        // Calculate cutoff date (30 days ago by default)
+        let cutoff_date = chrono::Utc::now() - chrono::Duration::days(days_threshold);
+        let cutoff_str = cutoff_date.to_rfc3339();
+        
+        // Find test result documents older than threshold
+        let mut stmt = conn.prepare(
+            "SELECT id, title, created_at, modified_at FROM documents 
+             WHERE doc_type = 'RESULT' AND modified_at < ?1"
+        ).map_err(|e| format!("Failed to prepare archive query: {}", e))?;
+        
+        let old_docs: Vec<(String, String, String, String)> = stmt.query_map([&cutoff_str], |row| {
+            Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
+        })
+        .map_err(|e| format!("Failed to query old test results: {}", e))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("Failed to collect old test results: {}", e))?;
+        
+        let count = old_docs.len();
+        
+        // For each old test document, create summary and archive
+        for (doc_id, title, created_at, modified_at) in old_docs {
+            // Get block count and test statistics
+            let mut block_stmt = conn.prepare(
+                "SELECT COUNT(*), 
+                        SUM(CASE WHEN content LIKE '%PASS%' OR content LIKE '%✓%' THEN 1 ELSE 0 END),
+                        SUM(CASE WHEN content LIKE '%FAIL%' OR content LIKE '%✗%' THEN 1 ELSE 0 END)
+                 FROM blocks WHERE doc_id = ?1"
+            ).map_err(|e| format!("Failed to prepare stats query: {}", e))?;
+            
+            let (total_blocks, passed, failed): (i64, i64, i64) = block_stmt.query_row([&doc_id], |row| {
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+            }).map_err(|e| format!("Failed to get block stats: {}", e))?;
+            
+            // Create archive summary as a new block in a special archive document
+            let summary = format!(
+                "ARCHIVED: {}\nOriginal ID: {}\nCreated: {}\nModified: {}\nBlocks: {}\nPassed: {}\nFailed: {}",
+                title, doc_id, created_at, modified_at, total_blocks, passed, failed
+            );
+            
+            // Get or create archive document
+            let archive_doc_id = "archive-test-results";
+            let archive_exists = conn.query_row(
+                "SELECT COUNT(*) FROM documents WHERE id = ?1",
+                [archive_doc_id],
+                |row| row.get::<_, i64>(0)
+            ).map_err(|e| format!("Failed to check archive document: {}", e))?;
+            
+            if archive_exists == 0 {
+                // Create archive document
+                let now = chrono::Utc::now().to_rfc3339();
+                conn.execute(
+                    "INSERT INTO documents (id, doc_type, title, file_path, created_by, created_at, modified_at, version, status)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                    params![
+                        archive_doc_id,
+                        "RESULT",
+                        "Archived Test Results",
+                        "testing/archive.ydoc",
+                        "system",
+                        now.clone(),
+                        now,
+                        "1.0.0",
+                        "archived"
+                    ],
+                ).map_err(|e| format!("Failed to create archive document: {}", e))?;
+            }
+            
+            // Add summary block to archive
+            let archive_block_id = format!("archive-{}", doc_id);
+            let now = chrono::Utc::now().to_rfc3339();
+            conn.execute(
+                "INSERT INTO blocks (id, doc_id, cell_index, cell_type, yantra_type, content, created_by, created_at, modified_by, modified_at, modifier_id, status)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+                params![
+                    archive_block_id,
+                    archive_doc_id,
+                    0,
+                    "markdown",
+                    "testresult",
+                    summary,
+                    "system",
+                    now.clone(),
+                    "system",
+                    now.clone(),
+                    "archiver",
+                    "archived"
+                ],
+            ).map_err(|e| format!("Failed to create archive block: {}", e))?;
+            
+            // Delete original document and its blocks
+            conn.execute("DELETE FROM documents WHERE id = ?1", [&doc_id])
+                .map_err(|e| format!("Failed to delete archived document: {}", e))?;
+        }
+        
+        Ok(count)
+    }
+
+    /// Get archived test results summary
+    pub fn get_archived_test_results(&self) -> Result<Vec<String>, String> {
+        let conn = self.get_conn()?;
+        
+        let mut stmt = conn.prepare(
+            "SELECT content FROM blocks WHERE doc_id = 'archive-test-results' ORDER BY created_at DESC"
+        ).map_err(|e| format!("Failed to prepare archive query: {}", e))?;
+        
+        let summaries = stmt.query_map([], |row| {
+            row.get::<_, String>(0)
+        })
+        .map_err(|e| format!("Failed to query archived results: {}", e))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("Failed to collect archived results: {}", e))?;
+        
+        Ok(summaries)
+    }
+
+    /// Clean up archive by removing entries older than specified days
+    pub fn cleanup_archive(&self, days_to_keep: i64) -> Result<usize, String> {
+        let conn = self.get_conn()?;
+        
+        let cutoff_date = chrono::Utc::now() - chrono::Duration::days(days_to_keep);
+        let cutoff_str = cutoff_date.to_rfc3339();
+        
+        let deleted = conn.execute(
+            "DELETE FROM blocks WHERE doc_id = 'archive-test-results' AND created_at < ?1",
+            [&cutoff_str],
+        ).map_err(|e| format!("Failed to cleanup archive: {}", e))?;
+        
+        Ok(deleted)
     }
 }
 

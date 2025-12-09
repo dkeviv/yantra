@@ -1,11 +1,13 @@
-\e\*\*# Yantra: Complete Technical Specification - Revised
+# Yantra: Complete Technical Specification - Revised
 
-| Version | Date     | Changes                                                                      |
-| ------- | -------- | ---------------------------------------------------------------------------- |
-| 1.0     | Nov 15th | Specifications_old -> Archived                                               |
-| 2.0     | Dec 6th  | Revised , cleaned up Specifications                                          |
-| 3.0     | Dec 7th  | Updated Agentic workflows w.r.t better Documentation creation and governance |
-| 4.0     | Dec 8th  | Updated Ydoc system and state machines to incorporate Ydoc system            |
+| Version | Date     | Changes                                                                              |
+| ------- | -------- | ------------------------------------------------------------------------------------ |
+| 1.0     | Nov 15th | Specifications_old -> Archived                                                       |
+| 2.0     | Dec 6th  | Revised , cleaned up Specifications                                                  |
+| 3.0     | Dec 7th  | Updated Agentic workflows w.r.t better Documentation creation and governance         |
+| 4.0     | Dec 8th  | Updated Ydoc system and state machines to incorporate Ydoc system                    |
+| 5.0     | Dec 9th  | Conversational Memory and advanced Ydoc components                                   |
+| 6.0     | Dec 9th  | Complete agentic primitives update - added all missing primitives from original spec |
 
 # 1. Executive Summary
 
@@ -200,11 +202,11 @@ LAYER 1: INFRASTRUCTURE
 
 1.4 YDoc Documentation System ├─ Block Database (canonical source) ├─ Graph-native (every block links to requirements, code, docs) ├─ Git-friendly (exportable, diffable, conflict-detectable) └─ Full traceability chain
 
-1.5 Unlimited Context Solution ├─ Token Counting: Track context limits per LLM ├─ Hierarchical Assembly: Priority-based context inclusion ├─ Compression: Summarize low-priority context ├─ Chunking: Split large operations across multiple calls └─ Adaptive Strategies: Dynamic context based on task type
+1.5 Unlimited Context Solution ├─ Token Counting: Track context limits per LLM ├─ Hierarchical Assembly: Priority-based context inclusion (code + conversation) ├─ Compression: Summarize low-priority context ├─ Chunking: Split large operations across multiple calls ├─ Adaptive Strategies: Dynamic context based on task type └─ Conversation Integration: Recent + relevant messages from chat history
 
 1.6 Yantra Codex (AI Code Generation) - GraphSAGE GNN (actual neural network) ├─ Neural Network: 1024-dim embeddings, 150M parameters ├─ Inference: 15ms (CPU), 5ms (GPU), ~600MB model ├─ Pattern Recognition: 978-dim problem features → code logic ├─ Confidence Scoring: 0.0-1.0 (triggers LLM review < 0.8) ├─ Continuous Learning: Learns from LLM corrections └─ Storage: SEPARATE database (.yantra/codex.db, ~500MB) [NOT in Tier 1]
 
-1.7 Storage Architecture (Multi-Tier + Separate Codex) ├─ Tier 0: Cloud Graph DB (PostgreSQL + Redis) - Team coordination [Phase 2B] ├─ Tier 1: petgraph (in-memory) + SQLite - Dependency graph + YDoc [MVP] ├─ Tier 2: sled - Agent coordination (local multi-agent) [Phase 2A] ├─ Tier 3: TOML files - Configuration [MVP] ├─ Tier 4: HashMap → moka - Context cache (ephemeral) [MVP] └─ Codex: SQLite + HNSW - Pattern database (SEPARATE, ~500MB) [MVP]
+1.7 Storage Architecture (Multi-Tier + Separate Codex) ├─ Tier 0: Cloud Graph DB (PostgreSQL + Redis) - Team coordination [Phase 2B] ├─ Tier 1: petgraph (in-memory) + SQLite - Dependency graph + YDoc + Conversation [MVP] ├─ Tier 2: sled - Agent coordination (local multi-agent) [Phase 2A] ├─ Tier 3: TOML files - Configuration [MVP] ├─ Tier 4: HashMap → moka - Context cache (ephemeral) [MVP] └─ Codex: SQLite + HNSW - Pattern database (SEPARATE, ~500MB) [MVP]
 
 1.8 Storage Optimization ├─ HNSW Semantic Indexing ├─ SQLite with WAL mode └─ Connection pooling
 
@@ -215,6 +217,8 @@ LAYER 1: INFRASTRUCTURE
 1.11 Architecture View System ├─ Agent-driven architecture generation ├─ Deviation detection ├─ Version history (Rule of 3) └─ Continuous alignment monitoring
 
 1.12 Documentation System ├─ Features tracking ├─ Decisions logging ├─ Changes tracking └─ Task management
+
+1.13 Conversation Memory System ├─ Persistent message storage (every user/agent message) ├─ Adaptive context retrieval (recent + relevant messages) ├─ Semantic search (keyword + meaning-based) ├─ Work session linking (chat → code → tests → deploy) └─ Storage: Tier 1 SQLite (.yantra/state.db)
 
 LAYER 2: AGENTIC FRAMEWORK
 
@@ -816,7 +820,7 @@ Document Organization Rules:
 | User Guide   | /guides/user     | SECTION-{name}.ydoc      | One file per section                      |
 | Project Plan | /plans           | SPRINT-{number}.ydoc     | One file per sprint                       |
 | Testing Plan | /testing         | PLAN-{name}.ydoc         | One file per feature                      |
-| Test Results | /testing/results | RESULT-{date}.ydoc       | One file per test                         |
+| Test Results | /testing/results | RESULT-{date}.ydoc       | One file per day                          |
 | Change Log   | /logs            | CHANGE-LOG.ydoc          | Single file, append blocks                |
 | Decision Log | /logs            | DECISION-LOG.ydoc        | Single file, append blocks                |
 
@@ -880,6 +884,1008 @@ YDoc Primitives for Agent (tools accessible by agent):
 | search_ydoc_blocks        | Search documentation blocks  | Builtin  |
 | export_ydoc_to_confluence | Push doc to Confluence       | MCP      |
 | import_from_confluence    | Pull doc from Confluence     | MCP      |
+
+##### 3.1.4.1 YDocBlockEditor - Advanced UI Component
+
+Purpose: Dedicated block-level editor for YDoc documents with real-time metadata management, traceability visualization, and collaborative editing features.
+
+Component Architecture:
+
+// src-ui/components/YDocBlockEditor.tsx
+
+interface YDocBlockEditorProps {
+
+blockId: string;
+
+documentId: string;
+
+initialContent: string;
+
+metadata: YDocBlockMetadata;
+
+onSave: (content: string, metadata: YDocBlockMetadata) => Promise`<void>`;
+
+onDelete: () => Promise`<void>`;
+
+onLink: (targetId: string, edgeType: string) => Promise`<void>`;
+
+}
+
+interface YDocBlockMetadata {
+
+yantra_id: string;
+
+yantra_type: 'requirement' | 'adr' | 'architecture' | 'spec' | 'plan' | 'test' | 'api' | 'user' | 'change' | 'decision';
+
+created_by: 'user' | 'agent';
+
+created_at: string;
+
+modified_by: 'user' | 'agent';
+
+modified_at: string;
+
+modifier_id: string;
+
+graph_edges: Array<{
+
+    target_id: string;
+
+    target_type: string;
+
+    edge_type: string;
+
+}>;
+
+tags: string[];
+
+status: 'draft' | 'review' | 'approved' | 'deprecated';
+
+}
+
+UI Layout:
+
+┌─────────────────────────────────────────────────────────────────┐
+
+│ YDoc Block Editor [×] │
+
+├─────────────────────────────────────────────────────────────────┤
+
+│ ┌─────────────────────────────────┬─────────────────────────────┐│
+
+│ │ Content Editor (Monaco) │ Metadata Panel ││
+
+│ │ │ ││
+
+│ │ # Authentication System │ 📋 Block Info ││
+
+│ │ │ ID: REQ-AUTH-001 ││
+
+│ │ ## Requirements │ Type: Requirement ││
+
+│ │ - User login via OAuth2 │ Status: ⚪ Draft ││
+
+│ │ - Token refresh mechanism │ Created: 2025-01-15 ││
+
+│ │ - Session timeout: 30 min │ Modified: 2025-01-20 ││
+
+│ │ │ ││
+
+│ │ [Markdown preview/live editing] │ 🏷️ Tags ││
+
+│ │ │ + auth ││
+
+│ │ │ + security ││
+
+│ │ │ + oauth ││
+
+│ │ │ ││
+
+│ │ │ 🔗 Links (3) ││
+
+│ │ │ → ARCH-001 (traces_to) ││
+
+│ │ │ → SPEC-003 (implements) ││
+
+│ │ │ → src/auth/oauth.rs ││
+
+│ │ │ (realized_in) ││
+
+│ │ │ ││
+
+│ │ │ [+ Add Link] ││
+
+│ │ │ ││
+
+│ │ │ 👥 Collaboration ││
+
+│ │ │ Currently editing: You ││
+
+│ │ │ Last edit: Agent (10m ago) ││
+
+│ └─────────────────────────────────┴─────────────────────────────┘│
+
+│ [Save] [Cancel] [View Graph] [Export] [History] │
+
+└─────────────────────────────────────────────────────────────────┘
+
+Features:
+
+1. Rich Text Editing:
+   - Monaco editor with markdown syntax highlighting
+   - Live markdown preview (side-by-side or toggle)
+   - Auto-save every 30 seconds (configurable)
+   - Undo/redo with full history (30 revisions)
+   - Keyboard shortcuts: Cmd/Ctrl+S (save), Cmd/Ctrl+B (bold), etc.
+
+2. Metadata Management Panel:
+
+- Block Info Section:
+- Display yantra_id (read-only, copy button)
+- Type selector dropdown (requirement, adr, spec, etc.)
+- Status indicator with color coding:
+- 🔵 Draft (blue)
+- 🟡 Review (yellow)
+- 🟢 Approved (green)
+- ⚫ Deprecated (gray)
+- Created/modified timestamps with "time ago" format
+- Tags Section:
+- Autocomplete tag input (suggests from existing tags)
+- Tag pills with remove button
+- Click tag to search for related blocks
+- Color-coded by category (auth=blue, security=red, etc.)
+- Links Section:
+- Tree view of linked items grouped by edge type
+- Click link to jump to target (block or code file)
+- Hover shows preview tooltip
+- Bidirectional links shown (→ outgoing, ← incoming)
+- [+ Add Link] button opens link picker dialog
+- Collaboration Section:
+- Show who's currently editing (real-time, Phase 2B)
+- Last edit by user/agent with timestamp
+- Conflict warning if document changed externally
+
+3. Link Picker Dialog:
+
+┌───────────────────────────────────────┐
+
+│ Add Link │
+
+├───────────────────────────────────────┤
+
+│ Link Type: [traces_to ▼] │
+
+│ │
+
+│ Target: │
+
+│ [ Search blocks/files... ] │
+
+│ │
+
+│ Results: │
+
+│ □ ARCH-001: Authentication Arch │
+
+│ □ SPEC-003: OAuth Implementation │
+
+│ □ src/auth/oauth.rs │
+
+│ □ tests/test_auth.py │
+
+│ │
+
+│ [Add Link] [Cancel] │
+
+└───────────────────────────────────────┘
+
+- Link type dropdown with options: traces_to, implements, realized_in, tested_by, documents, has_issue
+- Search input with fuzzy matching across all blocks and code files
+- Multi-select support (add multiple links at once)
+- Preview pane showing target content
+
+3. Version History:
+   - Click [History] button to open timeline view
+   - Shows last 30 revisions with diff visualization
+   - Filter by user/agent edits
+   - Restore previous version with confirmation
+   - Visual diff highlighting (red=removed, green=added)
+
+4. Export Options:
+
+- Export to Markdown (.md)
+- Export to Confluence (via MCP)
+- Export to PDF (with metadata as footer)
+- Copy as plain text
+- Copy block ID
+
+3. Keyboard Shortcuts:
+
+- Cmd/Ctrl+S: Save
+- Cmd/Ctrl+K: Quick search (blocks and files)
+- Cmd/Ctrl+L: Add link
+- Cmd/Ctrl+T: Add tag
+- Cmd/Ctrl+G: View in graph
+- Escape: Close editor
+
+Implementation Details:
+
+// Real-time auto-save
+
+const autoSave = useCallback(
+
+debounce(async (content: string) => {
+
+    try {
+
+    await invoke('save_ydoc_block', {
+
+    blockId,
+
+    content,
+
+    metadata: currentMetadata
+
+    });
+
+    setLastSaved(new Date());
+
+    } catch (err) {
+
+    console.error('Auto-save failed:', err);
+
+    showNotification('Auto-save failed', 'error');
+
+    }
+
+}, 30000), // 30 seconds
+
+[blockId, currentMetadata]
+
+);
+
+// Tag autocomplete
+
+const suggestTags = async (input: string) => {
+
+const allTags = await invoke<string[]>('get_all_tags');
+
+return allTags.filter(tag =>
+
+    tag.toLowerCase().includes(input.toLowerCase())
+
+);
+
+};
+
+// Link picker search
+
+const searchLinkTargets = async (query: string) => {
+
+const [blocks, files] = await Promise.all([
+
+    invoke<YDocBlock[]>('search_ydoc_blocks', { query }),
+
+    invoke<CodeFile[]>('search_code_files', { query })
+
+]);
+
+return [
+
+    ...blocks.map(b => ({
+
+    id: b.id,
+
+    type: 'block',
+
+    label:`${b.yantra_id}: ${b.title}`,
+
+    preview: b.content.substring(0, 100)
+
+    })),
+
+    ...files.map(f => ({
+
+    id: f.path,
+
+    type: 'file',
+
+    label: f.path,
+
+    preview: f.preview
+
+    }))
+
+];
+
+};
+
+Integration with Backend:
+
+// src/ydoc/block_editor.rs
+
+#[tauri::command]
+
+pub async fn save_ydoc_block(
+
+    block_id: &str,
+
+    content: &str,
+
+    metadata: YDocBlockMetadata,
+
+    state: State<'_, AppState>
+
+) -> Result<(), String> {
+
+    // 1. Update block in database
+
+    sqlx::query!(
+
+    "UPDATE blocks SET
+
+    content = ?,
+
+    modified_at = ?,
+
+    modified_by = ?,
+
+    status = ?
+
+    WHERE id = ?",
+
+    content,
+
+    metadata.modified_at,
+
+    metadata.modified_by,
+
+    metadata.status,
+
+    block_id
+
+    )
+
+    .execute(&state.db)
+
+    .await
+
+    .map_err(|e| e.to_string())?;
+
+    // 2. Update tags (delete old, insert new)
+
+    state.tag_service.update_tags(block_id, &metadata.tags).await?;
+
+    // 3. Update graph edges
+
+    state.graph_service.update_edges(block_id, &metadata.graph_edges).await?;
+
+    // 4. Trigger document export to .ydoc file
+
+    state.ydoc_exporter.export_document(block_id).await?;
+
+    // 5. Notify other editors (Phase 2B - multi-user)
+
+    state.collaboration_service
+
+    .broadcast_block_update(block_id, content)
+
+    .await?;
+
+    Ok(())
+
+}
+
+#[tauri::command]
+
+pub async fn get_all_tags(
+
+    state: State<'_, AppState>
+
+) -> Result<Vec`<String>`, String> {
+
+    sqlx::query_scalar!(
+
+    "SELECT DISTINCT tag FROM block_tags ORDER BY tag"
+
+    )
+
+    .fetch_all(&state.db)
+
+    .await
+
+    .map_err(|e| e.to_string())
+
+}
+
+Performance Targets:
+
+- Editor load time: <200ms (including content + metadata)
+- Auto-save: <100ms (non-blocking)
+- Tag autocomplete: <50ms
+- Link search: <100ms (FTS5 + fuzzy)
+- Version history load: <300ms (last 30 revisions)
+- Graph view transition: <500ms
+
+Accessibility:
+
+- Full keyboard navigation support
+- Screen reader compatible (ARIA labels)
+- High contrast mode support
+- Configurable font sizes
+
+##### 3.1.4.2 YDocTraceabilityGraph - Interactive Visualization
+
+Purpose: Interactive D3.js/vis.js graph visualization showing full traceability chains from requirements to code to tests, with real-time updates and impact analysis.
+
+Component Architecture:
+
+// src-ui/components/YDocTraceabilityGraph.tsx
+
+interface YDocTraceabilityGraphProps {
+
+projectId: string;
+
+focusNodeId?: string; // Optional: center on specific block/file
+
+filterBy?: {
+
+    types?: string[];     // Filter by node types
+
+    edgeTypes?: string[]; // Filter by edge types
+
+    status?: string[];    // Filter by block status
+
+};
+
+mode: 'full' | 'neighborhood' | 'path';
+
+onNodeClick: (nodeId: string, nodeType: string) => void;
+
+onEdgeClick: (edgeId: string) => void;
+
+}
+
+UI Layout:
+
+┌─────────────────────────────────────────────────────────────────┐
+
+│ YDoc Traceability Graph [Settings] [Export] │
+
+├─────────────────────────────────────────────────────────────────┤
+
+│ Filters: [Requirements ✓] [Architecture ✓] [Code ✓] [Tests ✓] │
+
+│ Edge Types: [traces_to ✓] [implements ✓] [realized_in ✓] │
+
+│ Layout: [Force ▼] | Search: [Find node... ] │
+
+├─────────────────────────────────────────────────────────────────┤
+
+│ │
+
+│ ┌─────────────┐ │
+
+│ │ REQ-001 │ │
+
+│ │ Auth Sys │ │
+
+│ └──────┬──────┘ │
+
+│ │ traces_to │
+
+│ ┌──────▼──────┐ │
+
+│ │ ARCH-001 │ │
+
+│ │ OAuth Arch │ │
+
+│ └──────┬──────┘ │
+
+│ │ implements │
+
+│ ┌────────────┼────────────┐ │
+
+│ │ │ │ │
+
+│ ┌──────▼──────┐ ┌──▼────────┐ ┌▼─────────┐ │
+
+│ │ SPEC-001 │ │ SPEC-002 │ │SPEC-003 │ │
+
+│ │ Login │ │ Token │ │Session │ │
+
+│ └──────┬──────┘ └──┬────────┘ └┬─────────┘ │
+
+│ │ realized_in│ │ │
+
+│ ┌──────▼──────┐ ┌──▼────────┐ ┌▼─────────┐ │
+
+│ │oauth.rs │ │ jwt.rs │ │session.rs│ │
+
+│ └──────┬──────┘ └──┬────────┘ └┬─────────┘ │
+
+│ │ tested_by │ │ │
+
+│ ┌──────▼───────────▼───────────▼─────────┐ │
+
+│ │ tests/test_auth.py │ │
+
+│ └────────────────────────────────────────┘ │
+
+│ │
+
+├─────────────────────────────────────────────────────────────────┤
+
+│ Selected: REQ-001 (Requirement) │
+
+│ Outgoing: 1 trace → ARCH-001 │
+
+│ Impact: 3 specs, 3 files, 1 test │
+
+│ Status: 🟢 Approved | Tags: auth, security │
+
+└─────────────────────────────────────────────────────────────────┘
+
+Graph Visualization Features:
+
+1. Node Types (with distinct visual styling):
+   - Requirements (🔵 Blue circles): REQ-001, REQ-002, etc.
+   - Architecture (🟣 Purple diamonds): ARCH-001, ARCH-002, etc.
+   - Specifications (🟢 Green hexagons): SPEC-001, SPEC-002, etc.
+   - Code Files (🟠 Orange rectangles): src/auth/oauth.rs, etc.
+   - Tests (🔴 Red triangles): tests/test_auth.py, etc.
+   - Documentation (⚪ White rounded-rect): API-001, USER-001, etc.
+
+2. Edge Types (with distinct colors and styles):
+
+- traces_to (solid blue line): Requirement → Architecture
+- implements (solid green line): Architecture → Specification
+- realized_in (solid orange line): Specification → Code
+- tested_by (dashed red line): Code → Tests
+- documents (dotted purple line): Code → API Documentation
+- has_issue (dashed red line, thicker): Code → Change Log
+
+1. Interaction Modes:
+
+   a) Full Graph Mode:
+
+- Display all nodes and edges in the project
+- Force-directed layout (D3.js force simulation)
+- Zoom and pan with mouse/trackpad
+- Minimap in corner for navigation
+
+1. b) Neighborhood Mode (focus on one node):
+
+- Show selected node + all directly connected nodes
+- Depth slider: 1 hop, 2 hops, 3 hops
+- Radial layout with selected node at center
+- Dimmed nodes for nodes beyond focus
+
+1. c) Path Mode (trace from A to B):
+
+- Select source node and target node
+- Highlight all possible paths between them
+- Show shortest path in bold
+- Dim unrelated nodes
+
+1. Interactive Features:
+
+   Node Interactions:
+
+- Click: Select node, show details in bottom panel
+- Double-click: Open block editor or code file
+- Right-click: Context menu
+- Open in editor
+- Show in file tree
+- Find related nodes
+- Export subgraph
+- Remove from graph (hide)
+- Hover: Show tooltip with node metadata
+- Drag: Reposition node (sticky in force layout)
+
+1. Edge Interactions:
+
+- Click: Highlight edge, show edge metadata in panel
+- Hover: Show edge type and creation date
+- Double-click: Navigate between source and target
+
+1. Selection:
+
+- Shift+click: Multi-select nodes
+- Cmd/Ctrl+click: Add to selection
+- Drag box: Select multiple nodes
+- [Select All] [Clear Selection] buttons
+
+1. Layout Algorithms:
+
+| Layout         | Best For     | Description                                |
+| -------------- | ------------ | ------------------------------------------ |
+| Force-Directed | General      | D3.js force simulation, organic layout     |
+| Hierarchical   | Traceability | Top-down: requirements → code → tests      |
+| Radial         | Neighborhood | Selected node at center, rings by distance |
+| Circular       | Cycles       | Detect and visualize circular dependencies |
+| Grid           | Large graphs | Organized grid for performance             |
+
+- Toggle between layouts with dropdown
+- Smooth animations between layout changes (500ms)
+- Save layout preference per project
+
+10. Filtering and Search:
+
+    Filter Panel:
+    - Node type checkboxes (Requirements, Architecture, Code, etc.)
+    - Edge type checkboxes (traces_to, implements, etc.)
+    - Status filter (Draft, Review, Approved, Deprecated)
+    - Tag filter (multi-select autocomplete)
+    - Date range filter (created/modified)
+
+11. Search:
+
+- Fuzzy search by node ID, title, or content
+- Regex support for advanced queries
+- Search results highlighted in graph
+- "Jump to" button for each result
+
+12. Impact Analysis (right-click on node):
+
+┌───────────────────────────────────┐
+
+│ Impact Analysis: REQ-001 │
+
+├───────────────────────────────────┤
+
+│ If this requirement changes: │
+
+│ │
+
+│ Affected Architecture: │
+
+│ • ARCH-001 (OAuth Architecture) │
+
+│ │
+
+│ Affected Specifications: │
+
+│ • SPEC-001 (Login Flow) │
+
+│ • SPEC-002 (Token Management) │
+
+│ • SPEC-003 (Session Handling) │
+
+│ │
+
+│ Affected Code: │
+
+│ • src/auth/oauth.rs │
+
+│ • src/auth/jwt.rs │
+
+│ • src/auth/session.rs │
+
+│ │
+
+│ Affected Tests: │
+
+│ • tests/test_auth.py (15 tests) │
+
+│ │
+
+│ Affected Documentation: │
+
+│ • API-001 (Authentication API) │
+
+│ │
+
+│ Total Impact: 8 artifacts │
+
+│ │
+
+│ [Highlight in Graph] [Export] │
+
+└───────────────────────────────────┘
+
+13. Real-Time Updates (Phase 2B):
+    - WebSocket connection to backend
+    - New nodes appear with animation
+    - Deleted nodes fade out
+    - Edge updates with pulse animation
+    - Multi-user cursors (show who's viewing)
+
+14. Export Options:
+
+- Export as PNG/SVG image (current view)
+- Export as JSON (graph data)
+- Export as DOT file (Graphviz)
+- Export subgraph (selected nodes only)
+- Export traceability report (PDF)
+
+13. Performance Optimizations:
+
+- Level of Detail (LOD): Hide labels when zoomed out
+- Culling: Don't render nodes outside viewport
+- Clustering: Group nodes when >500 nodes
+- WebGL Rendering: Use vis.js with WebGL for >1000 nodes
+- Lazy Loading: Load graph incrementally (viewport-first)
+
+Implementation Details:
+
+// Graph rendering with D3.js force simulation
+
+const GraphRenderer = ({ nodes, edges, onNodeClick }: GraphProps) => {
+
+const svgRef = useRef`<SVGSVGElement>`(null);
+
+const simulationRef = useRef<d3.Simulation<Node, Edge>>();
+
+useEffect(() => {
+
+    if (!svgRef.current) return;
+
+    const svg = d3.select(svgRef.current);
+
+    const width = svg.node()!.clientWidth;
+
+    const height = svg.node()!.clientHeight;
+
+    // Create force simulation
+
+    const simulation = d3.forceSimulation(nodes)
+
+    .force('link', d3.forceLink(edges)
+
+    .id((d: any) => d.id)
+
+    .distance(100))
+
+    .force('charge', d3.forceManyBody().strength(-300))
+
+    .force('center', d3.forceCenter(width / 2, height / 2))
+
+    .force('collision', d3.forceCollide().radius(50));
+
+    // Render edges
+
+    const link = svg.append('g')
+
+    .selectAll('line')
+
+    .data(edges)
+
+    .join('line')
+
+    .attr('stroke', d => getEdgeColor(d.type))
+
+    .attr('stroke-width', 2)
+
+    .attr('stroke-dasharray', d => d.type === 'tested_by' ? '5,5' : 'none');
+
+    // Render nodes
+
+    const node = svg.append('g')
+
+    .selectAll('g')
+
+    .data(nodes)
+
+    .join('g')
+
+    .call(drag(simulation))
+
+    .on('click', (event, d) => onNodeClick(d.id, d.type))
+
+    .on('dblclick', (event, d) => openNode(d));
+
+    // Node shapes based on type
+
+    node.each(function(d) {
+
+    const g = d3.select(this);
+
+    switch (d.type) {
+
+    case 'requirement':
+
+    g.append('circle')
+
+    .attr('r', 20)
+
+    .attr('fill', '#3B82F6'); // Blue
+
+    break;
+
+    case 'architecture':
+
+    g.append('polygon')
+
+    .attr('points', '0,-20 20,0 0,20 -20,0') // Diamond
+
+    .attr('fill', '#8B5CF6'); // Purple
+
+    break;
+
+    case 'spec':
+
+    g.append('polygon')
+
+    .attr('points', hexagonPoints(20))
+
+    .attr('fill', '#10B981'); // Green
+
+    break;
+
+    case 'code':
+
+    g.append('rect')
+
+    .attr('x', -25)
+
+    .attr('y', -15)
+
+    .attr('width', 50)
+
+    .attr('height', 30)
+
+    .attr('fill', '#F59E0B'); // Orange
+
+    break;
+
+    case 'test':
+
+    g.append('polygon')
+
+    .attr('points', '0,-20 20,20 -20,20') // Triangle
+
+    .attr('fill', '#EF4444'); // Red
+
+    break;
+
+    }
+
+    // Node label
+
+    g.append('text')
+
+    .attr('dy', 35)
+
+    .attr('text-anchor', 'middle')
+
+    .attr('font-size', 10)
+
+    .text(d.label);
+
+    });
+
+    // Update positions on simulation tick
+
+    simulation.on('tick', () => {
+
+    link
+
+    .attr('x1', (d: any) => d.source.x)
+
+    .attr('y1', (d: any) => d.source.y)
+
+    .attr('x2', (d: any) => d.target.x)
+
+    .attr('y2', (d: any) => d.target.y);
+
+    node.attr('transform', (d: any) =>`translate(${d.x},${d.y})`);
+
+    });
+
+    simulationRef.current = simulation;
+
+    return () => {
+
+    simulation.stop();
+
+    };
+
+}, [nodes, edges]);
+
+return <svg ref={svgRef} width="100%" height="100%" />;
+
+};
+
+// Backend integration
+
+#[tauri::command]
+
+pub async fn get_traceability_graph(
+
+    project_id: &str,
+
+    filter: Option`<GraphFilter>`,
+
+    state: State<'_, AppState>
+
+) -> Result<TraceabilityGraph, String> {
+
+    let mut query = String::from(
+
+    "SELECT DISTINCT
+
+    ge.source_id, ge.source_type,
+
+    ge.target_id, ge.target_type,
+
+    ge.edge_type, ge.metadata
+
+    FROM graph_edges ge"
+
+    );
+
+    // Apply filters
+
+    if let Some(f) = filter {
+
+    let mut conditions = vec![];
+
+    if !f.node_types.is_empty() {
+
+    conditions.push(format!(
+
+    "(source_type IN ({}) OR target_type IN ({}))",
+
+    f.node_types.iter().map(|t| format!("'{}'", t)).collect::<Vec_>().join(","),
+
+    f.node_types.iter().map(|t| format!("'{}'", t)).collect::<Vec_>().join(",")
+
+    ));
+
+    }
+
+    if !f.edge_types.is_empty() {
+
+    conditions.push(format!(
+
+    "edge_type IN ({})",
+
+    f.edge_types.iter().map(|t| format!("'{}'", t)).collect::<Vec_>().join(",")
+
+    ));
+
+    }
+
+    if !conditions.is_empty() {
+
+    query.push_str(&format!(" WHERE {}", conditions.join(" AND ")));
+
+    }
+
+    }
+
+    let edges: Vec`<GraphEdge>` = sqlx::query_as(&query)
+
+    .fetch_all(&state.db)
+
+    .await
+
+    .map_err(|e| e.to_string())?;
+
+    // Build graph structure
+
+    let graph = build_graph_from_edges(edges).await?;
+
+    Ok(graph)
+
+}
+
+Performance Targets:
+
+- Graph load time (500 nodes): <1s
+- Graph load time (5000 nodes): <5s (with clustering)
+- Node interaction latency: <50ms
+- Layout animation: 60 FPS
+- Search: <100ms
+- Impact analysis: <200ms
+
+Integration Points:
+
+- Block Editor: [View in Graph] button opens graph focused on current block
+- Code Editor: Right-click file → "View in Traceability Graph"
+- Chat: Ask agent "Show me the traceability for REQ-001" → opens graph
+- State Machines: View current state machine execution as graph overlay
 
 #### 3.1.5 Unlimited Context Solution
 
@@ -1027,6 +2033,175 @@ Performance Targets:
 | Context assembly       | <100ms     | <50ms        |
 | Compression            | <50ms      | <20ms        |
 | Total context pipeline | <500ms     | <200ms       |
+
+##### 3.1.5.7 Conversation Context Assembly
+
+Purpose: Extend hierarchical context assembly to include conversation history alongside code context, enabling the agent to maintain full conversation awareness without exceeding LLM token limits.
+
+Integration with Code Context:
+
+The conversation context is integrated as Level 0, taking priority before code context:
+
+Level 0 - Conversation Context (NEW - 20,000 tokens, 17% of budget):
+
+- Recent messages (10): Full text, always included for immediate context
+- Relevant old messages (5): Semantic search finds similar past discussions
+- Conversation summaries: Compressed overviews when token budget is tight
+
+Level 1-5 - Code Context (Existing - 80,000 tokens, 66% of budget):
+
+- Level 1: Direct dependencies (imports, function calls)
+- Level 2: Transitive dependencies (one level deep)
+- Level 3: Semantic similarity (similar code patterns)
+- Level 4: Project context (README, architecture docs)
+- Level 5: Yantra Codex patterns (learned best practices)
+
+Reserve Buffer (20,000 tokens, 17% of budget):
+
+- Safety margin for response generation
+- Prevents context window overflow
+
+Context Assembly Flow:
+
+1. Load Conversation Context (parallel with code context):
+   - Query conversation_messages table for recent 10 messages
+   - Generate embedding for current user message
+   - Perform HNSW semantic search for top-5 relevant old messages
+   - Filter out duplicates (already in recent)
+   - Count tokens for all conversation context
+
+2. Load Code Context (existing flow):
+
+- Query dependency graph for relevant files
+- Perform semantic search for similar code
+- Prioritize by relevance scores
+
+1. Verify Total Budget:
+
+- Conversation tokens + Code tokens < 120,000
+- If exceeded, apply compression strategy
+
+1. Compression Strategy (when needed):
+
+- Priority 1: Keep recent messages full text (never compress)
+- Priority 2: Keep Level 1 code (direct dependencies) full text
+- Priority 3: Compress relevant old messages into summary
+- Priority 4: Compress Level 2-3 code (transitive dependencies)
+- Generate LLM summary: "User previously discussed X, Y, Z"
+
+1. Assemble Final Context:
+
+- Conversation context first (most recent information)
+- Code context second (implementation details)
+- Return combined context to LLM
+
+Adaptive Strategies Extended:
+
+Context allocation adapts based on query type:
+
+| Task Type          | Conversation % | Code % | Use Case                                               |
+| ------------------ | -------------- | ------ | ------------------------------------------------------ |
+| New feature        | 25%            | 75%    | Need mostly code context, some conversation for intent |
+| Bug fix            | 15%            | 85%    | Primarily code-focused, minimal conversation needed    |
+| Refactoring        | 20%            | 80%    | Architecture-heavy, some conversation for rationale    |
+| Follow-up question | 40%            | 60%    | Needs recent conversation heavily, moderate code       |
+| Clarification      | 60%            | 40%    | Conversation-dominant, minimal code context            |
+| Code review        | 30%            | 70%    | Balance conversation feedback with code details        |
+
+Example: Follow-up Question Flow:
+
+User (3 days ago): "Create a login system with JWT tokens"
+
+→ Agent generates: src/auth/login.py, src/auth/jwt.py
+
+User (today): "Add password reset to that system"
+
+Context Assembly:
+
+1. Conversation (40% = 48K tokens):
+   - Recent: Last 10 messages (full text)
+   - Relevant: Semantic search finds "login system" from 3 days ago
+   - Summary: "User created JWT-based authentication system"
+
+2. Code (60% = 72K tokens):
+   - L1: Full code of src/auth/login.py, src/auth/jwt.py (20K tokens)
+   - L2: Email sender functions (10K tokens)
+   - L3: Database user models (15K tokens)
+   - L4: Architecture overview (10K tokens)
+   - L5: Pattern: Password reset workflows (17K tokens)
+
+→ Agent understands: "that system" = JWT login from 3 days ago
+
+→ Agent adds password reset to CORRECT files
+
+→ Natural conversation continuity maintained
+
+Performance Impact:
+
+Before (Code Only):
+
+- Context assembly: 500ms
+  - Dependency graph queries: 200ms
+  - Semantic search (code): 150ms
+  - File loading: 100ms
+  - Compression: 50ms
+
+After (Code + Conversation):
+
+- Context assembly: 650ms (+150ms, 30% increase)
+  - Dependency graph queries: 200ms (unchanged)
+  - Semantic search (code): 150ms (unchanged)
+  - Conversation retrieval: 150ms (NEW)
+    - Load recent (10 messages): 20ms
+    - Semantic search (top-5): 30ms
+    - Compression (if needed): 100ms
+
+  - File loading: 100ms (unchanged)
+  - Compression: 50ms (unchanged)
+
+Total overhead: +150ms (acceptable for much better UX)
+
+Token Budget Verification:
+
+The system continuously tracks token usage:
+
+Conversation Context:
+
+- Recent (10 messages × 150 tokens avg) = 1,500 tokens
+- Relevant (5 messages × 150 tokens avg) = 750 tokens
+- Summary (if needed) = 500 tokens
+- Total: ~2,750 tokens (well under 20K budget)
+
+Code Context:
+
+- Level 1 (direct deps): 20,000 tokens
+- Level 2 (transitive): 15,000 tokens
+- Level 3 (semantic): 15,000 tokens
+- Level 4 (project): 10,000 tokens
+- Level 5 (patterns): 15,000 tokens
+- Total: ~75,000 tokens (within 80K budget)
+
+Reserve: 20,000 tokens (response generation)
+
+Grand Total: 97,750 tokens < 120,000 limit ✅
+
+Integration with Existing Context Caching:
+
+The conversation context benefits from existing Tier 4 caching:
+
+1. Cache Key: hash(recent_messages + code_dependencies)
+2. TTL: 24 hours (resets when new message arrives)
+3. Invalidation: On new message, file change, or dependency update
+4. Performance: Cached retrieval <50ms vs fresh assembly 150ms
+
+Fallback Behavior:
+
+If conversation retrieval fails (database error, corruption):
+
+1. Log error to .yantra/logs/conversation_errors.log
+2. Continue with code-only context (graceful degradation)
+3. Display warning to user: "Conversation history temporarily unavailable"
+4. System remains functional (no breaking changes)
 
 #### 3.1.6 Yantra Codex
 
@@ -1320,14 +2495,14 @@ Codex: SQLite + HNSW → Pattern Database (SEPARATE from all tiers)
 
 Complete Storage Architecture Table:
 
-| Tier   | Technology         | Purpose                    | Size     | Access Speed | Persistence | MVP      |
-| ------ | ------------------ | -------------------------- | -------- | ------------ | ----------- | -------- |
-| Tier 0 | PostgreSQL + Redis | Team collaboration (cloud) | N/A      | <10ms        | Permanent   | Phase 2B |
-| Tier 1 | petgraph + SQLite  | Dependency graph + YDoc    | 50MB-5GB | <50ms        | Permanent   | ✅ MVP   |
-| Tier 2 | sled               | Agent coordination         | <100MB   | <5ms         | Temporary   | Phase 2A |
-| Tier 3 | TOML files         | Configuration              | <1MB     | <1ms         | Permanent   | ✅ MVP   |
-| Tier 4 | HashMap → moka     | Context cache              | <500MB   | <10ms        | Ephemeral   | ✅ MVP   |
-| Codex  | SQLite + HNSW      | Pattern database           | ~500MB   | <50ms        | Permanent   | ✅ MVP   |
+| Tier   | Technology         | Purpose                                | Size     | Access Speed | Persistence | MVP      |
+| ------ | ------------------ | -------------------------------------- | -------- | ------------ | ----------- | -------- |
+| Tier 0 | PostgreSQL + Redis | Team collaboration (cloud)             | N/A      | <10ms        | Permanent   | Phase 2B |
+| Tier 1 | petgraph + SQLite  | Dependency graph + YDoc + Conversation | 50MB-5GB | <50ms        | Permanent   | ✅ MVP   |
+| Tier 2 | sled               | Agent coordination                     | <100MB   | <5ms         | Temporary   | Phase 2A |
+| Tier 3 | TOML files         | Configuration                          | <1MB     | <1ms         | Permanent   | ✅ MVP   |
+| Tier 4 | HashMap → moka     | Context cache                          | <500MB   | <10ms        | Ephemeral   | ✅ MVP   |
+| Codex  | SQLite + HNSW      | Pattern database                       | ~500MB   | <50ms        | Permanent   | ✅ MVP   |
 
 ---
 
@@ -1355,6 +2530,7 @@ Tier 1 - petgraph (In-Memory) + SQLite (Persistence) (MVP - Core System):
 - YDoc blocks database (requirements, specs, architecture, documentation)
 - Metadata embeddings (384-dim vectors for semantic search, generated from metadata text NOT code)
 - Agent state persistence
+- Conversation history (all user/agent messages with 384-dim embeddings for semantic search)
 - Known issues database (error patterns + fixes)
 - Architecture snapshots
 
@@ -1370,6 +2546,10 @@ Tier 1 - petgraph (In-Memory) + SQLite (Persistence) (MVP - Core System):
 - .yantra/graph.db - Main database (dependency graph persistence)
 - .yantra/ydoc.db - YDoc blocks
 - .yantra/state.db - Agent state + conversation history
+- Tables: conversation_sessions, conversation_messages, conversation_summaries
+- Embeddings: 384-dim vectors for semantic search (fastembed, all-MiniLM-L6-v2)
+- Indexes: FTS5 for keyword search, HNSW for semantic search
+- Size: ~1KB per message, ~1MB per 1,000 messages
 
 1. Performance:
 
@@ -1575,18 +2755,20 @@ Backup Strategy:
 
 Storage Size Estimates (per 10k LOC project):
 
-| Data Type                     | Size   | Location            |
-| ----------------------------- | ------ | ------------------- |
-| Dependency Graph (in-memory)  | ~100MB | Tier 1 petgraph     |
-| Dependency Graph (persistent) | ~50MB  | Tier 1 SQLite       |
-| YDoc Blocks                   | ~20MB  | Tier 1 SQLite       |
-| Metadata Embeddings           | ~30MB  | Tier 1 SQLite       |
-| Pattern Database              | ~500MB | Codex SQLite        |
-| Agent State                   | ~5MB   | Tier 1 SQLite       |
-| Configuration                 | <1MB   | Tier 3 TOML         |
-| Context Cache                 | <500MB | Tier 4 HashMap/moka |
-| Total Persistent              | ~600MB | -                   |
-| Total with Cache              | ~1.1GB | -                   |
+| Data Type                     | Size                   | Location            |
+| ----------------------------- | ---------------------- | ------------------- |
+| Dependency Graph (in-memory)  | ~100MB                 | Tier 1 petgraph     |
+| Dependency Graph (persistent) | ~50MB                  | Tier 1 SQLite       |
+| YDoc Blocks                   | ~20MB                  | Tier 1 SQLite       |
+| Metadata Embeddings           | ~30MB                  | Tier 1 SQLite       |
+| Conversation History          | ~1MB per 1K messages   | Tier 1 SQLite       |
+| Conversation Embeddings       | ~150KB per 1K messages | Tier 1 SQLite       |
+| Pattern Database              | ~500MB                 | Codex SQLite        |
+| Agent State                   | ~5MB                   | Tier 1 SQLite       |
+| Configuration                 | <1MB                   | Tier 3 TOML         |
+| Context Cache                 | <500MB                 | Tier 4 HashMap/moka |
+| Total Persistent              | ~600MB                 | -                   |
+| Total with Cache              | ~1.1GB                 | -                   |
 
 Key Principles:
 
@@ -1905,8 +3087,6 @@ Monitoring:
 4. Monitor database size growth (detect anomalies)
 5. Alert if disk usage exceeds 80% (prevent full disk)
 
----
-
 # Yantra: Complete Technical Specification - Part 1B
 
 Sections 3.1.12 through 3.4.1
@@ -2058,6 +3238,969 @@ LEARN: Adapt from feedback by capturing success patterns, learning from failures
 
 This framework ensures autonomous agents operate systematically: gather information, make informed decisions, take action, and continuously improve.
 
+---
+
+#### 3.1.13 Conversation Memory System
+
+Purpose: Persistent storage and intelligent retrieval of all chat conversations to maintain full context across sessions and enable natural conversational continuity.
+
+Problem Addressed: Agent forgets what was discussed after some time, users must repeat context constantly, no conversation history across app restarts, breaks natural conversation flow.
+
+Solution Overview: Store every message permanently in Tier 1 SQLite, retrieve relevant context adaptively using hierarchical assembly + semantic search, stay within LLM token limits through smart compression.
+
+##### 3.1.13.1 Storage Architecture (Tier 1 - SQLite)
+
+Database Location: .yantra/state.db (Tier 1 - part of core persistence layer)
+
+New Tables:
+
+-- Conversation Sessions
+
+-- One session per project chat, persists across app restarts
+
+CREATE TABLE conversation_sessions (
+
+    session_id TEXT PRIMARY KEY,
+
+    project_id TEXT NOT NULL,
+
+    user_id TEXT NOT NULL DEFAULT 'default',
+
+    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    last_message_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    message_count INTEGER DEFAULT 0,
+
+    -- Auto-generated summary for quick context (updated every 10 messages)
+
+    summary TEXT,
+
+    summary_updated_at TIMESTAMP,
+
+    INDEX idx_project_session (project_id, started_at DESC),
+
+    INDEX idx_last_message (last_message_at DESC)
+
+);
+
+-- Conversation Messages
+
+-- Every message (user and agent) stored permanently
+
+CREATE TABLE conversation_messages (
+
+    message_id TEXT PRIMARY KEY,
+
+    session_id TEXT NOT NULL REFERENCES conversation_sessions(session_id) ON DELETE CASCADE,
+
+    role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+
+    content TEXT NOT NULL,
+
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    -- Context metadata
+
+    token_count INTEGER,
+
+    intent_summary TEXT,  -- What user wanted (for semantic search)
+
+    -- Link to work sessions (traceability)
+
+    linked_codegen_session TEXT REFERENCES codegen_sessions(session_id),
+
+    linked_test_session TEXT REFERENCES test_sessions(session_id),
+
+    linked_deployment_session TEXT REFERENCES deployment_sessions(session_id),
+
+    -- Semantic search (384-dim vector for HNSW indexing)
+
+    embedding BLOB,  -- Stored as binary, generated from content + intent_summary
+
+    INDEX idx_session_time (session_id, timestamp),
+
+    INDEX idx_role (role),
+
+    INDEX idx_timestamp (timestamp DESC),
+
+    FOREIGN KEY (linked_codegen_session) REFERENCES codegen_sessions(session_id) ON DELETE SET NULL,
+
+    FOREIGN KEY (linked_test_session) REFERENCES test_sessions(session_id) ON DELETE SET NULL,
+
+    FOREIGN KEY (linked_deployment_session) REFERENCES deployment_sessions(session_id) ON DELETE SET NULL
+
+);
+
+-- Conversation Summaries (Compressed Context)
+
+-- Generated every N messages for efficient context loading
+
+CREATE TABLE conversation_summaries (
+
+    summary_id TEXT PRIMARY KEY,
+
+    session_id TEXT NOT NULL REFERENCES conversation_sessions(session_id) ON DELETE CASCADE,
+
+    message_range_start TEXT NOT NULL,  -- First message_id in range
+
+    message_range_end TEXT NOT NULL,    -- Last message_id in range
+
+    summary_text TEXT NOT NULL,
+
+    token_count INTEGER,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    INDEX idx_session (session_id)
+
+);
+
+-- Full-text search index for keyword search
+
+CREATE VIRTUAL TABLE conversation_messages_fts USING fts5(
+
+    message_id UNINDEXED,
+
+    content,
+
+    intent_summary,
+
+    content='conversation_messages',
+
+    content_rowid='rowid'
+
+);
+
+-- Trigger to keep FTS index updated
+
+CREATE TRIGGER conversation_messages_ai AFTER INSERT ON conversation_messages BEGIN
+
+    INSERT INTO conversation_messages_fts(rowid, message_id, content, intent_summary)
+
+    VALUES (new.rowid, new.message_id, new.content, new.intent_summary);
+
+END;
+
+CREATE TRIGGER conversation_messages_ad AFTER DELETE ON conversation_messages BEGIN
+
+    DELETE FROM conversation_messages_fts WHERE rowid = old.rowid;
+
+END;
+
+CREATE TRIGGER conversation_messages_au AFTER UPDATE ON conversation_messages BEGIN
+
+    DELETE FROM conversation_messages_fts WHERE rowid = old.rowid;
+
+    INSERT INTO conversation_messages_fts(rowid, message_id, content, intent_summary)
+
+    VALUES (new.rowid, new.message_id, new.content, new.intent_summary);
+
+END;
+
+Storage Characteristics:
+
+- Persistence: Permanent (Tier 1 SQLite with WAL mode for concurrent reads/writes)
+- Size: ~1KB per message average, ~1MB per 1,000 messages, ~150KB per 1,000 embeddings
+- Cleanup: User-initiated only (no auto-deletion), messages remain until explicitly deleted
+- Backup: Included in standard project backup (.yantra/backups/), compressed with gzip
+- Privacy: 100% local storage, never sent to cloud except when calling LLM APIs (user-controlled)
+
+##### 3.1.13.2 Message Persistence Service
+
+Implementation: src/conversation/store.rs (NEW module)
+
+Core Operations:
+
+Save User Message:
+
+pub async fn save_user_message(
+
+    &self,
+
+    session_id: &str,
+
+    content: &str,
+
+    linked_session: Option<&str>
+
+) -> Result`<String>` {
+
+    // 1. Generate embedding for semantic search (384-dim vector)
+
+    let embedding = self.embedder.embed(content).await?;
+
+    // 2. Extract intent summary (first sentence or LLM-generated)
+
+    let intent = self.extract_intent(content).await?;
+
+    // 3. Count tokens using tiktoken
+
+    let token_count = self.token_counter.count(content)?;
+
+    // 4. Insert into database
+
+    let message_id = Uuid::new_v4().to_string();
+
+    sqlx::query!(
+
+    "INSERT INTO conversation_messages
+
+    (message_id, session_id, role, content, token_count, intent_summary,
+
+    embedding, linked_codegen_session)
+
+    VALUES (?, ?, 'user', ?, ?, ?, ?, ?)",
+
+    message_id, session_id, content, token_count, intent, embedding, linked_session
+
+    ).execute(&self.db).await?;
+
+    // 5. Update session last_message_at and increment count
+
+    self.update_session_timestamp(session_id).await?;
+
+    Ok(message_id)
+
+}
+
+1.
+2. Save Agent Message:
+   - Same flow as user message but with role='assistant'
+   - Embeddings generated for agent responses too (enables search)
+   - Links to same work session as user message
+
+Get Recent Messages:
+
+pub async fn get_recent_messages(
+
+    &self,
+
+    session_id: &str,
+
+    count: usize
+
+) -> Result<Vec`<Message>`> {
+
+    sqlx::query_as!(
+
+    Message,
+
+    "SELECT message_id, role, content, timestamp, token_count
+
+    FROM conversation_messages
+
+    WHERE session_id = ?
+
+    ORDER BY timestamp DESC
+
+    LIMIT ?",
+
+    session_id, count
+
+    ).fetch_all(&self.db).await
+
+}
+
+1. - Performance: <20ms for 10 messages
+
+- Always loaded for context (highest priority)
+
+Search Similar Messages (Semantic):
+
+pub async fn search_similar_messages(
+
+    &self,
+
+    session_id: &str,
+
+    query: &str,
+
+    top_k: usize
+
+) -> Result<Vec`<Message>`> {
+
+    // 1. Generate query embedding (384-dim)
+
+    let query_embedding = self.embedder.embed(query).await?;
+
+    // 2. Perform HNSW semantic search (cosine similarity)
+
+    let results = self.hnsw_search(session_id, &query_embedding, top_k).await?;
+
+    // 3. Filter by similarity threshold (0.75)
+
+    Ok(results.into_iter()
+
+    .filter(|(msg, score)| *score > 0.75)
+
+    .map(|(msg, _)| msg)
+
+    .collect())
+
+}
+
+1. - Performance: <30ms for top-5 results
+
+- Uses HNSW indexing (fast approximate nearest neighbor)
+
+Create or Get Session:
+
+pub async fn ensure_session(&self, project_id: &str) -> Result`<String>` {
+
+    // Check for existing active session
+
+    if let Some(session) = self.get_active_session(project_id).await? {
+
+    return Ok(session.session_id);
+
+    }
+
+    // Create new session
+
+    let session_id = Uuid::new_v4().to_string();
+
+    sqlx::query!(
+
+    "INSERT INTO conversation_sessions (session_id, project_id)
+
+    VALUES (?, ?)",
+
+    session_id, project_id
+
+    ).execute(&self.db).await?;
+
+    Ok(session_id)
+
+}
+
+Performance Targets:
+
+- Save message: <50ms (includes embedding generation)
+- Generate embedding: <10ms (fastembed-rs with ONNX runtime, quantized model)
+- Load recent (10): <20ms (indexed query)
+- Semantic search (top-5): <30ms (HNSW indexing)
+- Keyword search: <50ms (SQLite FTS5)
+
+  3.1.13.3 Adaptive Context Retrieval
+
+Purpose: Intelligently select which messages to include in LLM context without exceeding token limits.
+
+Implementation: src/conversation/context_retrieval.rs (NEW module)
+
+Strategy: Hierarchical assembly with compression (similar to code context assembly)
+
+Token Budget Allocation:
+
+Total LLM Context: 160,000 tokens (Claude Sonnet 4)
+
+Reserve for response: 40,000 tokens
+
+Available for context: 120,000 tokens
+
+Budget Breakdown:
+
+├─ Code Context (L1-L4): 80,000 tokens (66%) - Files, dependencies, patterns
+
+├─ Conversation Context: 20,000 tokens (17%) - Chat history
+
+│ ├─ Recent messages (10): ~8,000 tokens (always full text, highest priority)
+
+│ ├─ Relevant old messages (5): ~8,000 tokens (semantic search, full or compressed)
+
+│ └─ Summaries: ~4,000 tokens (if compression needed)
+
+└─ Reserve buffer: 20,000 tokens (17%) - Safety margin, prevents overflow
+
+Context Assembly Process:
+
+pub async fn assemble_conversation_context(
+
+    &self,
+
+    session_id: &str,
+
+    current_message: &str,
+
+    token_budget: usize  // e.g., 20,000 tokens for conversation
+
+) -> Result`<ConversationContext>` {
+
+    // ===== STEP 1: Always Include Recent Messages (Highest Priority) =====
+
+    let recent_messages = self.store
+
+    .get_recent_messages(session_id, 10)
+
+    .await?;
+
+    let recent_tokens: usize = recent_messages.iter()
+
+    .map(|m| m.token_count)
+
+    .sum();
+
+    let remaining_budget = token_budget.saturating_sub(recent_tokens);
+
+    // ===== STEP 2: Semantic Search for Relevant Old Messages =====
+
+    let relevant_messages = if remaining_budget > 1000 {
+
+    self.store
+
+    .search_similar_messages(session_id, current_message, 5)
+
+    .await?
+
+    .into_iter()
+
+    .filter(|msg| !recent_messages.contains(msg))  // Deduplicate
+
+    .collect()
+
+    } else {
+
+    vec![]
+
+    };
+
+    let relevant_tokens: usize = relevant_messages.iter()
+
+    .map(|m| m.token_count)
+
+    .sum();
+
+    // ===== STEP 3: Check if Compression Needed =====
+
+    let total_tokens = recent_tokens + relevant_tokens;
+
+    if total_tokens <= token_budget {
+
+    // Fits! Return as-is
+
+    return Ok(ConversationContext {
+
+    recent_messages,
+
+    relevant_messages,
+
+    summaries: vec![],
+
+    total_tokens,
+
+    });
+
+    }
+
+    // ===== STEP 4: Compress Older Messages if Needed =====
+
+    // Keep recent messages as-is (full text, never compress)
+
+    // Summarize relevant messages to save tokens
+
+    let compressed_relevant = self.compress_messages(&relevant_messages).await?;
+
+    Ok(ConversationContext {
+
+    recent_messages,  // Full text (highest priority)
+
+    relevant_messages: vec![],  // Replaced by summary
+
+    summaries: vec![compressed_relevant],  // Compressed version
+
+    total_tokens: recent_tokens + compressed_relevant.token_count,
+
+    })
+
+}
+
+async fn compress_messages(&self, messages: &[Message]) -> Result`<ConversationSummary>` {
+
+    // Use LLM to generate concise summary
+
+    let content: String = messages.iter()
+
+    .map(|m| format!("[{}]: {}", m.role, m.content))
+
+    .collect::<Vec_>()
+
+    .join("\n");
+
+    let prompt = format!(
+
+    "Summarize this conversation history concisely (max 200 words), \
+
+    focusing on key decisions, context, and user intent:\n\n{}",
+
+    content
+
+    );
+
+    let summary = self.llm.generate(&prompt).await?;
+
+    let token_count = self.token_counter.count(&summary)?;
+
+    Ok(ConversationSummary {
+
+    summary_text: summary,
+
+    token_count,
+
+    message_count: messages.len(),
+
+    })
+
+}
+
+Adaptive Behavior:
+
+- Short conversations (<20 messages): All messages loaded, no compression needed
+- Medium conversations (20-100 messages): Recent + Relevant, minimal compression
+- Long conversations (100+ messages): Recent + Summaries, aggressive compression
+- Very long (1000+ messages): Recent only + high-level summary of entire conversation
+
+##### 3.1.13.4 Conversation Search
+
+Purpose: Enable users and agents to search past conversations for specific information.
+
+Implementation: src/conversation/search.rs (NEW module)
+
+Search Modes:
+
+1. Keyword Search (Fast, exact matches):
+
+pub async fn keyword_search(
+
+    &self,
+
+    session_id: &str,
+
+    query: &str
+
+) -> Result<Vec`<SearchResult>`> {
+
+    sqlx::query_as!(
+
+    SearchResult,
+
+    "SELECT cm.message_id, cm.role, cm.content, cm.timestamp,
+
+    snippet(conversation_messages_fts, 1, '`<mark>`', '`</mark>`', '...', 64) as snippet
+
+    FROM conversation_messages cm
+
+    JOIN conversation_messages_fts fts ON cm.rowid = fts.rowid
+
+    WHERE cm.session_id = ? AND conversation_messages_fts MATCH ?
+
+    ORDER BY cm.timestamp DESC
+
+    LIMIT 50",
+
+    session_id, query
+
+    ).fetch_all(&self.db).await
+
+}
+
+- Uses SQLite FTS5 (full-text search)
+- Performance: <50ms
+- Returns: Messages with highlighted snippets
+
+2. Semantic Search (Smart, meaning-based):
+
+pub async fn semantic_search(
+
+    &self,
+
+    session_id: &str,
+
+    query: &str,
+
+    top_k: usize
+
+) -> Result<Vec`<SearchResult>`> {
+
+    // Generate query embedding
+
+    let query_embedding = self.embedder.embed(query).await?;
+
+    // HNSW search with cosine similarity
+
+    let results = self.hnsw_index
+
+    .search(&query_embedding, top_k)
+
+    .await?;
+
+    // Filter by similarity threshold (0.75)
+
+    // Return with relevance scores
+
+    Ok(results.into_iter()
+
+    .filter(|(_, score)| *score > 0.75)
+
+    .map(|(msg, score)| SearchResult {
+
+    message: msg,
+
+    relevance_score: score,
+
+    snippet: Self::extract_snippet(&msg.content, 64),
+
+    })
+
+    .collect())
+
+}
+
+- Uses 384-dim embeddings + HNSW indexing
+- Understands synonyms, related concepts
+- Performance: <30ms for top-5
+- Returns: Messages with relevance scores (0.0-1.0)
+
+3. Date Range Search:
+
+pub async fn search_by_date_range(
+
+    &self,
+
+    session_id: &str,
+
+    start_date: DateTime`<Utc>`,
+
+    end_date: DateTime`<Utc>`
+
+) -> Result<Vec`<Message>`> {
+
+    sqlx::query_as!(
+
+    Message,
+
+    "SELECT * FROM conversation_messages
+
+    WHERE session_id = ?
+
+    AND timestamp BETWEEN ? AND ?
+
+    ORDER BY timestamp ASC",
+
+    session_id, start_date, end_date
+
+    ).fetch_all(&self.db).await
+
+}
+
+- Performance: <20ms
+- Use case: "What did we discuss last week?"
+
+4. Linked Work Search (Find conversations about specific code):
+
+pub async fn search_by_linked_work(
+
+    &self,
+
+    work_session_id: &str
+
+) -> Result<Vec`<Message>`> {
+
+    sqlx::query_as!(
+
+    Message,
+
+    "SELECT * FROM conversation_messages
+
+    WHERE linked_codegen_session = ?
+
+    OR linked_test_session = ?
+
+    OR linked_deployment_session = ?
+
+    ORDER BY timestamp ASC",
+
+    work_session_id, work_session_id, work_session_id
+
+    ).fetch_all(&self.db).await
+
+}
+
+- Use case: "Show me the chat that led to this code generation"
+- Enables full traceability: UI → Chat → Code
+
+  3.1.13.5 Work Session Linking
+
+Purpose: Connect conversation messages to generated code/tests/deployments for full traceability.
+
+Linking Strategy:
+
+When agent starts work based on user message:
+
+pub async fn start_code_generation(
+
+    &self,
+
+    user_message_id: &str,
+
+    user_intent: &str
+
+) -> Result`<String>` {
+
+    // 1. Create codegen session
+
+    let codegen_session_id = self.state_machine
+
+    .create_codegen_session(user_intent)
+
+    .await?;
+
+    // 2. Link conversation message to codegen session
+
+    sqlx::query!(
+
+    "UPDATE conversation_messages
+
+    SET linked_codegen_session = ?
+
+    WHERE message_id = ?",
+
+    codegen_session_id, user_message_id
+
+    ).execute(&self.db).await?;
+
+    // 3. When agent responds, link response too
+
+    let agent_message_id = self.conversation_store
+
+    .save_agent_message(
+
+    session_id,
+
+    "I'll generate the code now...",
+
+    Some(&codegen_session_id)
+
+    ).await?;
+
+    Ok(codegen_session_id)
+
+}
+
+Traceability Chain:
+
+User Message (conversation_messages)
+
+└─ linked_codegen_session → CodeGen Session (codegen_sessions)
+
+├─ generated_code → Files (file_path references)
+
+├─ linked_test_session → Test Session (test_sessions)
+
+│ └─ test_results → Test outcomes
+
+└─ linked_deployment_session → Deployment (deployment_sessions)
+
+    └─ deployment_url → Live system
+
+Querying the Chain:
+
+pub async fn get_artifacts_from_message(
+
+    &self,
+
+    message_id: &str
+
+) -> Result`<ArtifactChain>` {
+
+    let message = self.get_message(message_id).await?;
+
+    let mut artifacts = ArtifactChain::new();
+
+    if let Some(codegen_id) = message.linked_codegen_session {
+
+    let codegen = self.get_codegen_session(&codegen_id).await?;
+
+    artifacts.code_files = codegen.generated_files;
+
+    if let Some(test_id) = codegen.linked_test_session {
+
+    let tests = self.get_test_session(&test_id).await?;
+
+    artifacts.test_results = tests.results;
+
+    }
+
+    if let Some(deploy_id) = codegen.linked_deployment_session {
+
+    let deployment = self.get_deployment_session(&deploy_id).await?;
+
+    artifacts.deployment_url = deployment.url;
+
+    }
+
+    }
+
+    Ok(artifacts)
+
+}
+
+UI Integration:
+
+- User clicks on message in chat
+- UI shows: "This message generated: src/auth/login.py, src/auth/jwt.py"
+- UI shows: "Tests: 15 passed, 0 failed"
+- UI shows: "Deployed to: https://myapp.railway.app"
+- Full audit trail from chat to production
+
+##### 3.1.13.6 Performance Targets
+
+| Operation               | Target | Implementation                            | Notes                         |
+| ----------------------- | ------ | ----------------------------------------- | ----------------------------- |
+| Save message            | <50ms  | Direct SQLite insert with WAL             | Includes embedding generation |
+| Generate embedding      | <10ms  | fastembed-rs (ONNX, quantized)            | all-MiniLM-L6-v2 model        |
+| Load recent (10)        | <20ms  | Indexed query on (session_id, timestamp)  | Always fast, hot path         |
+| Semantic search (top-5) | <30ms  | HNSW indexing (hnsw_rs crate)             | Approximate nearest neighbor  |
+| Keyword search          | <50ms  | SQLite FTS5 full-text search              | Exact matches                 |
+| Context assembly        | <200ms | Parallel: recent + semantic + compression | Total conversation + code     |
+| User search UI          | <100ms | Cached results, lazy load messages        | Instant feel                  |
+| Date range query        | <20ms  | Indexed query on timestamp                | Fast range scan               |
+| Linked work query       | <20ms  | Foreign key indexed query                 | Fast join                     |
+
+Scalability:
+
+- 1,000 messages: All operations <100ms
+- 10,000 messages: All operations <300ms
+- 100,000 messages: All operations <1s (may need archiving strategy)
+
+Storage Growth:
+
+- Average message: 1KB (text + metadata)
+- Average embedding: 150 bytes (384 floats \* 4 bytes, compressed)
+- 1,000 messages = ~1.15MB
+- 10,000 messages = ~11.5MB
+- 100,000 messages = ~115MB (includes all embeddings)
+
+##### 3.1.13.7 Privacy & Security
+
+Data Location:
+
+- ✅ 100% local storage (Tier 1 SQLite: .yantra/state.db)
+- ✅ Never sent to cloud/servers (except when calling LLM APIs, user-controlled)
+- ✅ Included in encrypted backups (.yantra/backups/, gzip compressed)
+
+Sensitive Data Handling:
+
+- ❌ No API keys/passwords stored in conversation (caught by secrets scanner)
+- ❌ No PII in embeddings (only semantic content hashes)
+- ✅ User can delete individual messages or entire sessions
+- ✅ Messages cleared when project deleted
+- ✅ No cross-project data leakage (scoped by project_id)
+
+LLM Privacy: When conversation context sent to LLM APIs:
+
+- User-initiated (agent generation requests only)
+- Encrypted in transit (HTTPS/TLS)
+- Not stored on LLM provider side (ephemeral, per request)
+- User controls which LLM provider (OpenRouter, direct APIs)
+- Desktop-first means code never leaves machine
+
+Access Control:
+
+- Single-user desktop app (no multi-user concerns in MVP)
+- File system permissions protect .yantra/ directory
+- SQLite database file readable only by user account
+- Phase 2B (Cloud): Multi-user access controls, team permissions
+
+Audit Trail:
+
+- All conversation operations logged to .yantra/logs/conversation.log
+- Includes: message saves, searches, deletions, session creation
+- Retention: 30 days, auto-rotate
+- Format: JSON lines for easy parsing
+
+Data Retention:
+
+- Conversations kept indefinitely by default
+- User can manually delete old conversations
+- Backup retention: 30 days (configurable)
+- No automatic expiration (user controls data lifecycle)
+
+Compliance (Enterprise, Phase 2B):
+
+- GDPR: User can export/delete all personal data
+- CCPA: Data transparency, deletion rights
+- SOC 2: Audit logs, access controls (future)
+
+##### 3.1.13.8 Migration Path (For Existing Users)
+
+For projects created before this feature:
+
+// Run once on app startup after upgrade
+
+pub async fn migrate_existing_projects(&self) -> Result<()> {
+
+    for project in self.get_all_projects().await? {
+
+    // Check if conversation session already exists
+
+    if self.conversation_store.has_session(&project.id).await? {
+
+    continue; // Already migrated
+
+    }
+
+    // Create conversation session for project
+
+    let session_id = self.conversation_store
+
+    .ensure_session(&project.id)
+
+    .await?;
+
+    // Backfill from state machine sessions (best effort)
+
+    for codegen_session in self.get_codegen_sessions(&project.id).await? {
+
+    // Create synthetic conversation message from user_intent
+
+    if let Some(intent) = codegen_session.user_intent {
+
+    let message_id = self.conversation_store
+
+    .save_user_message(&session_id, &intent, Some(&codegen_session.id))
+
+    .await?;
+
+    // Generate embedding for searchability
+
+    self.backfill_embedding(&message_id).await?;
+
+    }
+
+    }
+
+    log::info!("Migrated project {} to conversation memory", project.id);
+
+    }
+
+    Ok(())
+
+}
+
+User Communication:
+
+- Show one-time notification: "We've added conversation memory! Your future chats will be fully preserved."
+- Explain: "Previous conversations partially restored from work history where available."
+- Provide: "You can now search your chat history using the search bar."
+
+Backward Compatibility:
+
+- Old projects work without migration (sessions created on-demand)
+- No breaking changes to existing functionality
+- Graceful degradation if database schema missing
+
+---
+
 ### 3.3 AGENTIC PRIMITIVES/TOOLS
 
 Yantra Unified Tool Interface (UTI) abstracts underlying protocol differences (LSP, MCP, DAP, built-in) and presents single consistent API for AI agent to discover, invoke, and manage tools.
@@ -2096,14 +4239,24 @@ Builtin Adapter: Direct Rust implementations for core tools (dependency graph qu
 
 Tools for gathering information about project state, codebase, dependencies, and environment.
 
-File Operations:
+File System Operations:
 
-| Tool          | Purpose                                   | Protocol |
-| ------------- | ----------------------------------------- | -------- |
-| read_file     | Read file contents                        | Builtin  |
-| list_files    | List files in directory                   | Builtin  |
-| search_files  | Search for files by name/pattern          | Builtin  |
-| file_metadata | Get file size, modified time, permissions | Builtin  |
+| Tool             | Purpose                                     | Protocol |
+| ---------------- | ------------------------------------------- | -------- |
+| file_read        | Read file contents with encoding detection  | Builtin  |
+| file_write       | Create/overwrite files                      | Builtin  |
+| file_edit        | Surgical edits (line range, search-replace) | Builtin  |
+| file_delete      | Remove files safely                         | Builtin  |
+| file_move        | Rename/move files with dependency updates   | Builtin  |
+| file_copy        | Duplicate files                             | Builtin  |
+| directory_create | Create directories recursively              | Builtin  |
+| directory_list   | List contents with filters                  | Builtin  |
+| directory_tree   | Get full project structure                  | Builtin  |
+| file_search      | Find files by name/pattern/glob             | Builtin  |
+| file_metadata    | Get file size, modified time, permissions   | Builtin  |
+| file_watch       | Monitor for changes (reactive agents)       | Builtin  |
+| docx_read        | Read Word documents                         | Builtin  |
+| pdf_read         | Extract text from PDFs                      | Builtin  |
 
 Dependency Analysis:
 
@@ -2119,13 +4272,20 @@ Dependency Analysis:
 
 Code Intelligence:
 
-| Tool             | Purpose                            | Protocol |
-| ---------------- | ---------------------------------- | -------- |
-| parse_file       | Parse file into AST                | Builtin  |
-| find_symbols     | Find all functions/classes in file | LSP      |
-| go_to_definition | Jump to symbol definition          | LSP      |
-| find_references  | Find all uses of symbol            | LSP      |
-| hover_info       | Get documentation for symbol       | LSP      |
+| Tool               | Purpose                                        | Protocol          |
+| ------------------ | ---------------------------------------------- | ----------------- |
+| parse_ast          | Get AST for file/snippet                       | Builtin           |
+| get_symbols        | Extract functions, classes, variables, imports | Builtin           |
+| get_references     | Find all usages of a symbol                    | MCP/Builtin       |
+| get_definition     | Jump to definition                             | MCP/Builtin       |
+| get_scope          | Get scope context for a position               | Builtin           |
+| get_diagnostics    | Syntax errors, warnings                        | Builtin           |
+| semantic_search    | Search code by meaning                         | Builtin           |
+| get_call_hierarchy | Incoming/outgoing calls                        | Builtin           |
+| get_type_hierarchy | Class inheritance chains                       | MCP/Builtin       |
+| hover_info         | Get documentation for symbol                   | LSP (Editor-only) |
+
+Note: Tree-sitter is primary for code intelligence (Builtin). MCP fallback via Pylance/rust-analyzer for advanced features. LSP is for editor UI only, not exposed to agent.
 
 Test & Validation:
 
@@ -2144,6 +4304,37 @@ Environment Sensing:
 | get_git_status         | Get Git repository status       | MCP      |
 | env_get                | Get environment variable        | Builtin  |
 | env_set                | Set environment variable        | Builtin  |
+| get_cpu_usage          | CPU metrics for optimization    | Builtin  |
+| get_memory_usage       | Memory stats                    | Builtin  |
+| get_disk_usage         | Disk space monitoring           | Builtin  |
+| should_throttle        | Adaptive resource management    | Builtin  |
+
+Database Operations:
+
+| Tool       | Purpose                                  | Protocol |
+| ---------- | ---------------------------------------- | -------- |
+| db_connect | Establish connection with pooling        | MCP      |
+| db_query   | Execute SELECT (read-only, validated)    | MCP      |
+| db_execute | Execute INSERT/UPDATE/DELETE (validated) | MCP      |
+| db_schema  | Get tables, columns, types, constraints  | MCP      |
+| db_explain | Query execution plan                     | MCP      |
+| db_migrate | Run migrations with rollback             | MCP      |
+| db_seed    | Insert test data                         | MCP      |
+
+Note: MCP primary via DB-specific MCP servers (Postgres, MySQL, MongoDB). Builtin fallback for SQLite.
+
+API Monitoring:
+
+| Tool                  | Purpose                       | Protocol |
+| --------------------- | ----------------------------- | -------- |
+| api_import_spec       | Import OpenAPI/Swagger specs  | MCP      |
+| api_validate_contract | Detect breaking API changes   | MCP      |
+| api_health_check      | Test endpoint availability    | Builtin  |
+| api_rate_limit_check  | Track and predict rate limits | Builtin  |
+| api_mock              | Create mock server from spec  | MCP      |
+| api_test              | Test endpoint with assertions | MCP      |
+
+Note: MCP primary for external APIs. Builtin HTTP client for health checks.
 
 Browser Sensing:
 
@@ -2212,12 +4403,15 @@ Tools for taking concrete actions: generating code, modifying files, executing t
 
 Code Generation:
 
-| Tool                   | Purpose                     | Protocol |
-| ---------------------- | --------------------------- | -------- |
-| generate_code          | Generate new code from spec | Builtin  |
-| generate_tests         | Generate tests for code     | Builtin  |
-| generate_documentation | Generate API documentation  | Builtin  |
-| refactor_code          | Refactor existing code      | Builtin  |
+| Tool                   | Purpose                       | Protocol |
+| ---------------------- | ----------------------------- | -------- |
+| generate_code          | Generate new code from spec   | Builtin  |
+| generate_tests         | Generate tests for code       | Builtin  |
+| generate_documentation | Generate API documentation    | Builtin  |
+| generate_boilerplate   | Generate project scaffolding  | Builtin  |
+| refactor_code          | Refactor existing code        | Builtin  |
+| refactor_extract       | Extract function/class/module | Builtin  |
+| refactor_inline        | Inline function/variable      | Builtin  |
 
 File Manipulation:
 
@@ -2230,12 +4424,45 @@ File Manipulation:
 
 Test Execution:
 
-| Tool             | Purpose                          | Protocol |
-| ---------------- | -------------------------------- | -------- |
-| run_tests        | Execute test suite               | Builtin  |
-| run_single_test  | Execute specific test            | Builtin  |
-| run_coverage     | Execute tests with coverage      | Builtin  |
-| run_stress_tests | Execute concurrency stress tests | Builtin  |
+| Tool              | Purpose                          | Protocol |
+| ----------------- | -------------------------------- | -------- |
+| run_tests         | Execute test suite               | Builtin  |
+| run_single_test   | Execute specific test            | Builtin  |
+| run_coverage      | Execute tests with coverage      | Builtin  |
+| run_stress_tests  | Execute concurrency stress tests | Builtin  |
+| test_run_affected | Run tests for changed code only  | Builtin  |
+| test_generate     | Auto-generate test cases         | Builtin  |
+| e2e_run           | Browser/integration tests        | Builtin  |
+
+Note: Testing is core to "never breaks" guarantee. Builtin exclusive with GNN integration for affected test detection.
+
+Build & Compilation:
+
+| Tool              | Purpose                     | Protocol |
+| ----------------- | --------------------------- | -------- |
+| build_project     | Full build                  | Builtin  |
+| build_incremental | Changed files only          | Builtin  |
+| build_check       | Type-check without emitting | Builtin  |
+| build_clean       | Remove artifacts            | Builtin  |
+| build_watch       | Continuous build on changes | Builtin  |
+| build_optimize    | Production optimized build  | Builtin  |
+| build_profile     | Build with profiling        | Builtin  |
+
+Note: Build orchestration via terminal commands coordinated with dependency graph, testing, and deployment.
+
+Package Management:
+
+| Tool          | Purpose                      | Protocol |
+| ------------- | ---------------------------- | -------- |
+| pkg_install   | Install package(s)           | Builtin  |
+| pkg_uninstall | Remove package(s)            | Builtin  |
+| pkg_update    | Update package(s)            | Builtin  |
+| pkg_list      | List installed packages      | Builtin  |
+| pkg_search    | Search for packages          | Builtin  |
+| pkg_outdated  | Check for updates            | Builtin  |
+| pkg_audit     | Security vulnerability check | Builtin  |
+
+Note: Package operations via terminal with GNN integration. Security audit integrates with vulnerability databases.
 
 Deployment:
 
@@ -2243,9 +4470,14 @@ Deployment:
 | ------------------- | ---------------------------- | -------- |
 | deploy_local        | Deploy to localhost          | Builtin  |
 | deploy_railway      | Deploy to Railway            | MCP      |
+| deploy_vercel       | Deploy to Vercel             | MCP      |
 | deploy_aws          | Deploy to AWS                | MCP      |
+| deploy_gcp          | Deploy to GCP                | MCP      |
+| deploy_docker       | Build and push Docker image  | Builtin  |
 | health_check        | Check deployment health      | Builtin  |
 | rollback_deployment | Rollback to previous version | Builtin  |
+
+Note: Railway is MVP focus. MCP servers for platform-specific deployments.
 
 Browser Automation:
 
@@ -2259,12 +4491,27 @@ Browser Automation:
 
 Git Operations:
 
-| Tool       | Purpose        | Protocol |
-| ---------- | -------------- | -------- |
-| git_commit | Commit changes | MCP      |
-| git_push   | Push to remote | MCP      |
-| git_branch | Create branch  | MCP      |
-| git_merge  | Merge branches | MCP      |
+| Tool                 | Purpose                                  | Protocol    |
+| -------------------- | ---------------------------------------- | ----------- |
+| git_setup            | Chat-based Git configuration & auth      | Builtin     |
+| git_authenticate     | Store credentials securely               | Builtin     |
+| git_test_connection  | Validate authentication works            | Builtin     |
+| git_status           | Current state                            | MCP/Builtin |
+| git_diff             | Changes (staged, unstaged, between refs) | MCP/Builtin |
+| git_log              | Commit history                           | MCP/Builtin |
+| git_blame            | Line-by-line attribution                 | MCP/Builtin |
+| git_commit           | Create commit with auto-messages         | MCP/Builtin |
+| git_push             | Push commits to remote                   | MCP/Builtin |
+| git_pull             | Pull latest changes                      | MCP/Builtin |
+| git_branch           | Create/switch/list branches              | MCP/Builtin |
+| git_checkout         | Checkout files/branches                  | MCP/Builtin |
+| git_merge            | Merge branches                           | MCP/Builtin |
+| git_stash            | Stash/pop changes                        | MCP/Builtin |
+| git_reset            | Undo changes                             | MCP/Builtin |
+| git_clone            | Clone repository                         | MCP/Builtin |
+| git_resolve_conflict | AI-powered conflict resolution           | MCP/Builtin |
+
+Note: MCP primary via @modelcontextprotocol/server-git. Builtin fallback via git2-rs. Chat-based setup guides users through one-time authentication with secure keychain storage.
 
 YDoc Operations:
 
@@ -2343,14 +4590,76 @@ State Management:
 | create_checkpoint      | Create rollback point       | Builtin  |
 | rollback_to_checkpoint | Restore from checkpoint     | Builtin  |
 
-Context Management:
+Context Management (Enhanced with Conversation Memory):
 
-| Tool               | Purpose                        | Protocol |
-| ------------------ | ------------------------------ | -------- |
-| assemble_context   | Build context for LLM          | Builtin  |
-| compress_context   | Compress context to fit window | Builtin  |
-| prioritize_context | Rank context by relevance      | Builtin  |
-| cache_context      | Cache frequently used context  | Builtin  |
+| Tool                 | Purpose                                              | Protocol | Enhancement                       |
+| -------------------- | ---------------------------------------------------- | -------- | --------------------------------- |
+| assemble_context     | Build context for LLM (code + conversation)          | Builtin  | Now includes conversation history |
+| compress_context     | Compress context to fit window (code + conversation) | Builtin  | Now compresses both types         |
+| prioritize_context   | Rank context by relevance (code + conversation)      | Builtin  | Unified ranking                   |
+| cache_context        | Cache frequently used context                        | Builtin  | Caches conversation too           |
+| context_add          | Add to persistent conversation DB                    | Builtin  | Enhanced: permanent storage       |
+| context_search       | Search code + conversation                           | Builtin  | Enhanced: unified search          |
+| context_summarize    | Compress code + conversation                         | Builtin  | Enhanced: both types              |
+| conversation_search  | Search past conversations (keyword/semantic)         | Builtin  | NEW: conversation-specific        |
+| conversation_history | Retrieve conversation for context                    | Builtin  | NEW: adaptive retrieval           |
+| conversation_link    | Link message to work session                         | Builtin  | NEW: traceability                 |
+
+Enhanced Tool Details:
+
+context_add (Enhanced):
+
+- Before: Added to in-memory working context (ephemeral)
+- After: Saves to persistent conversation_messages table (permanent)
+- Usage: Automatically called when user/agent sends message
+- Storage: Tier 1 SQLite with embeddings for semantic search
+- Performance: <50ms including embedding generation
+
+context_search (Enhanced):
+
+- Before: Searched codebase only (files, functions, patterns)
+- After: Unified search across code AND conversation
+- Modes: code_only, conversation_only, both (default)
+- Returns: Ranked results from both sources
+- Performance: <100ms for unified search
+
+context_summarize (Enhanced):
+
+- Before: Compressed code context when token budget tight
+- After: Intelligently compresses code AND conversation
+- Strategy: Always keep recent conversation full-text, compress old
+- LLM-based: Generates concise summaries (max 200 words)
+- Performance: <100ms for compression
+
+conversation_search (NEW):
+
+- Purpose: Search past conversations specifically
+- Modes:
+  - keyword: SQLite FTS5 full-text search (<50ms)
+  - semantic: HNSW embedding search (<30ms)
+  - date_range: Time-based filtering (<20ms)
+  - linked_work: Find chat about specific code (<20ms)
+- Returns: Messages with snippets, timestamps, relevance scores
+- UI: Search bar in chat interface
+
+conversation_history (NEW):
+
+- Purpose: Retrieve conversation messages for context assembly
+- Modes:
+  - recent: Last N messages (default: 10)
+  - relevant: Semantically similar to current message (top-K)
+  - adaptive: Recent + Relevant within token budget
+  - full: Entire conversation (with compression if needed)
+- Usage: Called by context assembly system automatically
+- Performance: <200ms for adaptive retrieval
+
+conversation_link (NEW):
+
+- Purpose: Link chat message to work session (codegen/test/deploy)
+- Creates: Bidirectional link for traceability
+- Updates: conversation_messages.linked_codegen_session field
+- Enables: "Show me the chat that created this code" feature
+- UI: Click message → see generated artifacts
 
 Communication:
 
@@ -2474,6 +4783,1037 @@ Performance Targets: Parallel speedup 2-4x for multi-module projects. Inter-agen
 
 [Part 1B Complete - Sections 3.1.12 through 3.4.1] [Next: Part 2 will cover State Machines 3.4.2 onwards]
 
+# Yantra: Complete Technical Specification - Part 2
+
+State Machines and Advanced Features
+
+---
+
+### 3.4.2 STATE MACHINE ARCHITECTURE
+
+Yantra's agentic capabilities implemented through five specialized state machines plus a sixth Documentation Governance machine (running in parallel), each with focused responsibility.
+
+Architecture Benefits:
+
+1. Separation of Concerns: Each machine has single, clear responsibility
+2. Independent Testing: Test each machine without others
+3. Flexible Execution: Re-run tests without regenerating code, re-deploy without re-running tests
+4. MVP Focus: Build only CodeGen, Testing, Deployment for MVP, defer Maintenance to Post-MVP
+5. Parallel Execution (Future): Multiple sessions simultaneously, background test runs, continuous monitoring
+6. Clear State Tracking: Separate database tables per machine, query success rates per machine, full audit trail
+7. Crash Recovery: Each machine saves state independently, resume from last checkpoint, no cross-machine corruption
+
+The Six State Machines:
+
+1. Code Generation State Machine (MVP)
+2. Responsibility: Generate production-quality code that doesn't break dependencies
+3. Key States: ArchitectureGeneration → ArchitectureReview → DependencyAssessment → TaskDecomposition → DependencySequencing → ConflictCheck → PlanGeneration → BlastRadiusAnalysis → PlanReview → EnvironmentSetup → ContextAssembly → CodeGeneration → CodeValidation → DependencyValidation → BrowserValidation → SecurityScanning → ConcurrencyValidation → FixingIssues → Complete/Failed
+4. Entry: User's natural language intent
+5. Exit: Generated code + confidence score
+6. Total States: 20 MVP (states 1-20: ArchitectureGeneration through Complete) / 21 Post-MVP (adds FileLockRelease state after Complete or Failed outcome)
+7. Clarification: FileLockAcquisition (#11) is numbered in MVP sequence but only becomes active Post-MVP; CodeValidation (#14) adapts to language type (compiled: full build, interpreted: static analysis); "Failed" is a session outcome marker, not a numbered state
+
+2A. Test Intelligence State Machine (MVP)
+
+1. Responsibility: Generate effective, high-quality tests with proper oracles
+2. Key States: IntentSpecificationExtraction → TestOracleGeneration → InputSpaceAnalysis → TestDataGeneration → TestCaseGeneration → AssertionStrengthAnalysis → TestQualityVerification → TestSuiteOrganization → TestImpactAnalysis → TestUpdateGeneration → FixingIssues → Complete/Failed
+3. Entry: Generated code from CodeGen machine
+4. Exit: Test suite with proper oracles + test quality report
+5. Auto-Trigger: Yes (runs after CodeGen succeeds, parallel with EnvironmentSetup)
+6. Total States: 12 (11 sequential + FixingIssues)
+
+2B. Test Execution State Machine (MVP)
+
+1. Responsibility: Execute tests with comprehensive validation and debugging feedback
+2. Key States: EnvironmentSetup → FlakeDetectionSetup → UnitTesting → IntegrationTesting → BrowserTesting → PropertyBasedTesting → ExecutionTraceAnalysis → FlakeDetectionAnalysis → CoverageAnalysis → SemanticCorrectnessVerification → ErrorClassification → FixingIssues → TestCodeCoEvolutionCheck → Complete/Failed
+3. Entry: Test suite from Test Intelligence machine + generated code
+4. Exit: Test results + coverage report + execution traces
+5. Auto-Trigger: Yes (runs after Test Intelligence completes)
+6. Total States: 14 sequential states
+7. Deployment State Machine (MVP - Railway Focus)
+8. Responsibility: Deploy validated code to Railway.app
+9. Key States: PackageBuilding → ConfigGeneration → RailwayUpload → FixingIssues → HealthCheck → RollbackOnFailure → Complete/Failed
+10. Entry: Code + passing tests
+11. Exit: Live Railway URL + health status
+12. Auto-Trigger: No (requires user approval)
+13. Total States: 7 (6 sequential + FixingIssues handles pre-deployment errors, RollbackOnFailure handles post-deployment)
+14. Maintenance State Machine (Post-MVP)
+15. Responsibility: Monitor production, detect issues, auto-fix, deploy patches
+16. Key States: LiveMonitoring → BrowserValidation → ErrorAnalysis → IssueDetection → AutoFixGeneration → FixValidation → CICDPipeline → VerificationCheck → LearningUpdate → Active/Incident
+17. Entry: Deployed application in production
+18. Exit: Incident resolved or escalated
+19. Auto-Trigger: Yes (automatic based on error detection)
+20. Philosophy: Self-healing production systems
+21. Total States: 11 total (9 sequential states + 2 runtime states: Active and Incident)
+22. Documentation Governance State Machine (NEW - 6th Machine, Post-MVP)
+23. Responsibility: Maintain accurate, traced documentation throughout development lifecycle
+24. Key States: DocumentationAnalysis → BlockIdentification → ContentGeneration → GraphLinking → ConflictDetection → UserClarification → ConflictResolution → Validation → Complete
+25. Runs: In parallel with all other machines
+26. Integration: Hooks in each existing machine (CodeGen, Testing, Deploy, Maintenance)
+27. Philosophy: Documentation never drifts, full traceability maintained
+28. Total States: 9 sequential states
+
+#### 3.4.2.1 Code Generation State Machine (MVP)
+
+Responsibility: Generate production-quality code that doesn't break dependencies
+
+Entry Point: User's natural language intent
+
+Exit Point: Generated code + confidence score
+
+Trigger: User submits task
+
+Success Criteria: Code passes dependency graph validation, security scan, no breaking changes, visibility of active work
+
+State Count: 18 MVP / 19 Post-MVP
+
+States:
+
+Phase 1: Architecture & Design (PDC Phase 1)
+
+1. ArchitectureGeneration: Generate or import project architecture
+2. Inputs: User intent, existing codebase (if any), requirements documents
+3. Process: LLM analyzes intent and generates architecture (components, connections, layers), OR imports existing architecture from files, OR analyzes existing code to generate architecture
+4. Outputs: Architecture diagram, component definitions, connection types
+5. Prevention: Architecture violations, boundary violations, circular dependencies, scaling bottlenecks, security vulnerabilities by design
+6. Performance Target: <10s (LLM analysis + architecture generation)
+7. ArchitectureReview: Wait for user approval of architecture (human-in-the-loop)
+8. ⚠️ APPROVAL GATE: User must approve architecture changes
+9. Display: Visual architecture diagram, component breakdown, connection details, architectural decision rationale
+10. User Actions: Approve (proceed), Modify (request changes), Reject (go back)
+11. Prevention: Proceeding with wrong architecture, misaligned expectations
+12. Performance Target: N/A (waits for human)
+
+Phase 2: Planning (PDC Phase 2 - Enhanced)
+
+3. DependencyAssessment: Assess tools/packages/techstack needed, analyze compatibility
+4. Inputs: Architecture, requirements, current environment state
+5. Process: Identify required packages and versions, check CVE database for vulnerabilities, validate version compatibility (semver), detect duplicate functionality, verify license compatibility, dry-run validation in temp venv (Post-MVP)
+6. Web Search Integration: Agent MUST use web search for latest package info (LLM knowledge is static/outdated), query official package registries (PyPI, npm, crates.io, Maven Central), fetch latest versions/changelogs/migration guides/known issues, Tools: MCP @modelcontextprotocol/server-brave-search or @modelcontextprotocol/server-fetch
+7. Semantic-Enhanced Dependency Graph Resolution: Query semantic-enhanced dependency graph with HNSW semantic search to find similar past dependency conflicts and resolutions (vector embeddings in graph nodes), retrieve cached package documentation from SQLite (Tier 3, 7-day TTL), query compatibility matrices and known breaking changes stored in graph, semantic similarity search finds similar conflict patterns (<10ms with HNSW indexing), no external vector database needed (embeddings stored in petgraph nodes)
+8. Outputs: List of required packages with exact versions, compatibility report, vulnerability scan results, installation plan
+9. Prevention: Incompatible library versions, vulnerable dependencies, license conflicts, deprecated dependencies
+10. Performance Target: <5s (parallel CVE lookups + web search)
+11. TaskDecomposition: Break feature into concrete tasks
+12. Inputs: User intent, architecture, dependency assessment, existing codebase
+13. Process: GNN-based feature analysis, break down into atomic implementation tasks, each task maps to specific files/components, estimate complexity for each task
+14. Outputs: Task list with descriptions, file mappings, complexity scores, dependencies between tasks
+15. Prevention: Missing tasks, unclear scope, unbounded work
+16. Performance Target: <500ms (GNN analysis)
+17. DependencySequencing: Use dependency graph to determine task order
+18. Inputs: Task list from TaskDecomposition, dependency graph
+19. Process: Build task dependency graph (which tasks depend on which), topological sort for execution order, identify tasks that can run in parallel
+20. Outputs: Ordered task sequence, parallel task clusters, critical path
+21. Prevention: Wrong task order, dependency violations, parallel conflicts
+22. Performance Target: <100ms (graph traversal)
+23. ConflictCheck: Check which files will be modified and show visibility
+24. MVP: Display active work visibility (which developer is working on which files), query active work indicators from UI
+25. Post-MVP: File locking mechanism to prevent parallel edits, query file lock table for locked files
+26. Inputs: Task list, file mappings, active work data/file locks
+27. Outputs: Conflict report, locked files list, recommendations for conflict avoidance
+28. Prevention: Parallel edit conflicts, work coordination issues
+29. Performance Target: <50ms (active work lookup - MVP) / <50ms (lock table query - Post-MVP)
+30. PlanGeneration: Create executable plan with task list, time estimates, critical path
+31. Inputs: Ordered tasks, complexity scores, resource availability
+32. Process: Calculate time estimates based on complexity, identify critical path, assign priority to tasks, create final execution plan
+33. Outputs: Complete execution plan, estimated completion time, task priorities, resource allocation
+34. Prevention: Unclear scope, missing estimates, unprioritized work
+35. Performance Target: <200ms (estimation algorithm)
+36. BlastRadiusAnalysis: Analyze impact of proposed changes BEFORE execution
+37. Purpose: Provide dependency-aware impact preview BEFORE executing changes
+38. Philosophy: "Show, don't surprise" - Users should know exactly what will be affected
+39. Inputs: Execution plan, dependency graph, current architecture
+40. Analysis Process: Identify direct files to modify, query dependency graph for downstream dependencies (recursive), identify critical files using heuristics, find all tests covering affected files, analyze API changes (if OpenAPI spec exists), check package dependency impacts (from Tech Stack GNN), calculate risk score, estimate rollback complexity
+41. Outputs: BlastRadiusAnalysis struct with: files_to_modify (direct impact), critical_files, downstream_dependencies (indirect impact), affected_tests, api_changes, breaking_changes, package_upgrades, package_conflicts, risk_level (Low/Medium/High/Critical), estimated_time, rollback_complexity, affected_user_percentage, requires_approval flag, approval_reason
+42. Prevention: Unintended consequences, breaking changes without awareness, deployment risks
+43. Performance Target: <2s (parallel GNN queries for dependents/tests/packages)
+44. Display Logic: Show detailed view for critical files, breaking changes, large test surface (>20), wide ripple (>10 dependencies), package changes, High/Critical risk. Skip for trivial changes: single file, no dependencies, few tests (<5), no API changes, no packages, Low risk.
+45. PlanReview: Optional approval gate for complex features
+46. Triggered for: Features with >5 tasks OR multi-file changes OR High/Critical risk from BlastRadiusAnalysis
+47. Display: Task breakdown, sequencing, estimates, complexity, blast radius preview
+48. ⚠️ APPROVAL GATE (Optional): User approves or requests modifications
+49. Prevention: Misaligned expectations, scope disagreements, over-complexity
+50. Performance Target: N/A (waits for human if triggered)
+
+Phase 3: Execution (PDC Phase 3)
+
+10. EnvironmentSetup: Prepare development environment
+11. Inputs: Dependency assessment results, environment requirements
+12. Process: Create/validate virtual environment (.venv for Python, node_modules for Node), install dependencies (pip install, npm install, cargo build), verify versions, set environment variables, validate setup
+13. Mandatory .venv Isolation: NEVER pollute system Python, ALWAYS work in .venv, auto-create if not present, validate if exists, recreate if corrupted
+14. Outputs: Ready environment, installed packages list, environment validation report
+15. Prevention: Environment configuration errors, missing dependencies, version mismatches
+16. Performance Target: 10-30s (parallel dependency installation)
+17. FileLockAcquisition (Post-MVP only - Explicit State)
+18. Purpose: Acquire file locks before any edits to prevent merge conflicts
+19. Inputs: Files to be modified from plan
+20. Process: Query dependency graph for dependent files, check if dependent files locked by other agents, if locked wait or work on different file, if free acquire lock and record in dependency graph with timestamp
+21. Outputs: Lock acquisition confirmation, locked files list
+22. Prevention: Merge conflicts made structurally impossible (not just less likely)
+23. Performance Target: <10ms (database transaction)
+24. ContextAssembly: Load relevant code context from dependency graph + conversation history
+25. Inputs: Current file, dependency graph, user intent, conversation session
+26. Process:
+    - Conversation Context (NEW): Query conversation_messages for recent 10 messages, semantic search for relevant old messages (top-5), allocate 20K tokens for conversation context
+    - Code Context: Query dependency graph for direct dependencies (imports, callers), retrieve semantic embeddings for similar patterns, assemble context for LLM prompt using hierarchical strategy (Level 0: conversation context [20K tokens], Level 1: direct dependencies, Level 2: transitive dependencies, Level 3: semantic similarity, Level 4: project context, Level 5: Yantra Codex patterns)
+    - Apply token budget management: 20K conversation + 80K code + 20K reserve = 120K total
+    - Compression: If over budget, keep recent conversation full-text, compress old messages
+
+27. Integration:
+
+- Link current message to codegen_session_id via conversation_messages.linked_codegen_session
+- Enable traceability: chat → code generation → files created
+
+1. Outputs: Assembled context (<120k tokens), relevant files list, pattern suggestions, conversation context summary
+2. Prevention: Reinventing functionality, inconsistent patterns, missing context, forgetting user intent from earlier in conversation
+3. Performance Target: <200ms (with parallel GNN queries + conversation retrieval)
+4. Implementation: See Section 3.1.5.7 (Conversation Context Assembly) and Section 3.1.13.3 (Adaptive Context Retrieval)
+5. CodeGeneration: Generate code using Yantra Codex + Multi-LLM consultation
+6. Phase A - Initial Generation: Yantra Codex (GNN) generates initial code (15ms), calculate confidence score (0.0-1.0), if confidence >= 0.8 use Yantra code directly, if confidence < 0.8 send to Primary LLM for review and enhancement, Primary LLM (Claude Sonnet 4, user's choice) reviews edge cases and adds error handling, merge Yantra + LLM suggestions, Yantra learns from LLM improvements
+7. Phase B - Multi-LLM Consultation (Optional): If Yantra confidence score < 0.6 (very low confidence), trigger immediate consultation before proceeding, Consultation Flow: Primary LLM generates consultation prompt (meta-prompting), Consultant LLM (different model) provides second opinion (identifies blind spots, suggests alternative approaches), Primary LLM uses consultation insight to improve generation, use consultation to improve initial code before writing to disk
+8. Transparency: Show user when consultation triggered, display which models consulted, show consultation insights, build trust through transparency
+9. Phase C - File Write Operations: Determine file paths (user-specified > architecture-defined > dependency graph proximity > project conventions), validate no duplicate files (CreationValidation Service), create parent directories if needed (recursive mkdir), write generated code to filesystem (fs::write for new files, file_edit tool for modifications), handle write errors (disk full, permissions, path conflicts), update dependency graph with new file nodes and edges, invalidate context cache (Tier 4) for affected files
+10. Phase D - Conversation Linkage (NEW): Create codegen_session record with session_id, user_intent, timestamps, Update conversation_messages.linked_codegen_session with codegen_session_id, Link agent response message to same codegen_session_id, Enable full traceability: user message → agent message → codegen_session → generated files
+11. Multi-File Strategy: Sequential write (MVP): write files in dependency order (dependencies first, dependents second), atomic transaction (all succeed or all rollback), update graph after each successful write, Parallel write (Phase 2A): Team of Agents write independent files simultaneously, file locking prevents conflicts, dependency-ordered for related files
+12. Error Recovery: File write failures trigger rollback of all writes in current batch, preserve previous file versions (git staging area), log failure details (path, error type, permissions, disk space), transition to FixingIssues state with error context, max 3 retry attempts before escalating to user
+13. Outputs: Generated code (written to disk), confidence score, LLM consultation log (if triggered), list of created/modified file paths, file write operation log, updated dependency graph nodes/edges, cache invalidation list, codegen_session_id (NEW), conversation message links (NEW)
+14. Prevention: Low-quality initial generation (consultation improves), file write failures, duplicate files, architectural violations in generation approach, loss of conversation traceability (NEW)
+15. Performance Target: 2-5s (LLM dependent, parallel for multiple files)
+16. Next State: CodeValidation (State 14) validates the generated code
+17. Implementation Details: See Part 3, Section 3.4.3.3 (File Operations Service) for complete file write flow, error handling strategies, and transaction management. See Section 3.1.13.5 (Work Session Linking) for conversation linkage implementation
+18. CodeValidation: Validate generated code using language-appropriate tools
+19. Inputs: Generated code files (written to disk), project language/build configuration, language detection metadata
+20. Language Detection: Detect project type from files and configuration (Rust: Cargo.toml, Go: go.mod, C/C++: CMakeLists.txt/Makefile, Java: pom.xml/build.gradle, TypeScript: tsconfig.json, Python: requirements.txt/pyproject.toml, JavaScript: package.json, Ruby: Gemfile), determine validation strategy based on language characteristics
+21. Validation Strategy by Language Type:
+    - Compiled Languages (Rust, Go, C/C++, Java, TypeScript): Run compiler/type checker (Rust: cargo check, Go: go build, C/C++: cmake/make, Java: javac/mvn compile, TypeScript: tsc --noEmit), capture compilation errors and warnings, parse output for error types (syntax, type, import, linker), map errors to source locations (file, line, column), categorize by severity (critical: fails, warnings: compiles but problematic)
+    - Interpreted Languages (Python, JavaScript, Ruby): Run static analysis tools (Python: mypy for types + pylint for errors, JavaScript: eslint + flow/TypeScript check if configured, Ruby: rubocop + sorbet if configured), import validation (Python: try importing all modules, JS: check require/import statements resolve, Ruby: check require statements), syntax validation (Python: py_compile, JS: acorn/esprima parser, Ruby: ruby -c), runtime checks where applicable (Python: pytest --collect-only to validate test structure)
+
+22. Common Validations (All Languages): LSP-based type checking (if LSP server available), linter execution (language-specific), dependency resolution check (all imports/requires exist), dead code detection, unused variable/import detection
+23. Error Analysis: Extract error patterns from compiler/linter/analyzer output, query Yantra Codex for known fixes to similar errors, provide rich error context for FixingIssues state (exact error message, source location, error category, suggested fixes)
+24. Outputs: Validation success/failure status, detailed error report with source locations (file, line, column), warnings list (non-blocking issues), error category (syntax, type, import, runtime, style), suggested fixes from Yantra Codex, severity level (critical, high, medium, low)
+25. Performance Optimization: Incremental validation (only changed files + dependents), parallel validation (multiple files simultaneously), caching (validation results for unchanged files), early termination (stop on first critical error for fast feedback)
+26. Prevention: Runtime errors in production (both compiled and interpreted), type errors (all languages with type systems), missing dependency errors, import/require errors, syntax errors missed by tree-sitter, undefined behavior, style violations that cause bugs
+27. Performance Target: Compiled: <15s incremental / <60s full build, Interpreted: <5s (static analysis + import checks), Cached/unchanged: <100ms
+28. Integration: On validation failure → transition to FixingIssues state with language-specific error context, on success → continue to DependencyValidation, on warnings only → continue but log warnings
+29. DependencyValidation: Validate code against dependency graph
+30. Inputs: Generated code, dependency graph
+31. Process: Parse generated code with tree-sitter, extract new imports and dependencies, check for breaking changes (modified function signatures, removed functions, changed return types), query dependency graph for affected callers, validate no circular dependencies introduced, verify architectural boundaries not violated
+32. Outputs: Validation report, breaking changes list, affected files
+33. Prevention: Breaking changes, circular dependencies, architectural violations
+34. Performance Target: <10ms (with parallel dependency path validation)
+35. BrowserValidation: Validate UI components in browser
+36. Inputs: Generated code (for web applications), localhost URL
+37. Process: Launch Chrome via CDP, navigate to localhost, execute test scenarios (click flows, form fills, element verification), capture console errors, monitor network requests, take screenshots at key steps, detect issues (500 errors, JavaScript exceptions, missing elements, broken images)
+38. Outputs: Browser validation report, screenshots, console logs, network HAR file
+39. Prevention: UI bugs, runtime errors, broken user flows
+40. Performance Target: 5-10s (single component) / 10-15s (parallel multi-component)
+41. SecurityScanning: Scan for security vulnerabilities
+42. Inputs: Generated code
+43. Process: Semgrep static analysis (OWASP rulesets for SQL injection, XSS, CSRF, command injection, path traversal, insecure deserialization, XXE), secrets detection (API keys, passwords, tokens, credentials using TruffleHog patterns), dependency vulnerability scanning (CVE database check), license compliance checking
+44. Outputs: Security scan report categorized by severity (Critical, High, Medium, Low)
+45. Auto-Fix Patterns: SQL injection → use parameterized queries, XSS → use proper escaping, Secrets → move to environment variables, Path traversal → validate paths, Command injection → use safe subprocess calls
+46. Blocking: Critical and High severity issues must be fixed, Medium issues generate warnings (non-blocking), Low issues logged (informational)
+47. Prevention: Security vulnerabilities, hardcoded secrets, vulnerable dependencies
+48. Performance Target: <10s (with 4 parallel workers for file scanning)
+49. ConcurrencyValidation: Race condition and deadlock detection (NEW - Parallel Safety Check)
+50. Purpose: Validate that parallel processing didn't introduce concurrency bugs
+51. When: After any code generation that uses async/await, threads, or parallel execution
+52. Built-in Checks (Agentic Flow - NOT just LLM reasoning): Static Analysis (Rust Clippy pedantic + thread safety lints, Python threading analyzer, JavaScript event loop analyzer), Pattern Detection (shared mutable state access, missing locks/semaphores, race-prone check-then-act patterns), GNN Analysis (identify data flow paths that could race, detect concurrent writes to same resource), Test Generation (automatically generate stress tests for concurrent code paths)
+53. Auto-Fix Strategy: Level 1 Pattern-Based (No LLM - Fast): Detected shared mutable state without lock → Fix: wrap in Mutex (Rust) or threading.Lock (Python), Detected check-then-act pattern → Fix: use atomic operations or lock entire section, Level 2 LLM-Assisted Fix (With Context): Provide LLM with detected race condition explanation + code snippet + GNN data flow paths + language-specific synchronization primitives, LLM generates fixed code with proper locks/channels/atomics, Agent validates fix with stress tests, Level 3 Sequential Fallback (Safe Default): If parallel execution cannot be made safe rewrite as sequential, add TODO comment explaining why, log performance regression, Guarantee: Code always works correctly even if slower
+54. Skip Conditions: No async/await keywords detected, No threading/multiprocessing imports, No parallel primitives (tokio::spawn), Pure sequential code → Skip validation (0s overhead)
+55. Prevention: Race conditions, deadlocks, data races from parallel execution
+56. Performance Target: <5s (static analysis + GNN race detection + test generation)
+57. FixingIssues: Auto-retry with fixes if validation fails
+58. Inputs: Validation failures from any previous state (code_validation, dependency, browser, security, concurrency, file_write)
+59. Process: Analyze failure type (code_validation, dependency, browser, security, concurrency, file_write), retrieve relevant fixes from Yantra Codex known issues database, apply automatic fix if pattern recognized, Code Validation Error Handling: if code validation failed → parse error output (compiler/linter/analyzer), determine error category (syntax, type, import, runtime), query Codex for similar errors and fixes in this language, apply language-specific fixes (Rust: add type annotations, Python: add imports, JS: fix async/await), retry validation; File Write Error Handling: if error is disk_full → fail immediately (notify user), if error is permission_denied → try alternative paths, if error is path_invalid → sanitize and retry, if error is parent_not_found → create parent dirs and retry, if auto-fix fails request LLM to generate fix with error context, validate fix, repeat up to 3 attempts, after 3 attempts → transition to Failed state with detailed error report
+60. Outputs: Fixed code or escalation to user
+61. Prevention: Repeated failures, cascading issues
+62. Performance Target: <10s per retry
+63. Complete: Code ready for testing
+64. Post-MVP: Explicit FileLockRelease state after completion
+65. Outputs: Generated code, confidence score, validation reports
+66. Triggers: Testing Intelligence State Machine (auto-trigger)
+
+Failed: Human intervention required
+
+1. Post-MVP: Explicit FileLockRelease state on failure
+2. Outputs: Failure analysis, error logs, recommendations
+3. User Actions: Review errors, provide guidance, retry manually
+
+FileLockRelease (Post-MVP Only - State 21)
+
+1. Purpose: Explicit state to release file locks when session completes or fails
+2. Trigger: Automatically after reaching Complete state OR after Failed outcome (unrecoverable errors)
+3. Inputs: Current agent ID, session ID, list of active file locks held by this agent/session
+4. Process: Query sled (Tier 2) for all active locks held by current agent/session, release each file lock (delete from sled key-value store), notify other agents waiting for these files (pub/sub or polling), clear lock metadata from agent's state, log lock release event with duration metrics
+5. Outputs: List of released file paths, lock duration for each file, list of agents notified (unblocked), lock release confirmation
+6. Prevention: Stuck locks blocking other agents indefinitely, resource leaks in multi-agent environment, agent deadlocks from unreleased locks on crash, file access bottlenecks from held locks
+7. Error Handling: If lock release fails log warning but continue (don't block session completion), if sled unavailable: mark locks as "stale" and rely on timeout mechanism, locks auto-expire after 1 hour regardless (safety mechanism)
+8. Performance Target: <15ms total (sled operations are fast: ~1ms per lock, O(n) for n locks)
+9. Integration: Runs automatically at session end, no user interaction required, transparent to developer
+
+Performance Targets (Total Cycle):
+
+1. MVP: <43s (Architecture: ~12s, Planning: ~6s, Execution: ~25s)
+2. Post-MVP: <45s (adds explicit lock acquisition/release: ~15ms)
+3. Parallel optimization: ~30-40% faster with concurrent execution
+
+Prevention Guarantees:
+
+1. ✅ Architecture always exists before code generation (PDC 1.1)
+2. ✅ Tech stack is consistent and secure (PDC 1.2)
+3. ✅ Plans are explicit and validated (PDC 2.1)
+4. ✅ Work visibility (MVP) or conflict prevention (Post-MVP) (PDC 3.3)
+5. ✅ Dependency-aware execution in correct order (PDC 2.1)
+6. ✅ Concurrency safety validated before testing (PDC 3.4)
+7. ✅ Security built-in at every phase (PDC 3.4)
+
+#### 3.4.2.1A Blast Radius Analysis & Preview (P0 Feature - MVP)
+
+Data Structures:
+
+pub struct BlastRadiusAnalysis {
+
+    // Direct Impact
+
+    pub files_to_modify: Vec`<FileImpact>`,
+
+    pub critical_files: Vec`<PathBuf>`,
+
+    // Indirect Impact (from GNN downstream dependencies)
+
+    pub downstream_dependencies: Vec`<DependencyImpact>`,
+
+    pub affected_tests: Vec`<TestImpact>`,
+
+    // External Impact
+
+    pub api_changes: Vec`<ApiChange>`,
+
+    pub breaking_changes: Vec`<BreakingChange>`,
+
+    // Package Impact (from Tech Stack GNN)
+
+    pub package_upgrades: Vec`<PackageUpgrade>`,
+
+    pub package_conflicts: Vec`<PackageConflict>`,
+
+    // Risk Metrics
+
+    pub risk_level: RiskLevel, // Low, Medium, High, Critical
+
+    pub estimated_time: Duration,
+
+    pub rollback_complexity: RollbackComplexity,
+
+    pub affected_user_percentage: f32,
+
+    // Decision Factors
+
+    pub requires_approval: bool,
+
+    pub approval_reason: String,
+
+}
+
+pub struct FileImpact {
+
+    pub path: PathBuf,
+
+    pub is_critical: bool,
+
+    pub change_type: ChangeType, // Create, Modify, Delete
+
+    pub dependent_count: usize,
+
+}
+
+pub struct DependencyImpact {
+
+    pub file: PathBuf,
+
+    pub distance: usize, // Degrees of separation (1=direct, 2=indirect)
+
+    pub impact_reason: String,
+
+}
+
+pub struct TestImpact {
+
+    pub test_file: PathBuf,
+
+    pub test_name: String,
+
+    pub coverage_type: TestCoverageType, // Unit, Integration, E2E
+
+    pub needs_update: bool,
+
+}
+
+pub struct ApiChange {
+
+    pub endpoint: String,
+
+    pub method: HttpMethod,
+
+    pub change_type: ApiChangeType, // Added, Modified, Deprecated, Breaking
+
+    pub breaking: bool,
+
+}
+
+pub struct PackageUpgrade {
+
+    pub package: String,
+
+    pub from_version: String,
+
+    pub to_version: String,
+
+    pub breaking_changes: Vec`<String>`,
+
+}
+
+Analysis Algorithm:
+
+impl BlastRadiusAnalyzer {
+
+    pub async fn analyze(&self, plan: &ExecutionPlan) -> Result<BlastRadiusAnalysis, String> {
+
+    // 1. Identify direct files to be modified
+
+    let files_to_modify = self.extract_files_from_plan(plan);
+
+    // 2. Query GNN for downstream dependencies (recursive)
+
+    let downstream = self.gnn.get_dependents_recursive(&files_to_modify).await?;
+
+    // 3. Identify critical files using heuristics
+
+    let critical_files = self.identify_critical_files(&files_to_modify);
+
+    // 4. Find all tests covering affected files
+
+    let affected_tests = self.gnn.find_tests_for_files(&files_to_modify).await?;
+
+    // 5. Analyze API changes (if OpenAPI spec exists)
+
+    let api_changes = if let Some(spec) = &self.openapi_spec {
+
+    self.analyze_api_changes(spec, &files_to_modify).await?
+
+    } else {
+
+    vec![]
+
+    };
+
+    // 6. Check package dependency impacts (from Tech Stack GNN)
+
+    let package_impacts = self.tech_stack_gnn
+
+    .analyze_package_changes(&plan.package_changes).await?;
+
+    // 7. Calculate risk score
+
+    let risk_level = self.calculate_risk_level(
+
+    &critical_files,
+
+    &downstream,
+
+    &api_changes,
+
+    &package_impacts
+
+    );
+
+    // 8. Estimate rollback complexity
+
+    let rollback_complexity = self.estimate_rollback_complexity(
+
+    &plan,
+
+    &api_changes,
+
+    &package_impacts
+
+    );
+
+    Ok(BlastRadiusAnalysis {
+
+    files_to_modify: files_to_modify.into_iter()
+
+    .map(|f| FileImpact {
+
+    path: f.clone(),
+
+    is_critical: critical_files.contains(&f),
+
+    change_type: ChangeType::Modify,
+
+    dependent_count: self.gnn.count_dependents(&f).unwrap_or(0),
+
+    })
+
+    .collect(),
+
+    critical_files,
+
+    downstream_dependencies: downstream,
+
+    affected_tests,
+
+    api_changes,
+
+    breaking_changes: api_changes.iter()
+
+    .filter(|c| c.breaking)
+
+    .map(|c| BreakingChange {
+
+    description: format!("API {} {} changed", c.method, c.endpoint),
+
+    impact: format!("Affects {}% of users", affected_user_percentage),
+
+    })
+
+    .collect(),
+
+    package_upgrades: package_impacts.upgrades,
+
+    package_conflicts: package_impacts.conflicts,
+
+    risk_level,
+
+    estimated_time: self.estimate_time(&plan),
+
+    rollback_complexity,
+
+    affected_user_percentage: self.estimate_user_impact(&api_changes),
+
+    requires_approval: matches!(risk_level, RiskLevel::High | RiskLevel::Critical),
+
+    approval_reason: self.generate_approval_reason(&risk_level, &critical_files, &api_changes),
+
+    })
+
+    }
+
+}
+
+pub fn should_show_detailed_blast_radius(analysis: &BlastRadiusAnalysis) -> bool {
+
+    !analysis.critical_files.is_empty() ||
+
+    !analysis.breaking_changes.is_empty() ||
+
+    analysis.affected_tests.len() > 20 ||
+
+    analysis.downstream_dependencies.len() > 10 ||
+
+    !analysis.package_upgrades.is_empty() ||
+
+    matches!(analysis.risk_level, RiskLevel::High | RiskLevel::Critical)
+
+}
+
+pub fn should_skip_blast_radius(analysis: &BlastRadiusAnalysis) -> bool {
+
+    analysis.files_to_modify.len() == 1 &&
+
+    analysis.downstream_dependencies.is_empty() &&
+
+    analysis.affected_tests.len() < 5 &&
+
+    analysis.api_changes.is_empty() &&
+
+    analysis.package_upgrades.is_empty() &&
+
+    matches!(analysis.risk_level, RiskLevel::Low)
+
+}
+
+UI Display Format:
+
+Compact View (Small Changes):
+
+✅ Low Risk Change
+
+├── 2 files modified
+
+├── 5 tests affected
+
+└── No breaking changes
+
+[Continue] [Details]
+
+Detailed View (Large/Critical Changes):
+
+📊 Blast Radius Preview
+
+Direct Impact (Files to be Modified):
+
+├── src/calculator.py ⚠️ CRITICAL (47 dependents)
+
+├── src/utils.py (3 dependents)
+
+└── tests/test_calculator.py
+
+Indirect Impact (Downstream Dependencies):
+
+├── 12 files import modified code:
+
+│ ├── src/api/endpoints.py (Level 1 - direct import)
+
+│ ├── src/services/math_service.py (Level 1)
+
+│ ├── src/reports/generator.py (Level 2 - indirect)
+
+│ └── ... (9 more - click to expand)
+
+External Impact:
+
+├── 2 API endpoints will change:
+
+│ ├── POST /api/calculate ⚠️ BREAKING CHANGE
+
+│ │ └── Response schema modified (added "precision" field)
+
+│ └── GET /api/health ✅ Non-breaking (added "version")
+
+├── 47 tests need updating:
+
+│ ├── 23 unit tests (calculator, utils)
+
+│ ├── 18 integration tests (API, services)
+
+│ └── 6 E2E tests (full workflows)
+
+Package Dependencies:
+
+├── numpy: 1.24.0 → 1.26.0 ⚠️ UPGRADE REQUIRED
+
+│ └── Breaking changes: numpy.array default behavior changed
+
+└── pandas: 2.1.0 (no change)
+
+Risk Assessment:
+
+├── Risk Level: HIGH ⚠️
+
+├── Breaking Changes: 1 API endpoint
+
+├── Affected Users: ~45% of API calls (estimated)
+
+├── Rollback Complexity: MEDIUM (DB migration needed)
+
+└── Estimated Time: 45-60 minutes
+
+⚠️ High-risk change detected. Manual approval required.
+
+Reasons:
+
+- Touches critical file: src/calculator.py (47 dependents)
+- Breaking API change: POST /api/calculate
+- Package upgrade with breaking changes: numpy 1.24→1.26
+
+[Approve & Execute] [Modify Plan] [View Detailed Report] [Cancel]
+
+Performance Targets:
+
+1. GNN Queries: <500ms (parallel queries for dependents, tests, packages)
+2. Critical File Detection: <100ms (in-memory checks + config lookup)
+3. API Change Analysis: <300ms (if OpenAPI spec exists, otherwise skip)
+4. Package Impact Analysis: <1s (query Tech Stack GNN + check changelogs)
+5. Total Analysis Time: <2s (all operations)
+
+#### 3.4.2.2 Testing Framework (MVP) - Multi-State Machine Architecture
+
+Philosophy: Robust testing requires two specialized state machines working in concert:
+
+1. Test Intelligence State Machine: Generates high-quality, effective tests with proper oracles
+2. Test Execution State Machine: Executes tests with comprehensive validation and feedback
+
+Overall Responsibility: Ensure generated code works correctly through intelligent test generation and rigorous execution
+
+Parallel Execution (Both Machines Run Concurrently):
+
+CodeGen Complete
+
+    ↓
+
+├─────────────────┐
+
+↓ ↓
+
+Test Intelligence Machine Environment Setup (Execution Machine)
+
+(Generates tests) (Prepares runtime)
+
+↓ ↓
+
+(~37s to complete) (~15s to complete)
+
+↓ ↓
+
+└────────────────┘
+
+    ↓
+
+Test Execution Machine
+
+(Executes generated tests)
+
+    ↓
+
+(~2 minutes)
+
+    ↓
+
+Results + Learning Data
+
+##### 3.4.2.2A Test Intelligence State Machine (MVP)
+
+Responsibility: Generate effective, high-quality tests that correctly verify behavior
+
+Entry Point: Generated code + user intent from CodeGen machine
+
+Exit Point: Comprehensive test suite with oracles + test quality report
+
+Trigger: Automatically after CodeGen succeeds (parallel with environment setup)
+
+Success Criteria: Mutation score >80%, Assertion strength score >5 average, Coverage potential >90%, All tests have proper oracles
+
+State Count: 10 states (MVP)
+
+States:
+
+Phase 1: Test Oracle & Specification Extraction (MVP - Critical)
+
+1. IntentSpecificationExtraction: Extract testable specifications from user's natural language intent
+2. Purpose: Solve the Test Oracle Problem - determine what "correct behavior" actually means
+3. Inputs: User's original intent, generated code, function signatures, docstrings, conversation context (NEW)
+4. Conversation Integration (NEW): Retrieve conversation messages linked to codegen_session, Use conversation context to understand user's intent better, Search for similar past conversations about testing requirements, Helps disambiguate unclear requirements from chat history
+5. Techniques: Natural language processing of user intent → formal specifications, Contract extraction (preconditions, postconditions, invariants), Expected behavior synthesis from requirements, Example-based specification (user provides examples, system generalizes)
+6. Outputs: Structured behavioral specifications, expected outcomes, invariants
+7. Parallel Processing: Extract specifications for multiple functions simultaneously
+8. Performance Target: <2s (LLM + NLP analysis + conversation retrieval)
+9. TestOracleGeneration: Generate verification strategies
+10. Purpose: Create proper test oracles (not just "runs without error")
+11. Oracle Types: Specification-based (verify against extracted specs), Differential (compare against reference implementation), Metamorphic (test relationships between inputs/outputs), Contract-based (verify preconditions/postconditions)
+12. Inputs: Behavioral specifications from previous state
+13. Outputs: Test oracle specifications, verification strategies per function
+14. Parallel Processing: Generate oracles for multiple functions concurrently
+15. Performance Target: <3s (LLM oracle generation)
+
+Phase 2: Test Case Generation
+
+3. InputSpaceAnalysis: Analyze input domains
+4. Purpose: Identify representative input values
+5. Techniques: Boundary value analysis, Equivalence partitioning, Edge case identification
+6. Inputs: Function signatures, parameter types, domain constraints
+7. Outputs: Input space partitions, boundary values, edge cases
+8. Performance Target: <1s (static analysis)
+9. TestDataGeneration: Generate test data
+10. Strategies: Valid inputs (happy path), Invalid inputs (error handling), Boundary values (edge cases), Random values (property-based testing)
+11. Inputs: Input space analysis, behavioral specifications
+12. Outputs: Test data sets per function
+13. Parallel Processing: Generate test data for multiple test strategies simultaneously
+14. Performance Target: <5s (parallel strategies)
+15. TestCaseGeneration: Generate actual test code
+16. Inputs: Test data, test oracles, behavioral specifications
+17. Process: Generate test functions with proper assertions, include setup/teardown code, organize by test type (unit, integration, property-based), add descriptive test names and docstrings, write test files via File Operations Service (Part 3, Section 3.4.3.3)
+18. Conversation Linkage (NEW): Create test_session record with session_id and link to parent codegen_session, Update conversation_messages.linked_test_session with test_session_id, Enable traceability: user message → codegen_session → test_session → test files
+19. Outputs: Complete test code files (written to disk), test_session_id (NEW), conversation message links (NEW)
+20. Parallel Processing: Generate test code for multiple modules using parallel LLM calls
+21. Performance Target: <5s (parallel LLM calls)
+
+Phase 3: Test Quality Verification
+
+6. AssertionStrengthAnalysis: Verify test assertions are strong
+7. Purpose: Detect weak assertions like "assert result is not None"
+8. Techniques: Assertion pattern analysis, Mutation testing simulation, Strength scoring (1-10 scale)
+9. Outputs: Strength scores per assertion, weak assertions flagged
+10. Performance Target: <2s
+11. TestQualityVerification: Mutation testing for test effectiveness
+12. Purpose: Verify tests actually catch bugs
+13. Process: Generate code mutants (change operators, modify conditionals, alter return values), run tests against mutants, calculate mutation score (% of mutants killed)
+14. Target: Mutation score >80%
+15. Outputs: Mutation score, surviving mutants, test effectiveness report
+16. Performance Target: <15s (parallel mutation testing)
+
+Phase 4: Organization & Analysis
+
+8. TestSuiteOrganization: Organize tests logically
+9. Process: Group tests by module/feature, separate unit/integration/E2E tests, create test fixtures and helpers, generate test configuration files
+10. Outputs: Organized test suite structure
+11. Performance Target: <1s
+12. TestImpactAnalysis: Determine which tests affected by code changes (MVP - Critical)
+13. Purpose: Enable test-code co-evolution and efficient re-testing
+14. Technique: Use dependency graph to map code changes → affected tests, query GNN: "Which tests call this modified function?", analyze transitive dependencies
+15. Outputs: List of affected tests, impact severity (direct/indirect), recommended actions (update/rewrite/keep)
+16. Parallel Processing: Analyze impact for multiple changed files simultaneously
+17. Performance Target: <500ms (GNN queries with parallel lookups)
+18. TestUpdateGeneration: Generate test updates when code changes (MVP - Test Co-Evolution)
+19. Purpose: Keep tests synchronized with code changes
+20. Triggers: Function signature changed → Update test calls, Return type changed → Update assertions, Behavior modified → Regenerate test expectations
+21. Strategies: Preserve intent (keep original test purpose, update implementation), Incremental update (modify only affected parts), Staleness detection (flag tests no longer matching intent)
+22. Parallel Processing: Update multiple affected tests concurrently
+23. Performance Target: <3s (LLM updates with parallel calls)
+24. FixingIssues: Auto-retry with fixes if test generation fails
+25. Inputs: Error context from failed state (IntentSpecificationExtraction, TestOracleGeneration, TestCaseGeneration, or other generation steps), error details (syntax errors in generated tests, LLM generation failures, invalid test specifications, oracle generation errors), failure count (1-3 attempts), partial results if any
+26. Process: Analyze failure type and root cause using Yantra Codex patterns, apply automatic fix based on error category: If LLM generation failed → retry with simplified prompt, use Consultant LLM (different model) for second opinion, reduce complexity of test case; If syntax errors in generated tests → parse with tree-sitter and auto-fix common patterns (missing imports, incorrect assertions, type mismatches); If invalid test oracle → regenerate with clearer specifications from intent, use example-based oracle generation; If test data generation failed → simplify input space, use boundary values only, reduce combinatorial explosion, validate fix by re-running failed generation step, increment retry counter (max 3 attempts), log each attempt with failure analysis
+27. Outputs: Fixed test suite (if successful within 3 attempts), partial test suite (tests generated before failure), detailed error analysis report (if all attempts fail), recommendations for user (simplify requirements, provide examples, manual test writing)
+28. Escalation: After 3 failed attempts mark session outcome as Failed and present comprehensive error report to user including: which generation step failed, why automatic fixes didn't work, partial tests generated (if any), specific recommendations for manual intervention, example test patterns to follow
+29. Prevention: Test generation failures without recovery attempt, incomplete test coverage due to unhandled generation errors, cascading test quality issues from early failures, user frustration from immediate failures
+30. Performance Target: <10s per retry attempt (LLM consultation + re-generation + validation)
+31. Complete: High-quality test suite ready for execution
+
+Failed: Unable to generate effective tests (escalate to human)
+
+Performance Targets (Total Cycle): <37s
+
+##### 3.4.2.2B Test Execution State Machine (MVP)
+
+Responsibility: Execute tests with comprehensive validation, debugging feedback, and resilience
+
+Entry Point: Test suite from Test Intelligence machine + generated code
+
+Exit Point: Test results + coverage report + execution traces + learning data
+
+Trigger: Automatically after Test Intelligence completes
+
+Success Criteria: 100% stable tests pass (flaky tests quarantined), Coverage >80%, Semantic correctness verified, No critical errors
+
+State Count: 13 states (MVP)
+
+States:
+
+Phase 1: Environment & Execution Preparation
+
+1. EnvironmentSetup: Create virtual environment, install dependencies
+2. Parallel Processing: Install multiple independent test dependencies simultaneously
+3. Performance Target: 10-20s (with parallel pip/npm install)
+4. FlakeDetectionSetup: Configure flaky test detection infrastructure (MVP - Critical)
+5. Purpose: Prevent non-deterministic tests from blocking autonomous loop
+6. Configuration: Set retry count (default: 3 runs per test), configure timeout thresholds, setup flake detection storage (SQLite)
+7. Performance Target: <500ms (configuration)
+
+Phase 2: Test Execution with Instrumentation
+
+3. UnitTesting: Run pytest/jest for function-level tests with execution tracing
+4. Execution: Run tests with coverage instrumentation, capture execution traces for failures (variable states, call stacks), run each test N times for flake detection
+5. Parallel Processing: Run test files in parallel (pytest -n auto, jest --maxWorkers), execute independent test suites simultaneously, Performance: N test files × 5s = 5N sequential → ~N/4 parallel (4 workers)
+6. Instrumentation: Python sys.settrace(), JavaScript source maps
+7. Performance Target: <30s (parallel execution with 4+ workers)
+8. IntegrationTesting: Test API integrations and data flows with contract verification
+9. Execution: Test API endpoints with contract validation (OpenAPI/Pact), database integration tests, external service mocking
+10. Parallel Processing: Test multiple API endpoints simultaneously, parallel database connection tests, concurrent integration scenario execution
+11. Performance Target: 20-40s (with parallel API/DB testing)
+12. BrowserTesting: Playwright E2E tests for user workflows
+13. Execution: Launch browser via CDP, execute user scenarios (login, checkout, forms), verify UI elements and interactions, capture screenshots and console logs, monitor network requests
+14. Parallel Processing: Run tests in 2-3 browsers concurrently (Chrome, Firefox, Safari), execute independent user flows simultaneously
+15. Performance Target: 15-30s (parallel, 2-3 browsers)
+16. PropertyBasedTesting: Run hypothesis/fast-check for property tests
+17. Execution: Generate random inputs according to properties, verify invariants hold across all inputs, capture counterexamples if property violated
+18. Parallel Processing: Test multiple properties concurrently
+19. Performance Target: <20s (parallel property testing)
+
+Phase 3: Analysis & Debugging
+
+7. ExecutionTraceAnalysis: Analyze execution traces for failures
+8. Purpose: Provide actionable debugging information
+9. Analysis: Variable states at failure point, call stack leading to failure, input values that caused failure, comparison with successful runs
+10. Outputs: Detailed failure reports with traces
+11. Performance Target: <2s
+12. FlakeDetectionAnalysis: Identify and quarantine flaky tests (MVP - Critical)
+13. Purpose: Prevent flaky tests from blocking deployment
+14. Process: Analyze test runs across N attempts (default: 3), identify tests with inconsistent results (pass sometimes, fail sometimes), calculate flakiness score (0.0-1.0), quarantine tests with flakiness score >0.3
+15. Quarantine Action: Mark test as flaky in database, exclude from pass/fail criteria (don't block deployment), report flaky tests to user for investigation, allow manual override to include/exclude
+16. Outputs: Flaky test list, flakiness scores, quarantine decisions
+17. Performance Target: <5s (3 runs, parallel execution)
+18. CoverageAnalysis: Check code coverage metrics
+19. Metrics: Line coverage, branch coverage, function coverage
+20. Target: >80% coverage
+21. Outputs: Coverage report, uncovered lines/branches
+22. Performance Target: <3s
+23. SemanticCorrectnessVerification: Verify tests match intent (MVP - Critical)
+24. Purpose: Detect tests that pass but don't actually verify correct behavior
+25. Technique: Compare test assertions with extracted specifications, verify all specified behaviors have tests, detect tautological assertions (always true), check for meaningless assertions
+26. Outputs: Semantic correctness score, meaningless test warnings
+27. Performance Target: <5s
+
+Phase 4: Error Handling & Recovery
+
+11. ErrorClassification: Classify test failures
+12. Categories: Code bug (logic error in implementation), Test bug (incorrect test), Environmental issue (setup problem), Flaky test (non-deterministic), Timeout (performance issue)
+13. Outputs: Classified failures, recommended actions
+14. Performance Target: <3s
+15. FixingIssues: Auto-retry with fixes if tests fail
+16. Process: Analyze failure type, retrieve known issue patterns from Yantra Codex, apply automatic fix if pattern recognized, if auto-fix fails request LLM to generate fix, validate fix and re-run tests
+17. Performance Target: <10s per retry
+
+Phase 5: Co-Evolution Check
+
+13. TestCodeCoEvolutionCheck: Verify tests remain aligned with code (MVP)
+14. Purpose: Ensure tests haven't become stale after code changes
+15. Checks: Do tests still compile/run?, Do tests still match intent specifications?, Are assertions still appropriate for new implementation?
+16. Action: If stale, trigger TestUpdateGeneration in Test Intelligence machine
+17. Performance Target: <1s (GNN queries + static analysis)
+
+Phase 6: Results & Reporting
+
+14. Complete: All tests pass with adequate coverage and semantic correctness
+15. Report: Test results, coverage metrics, mutation score, semantic correctness score, flaky tests quarantined
+
+Failed: Tests failed after maximum retries
+
+1. Report: Detailed failure analysis with execution traces, root causes, suggested fixes
+
+Performance Targets (Total Cycle): <2 minutes (with parallel optimizations)
+
+Testing Framework Integration & Workflow:
+
+Total Testing Framework Cycle: ~2.5 minutes (with parallel optimization)
+
+Task Tracking for Parallel Operations (MVP - Critical): When running multiple tasks in parallel, the system tracks: Task Registry (SQLite table tracking all active tasks), Context Preservation (each task maintains isolated context), Dependency Management (tasks track dependencies using GNN), Progress Monitoring (UI shows all parallel tasks with real-time updates), Failure Isolation (one task failure doesn't affect others), Context Recovery (if agent loses context, reload from task registry)
+
+#### 3.4.2.3 Deployment State Machine (MVP - Railway Focus)
+
+Responsibility: Deploy validated code to Railway.app
+
+Entry Point: Code + passing tests
+
+Exit Point: Live Railway URL + health status
+
+Trigger: Manual (requires user approval)
+
+Platform: Railway.app only in MVP
+
+State Count: 6 states
+
+States:
+
+1. PackageBuilding: Create Docker image or build artifacts
+2. Process: Build Docker image with multi-stage builds, create deployment package, optimize artifact size
+3. Parallel Processing: Build multiple layers/stages simultaneously (Docker multi-stage builds)
+4. Performance Target: 30-60s
+5. ConfigGeneration: Generate railway.json, Dockerfile, environment config
+6. Process: Generate Railway-specific configuration, create Dockerfile if not present, configure environment variables, setup build and start commands, write config files via File Operations Service (Part 3, Section 3.4.3.3), validate config syntax before proceeding
+7. Parallel Processing: Generate multiple config files simultaneously
+8. Performance Target: <5s
+9. RailwayUpload: Push code/image to Railway
+10. Process: Push Docker image to Railway registry, upload application code, trigger Railway build process
+11. Conversation Linkage (NEW): Create deployment_session record with session_id and link to parent codegen_session and test_session, Update conversation_messages.linked_deployment_session with deployment_session_id, Store deployment_url in deployment_session for traceability, Enable full traceability: user message → codegen_session → test_session → deployment_session → live URL
+12. Parallel Processing: Parallel upload of multiple artifacts/layers
+13. Performance Target: 20-40s (depends on artifact size)
+14. FixingIssues: Auto-retry with fixes if build/config/upload fails
+15. Inputs: Error context from failed state (PackageBuilding, ConfigGeneration, or RailwayUpload), error type (build failure, config error, upload failure, dependency issue), error details (build logs, config validation errors, Railway API errors), failure count (1-3 attempts)
+16. Process: Analyze failure type and apply appropriate recovery: If PackageBuilding failed → check for transient network errors (retry with backoff), verify Dockerfile syntax and fix common errors, check disk space and clean build cache, retry build with fresh environment; If ConfigGeneration failed → validate railway.json schema and fix, check environment variables completeness, verify build/start commands syntax, regenerate config with corrections; If RailwayUpload failed → check Railway API status and retry if transient, verify authentication tokens, check project quotas/limits, retry upload with exponential backoff, increment retry counter (max 3 attempts), log each attempt with detailed diagnostics
+17. Outputs: Fixed deployment artifacts (if successful), corrected configuration files, detailed error report (if all attempts fail), Railway logs and diagnostics
+18. Escalation: After 3 failed attempts mark session outcome as Failed and present error report to user including: which deployment step failed (build/config/upload), root cause analysis, Railway platform status if relevant, configuration issues found, recommendations for manual fixes (check Railway dashboard, verify environment variables, check quotas)
+19. Prevention: Immediate deployment failures from transient errors, user frustration from non-retried fixable issues, wasted time on manual intervention for auto-fixable problems
+20. Performance Target: <30s per retry attempt (includes rebuild/reupload time)
+21. Note: FixingIssues handles pre-deployment errors; RollbackOnFailure handles post-deployment errors (after HealthCheck)
+22. HealthCheck: Verify deployed service is responding
+23. Process: Wait for deployment to be live, check multiple endpoints for 200 OK responses, verify expected content in responses, check for error logs
+24. Parallel Processing: Check multiple endpoints simultaneously, parallel health checks for different service components, concurrent smoke tests across multiple routes
+25. Performance Target: <30s
+26. RollbackOnFailure: Auto-rollback if health check fails
+27. Process: If health check fails, trigger automatic rollback, restore previous deployment version, notify user of failure and rollback
+28. Performance Target: <30s
+29. Complete: Deployment successful with live URL
+30. Outputs: Live Railway URL, deployment timestamp, health check status, deployment_session_id (NEW), linked conversation messages (NEW)
+31. Traceability: User can click on chat message → see generated code → see test results → see live deployment URL
+
+Failed: Deployment failed, rollback triggered or manual intervention needed
+
+Performance Targets (Total Cycle): <2 minutes (build + deploy + health check)
+
+Integration with Testing: Deployment only proceeds if all tests pass (100% stable tests). Flaky tests quarantined don't block deployment.
+
+#### 3.4.2.4 Maintenance State Machine (Post-MVP)
+
+Responsibility: Monitor production, detect issues, auto-fix, and deploy patches
+
+Entry Point: Deployed application in production
+
+Exit Point: Incident resolved or escalated
+
+Trigger: Automatic based on error detection
+
+Philosophy: Self-healing production systems - MTTR <5 minutes for known patterns
+
+State Count: 11 states
+
+States:
+
+1. LiveMonitoring: Normal monitoring state - no incidents
+2. Behavior: Continuous monitoring active, alert thresholds configured, ready to transition to Incident state if issue detected
+3. Monitors: Error rates, performance metrics, API response times, browser errors, user-reported issues
+4. BrowserValidation: Real User Monitoring (RUM), session replay
+5. Purpose: Monitor actual user behavior and detect issues
+6. Monitors: JavaScript errors in production, network failures, performance degradation, user session recordings, broken user flows
+7. Parallel Processing: Monitor multiple user sessions simultaneously
+8. Performance Target: <1s (detection latency)
+9. ErrorAnalysis: Pattern matching against known issues, root cause analysis
+10. Process: Classify error type (browser, API, database, performance), search known issues database for similar patterns, analyze error frequency and impact, determine severity (Low, Medium, High, Critical)
+11. Parallel Processing: Analyze multiple error patterns concurrently
+12. Performance Target: <5s
+13. IssueDetection: Root cause analysis, dependency graph queries
+14. Process: Use dependency graph to trace error source, identify affected components, determine blast radius of issue, classify as known vs unknown issue
+15. Parallel Processing: Query multiple dependency paths simultaneously
+16. Performance Target: <3s
+17. AutoFixGeneration: LLM generates patch based on error context
+18. Inputs: Error logs, stack traces, affected code, similar past fixes from Yantra Codex
+19. Process: Retrieve similar fixes from known issues database, LLM generates fix candidates, score each candidate for likelihood of success, write patch files via File Operations Service (Part 3, Section 3.4.3.3), create temporary Git branch for fix validation
+20. Outputs: Fix candidate code, confidence score, impact analysis
+21. Parallel Processing: Generate multiple fix candidates concurrently
+22. Performance Target: 10-30s (LLM generation)
+23. FixValidation: Test fix in staging using CodeGen + Testing machines
+24. Process: Apply fix to staging environment, run full test suite (uses Test Intelligence + Test Execution machines), verify fix resolves the issue, ensure no new issues introduced
+25. Parallel Processing: Leverages parallel processing from CodeGen and Testing machines
+26. Performance Target: 2-3 minutes (full test suite with parallel execution)
+27. CICDPipeline: Automated deployment of validated fix
+28. Actions: Build Docker image, push to Railway/production, deploy with zero-downtime strategy (blue-green, canary), monitor deployment health
+29. Parallel Processing: Leverages parallel processing from Deployment machine
+30. Performance Target: 1-2 minutes (parallel deployment pipeline)
+31. VerificationCheck: Confirm issue is resolved in production
+32. Verification Criteria: Error rate drops to baseline, no new errors introduced, users reporting issue confirm fix, performance metrics stable, all health checks pass
+33. Parallel Processing: Check error rates across multiple regions simultaneously, parallel verification across different service instances, concurrent user impact assessment
+34. Performance Target: <30s (parallel checks across regions)
+35. LearningUpdate: Update knowledge base with new patterns
+36. What Gets Updated: Error pattern → Solution mapping in Vector DB, documentation with new known issue, metrics dashboard (MTTR for this error type), team notification/report, incident log for audit trail
+37. Purpose: Learn from every incident to improve future response
+38. Parallel Processing: Update multiple knowledge stores concurrently (Vector DB, documentation, metrics)
+39. Performance Target: <5s
+40. Active (Normal State): Normal monitoring state - no incidents
+41. Incident (Active Incident State): Active incident being handled
+42. Behavior: Cycles through states 3-9 (ErrorAnalysis → LearningUpdate), human can intervene at any point, escalation if auto-fix fails after N attempts
+
+Self-Healing Loop:
+
+1. Detect: Production error occurs (browser crash, API failure, performance degradation)
+2. Analyze: Pattern matching against known issues, root cause analysis
+3. Generate Fix: LLM generates patch based on error context
+4. Validate Fix: Run through CodeGen + Testing machines (full validation)
+5. Deploy: Automated CI/CD pipeline pushes fix to production
+6. Verify: Confirm error rate drops, users unaffected
+7. Learn: Update Yantra Codex, add monitoring, record in incident log
+
+Performance Targets (Total Self-Healing Cycle): <5 minutes for known patterns
+
+Escalation: If auto-fix fails after 3 attempts, escalate to human with full context (error logs, attempted fixes, root cause analysis)
+
+---
+
+[Part 2 Complete - State Machines 3.4.2.1 through 3.4.2.4] [Next: Part 3 will cover Documentation Governance State Machine, Shared Services, Supporting Sections, and Advanced Features]
+
+# Yantra: Complete Technical Specification - Part 3
+
+Documentation Governance, Shared Services, and Advanced Features
+
 ---
 
 ### 3.4.2.5 Documentation Governance State Machine (6th Machine - Post-MVP)
@@ -2498,36 +5838,37 @@ States:
 10. Outputs: Blocks to create, blocks to update, blocks to link
 11. Performance Target: <1s (database queries + GNN lookups)
 12. ContentGeneration: Generate/update documentation content
-13. Inputs: Block specifications from BlockIdentification, code context, test results, deployment logs
-14. Process: Generate markdown content using LLM (based on code, architecture, tests), extract examples from test cases, generate API documentation from code signatures, create decision log entries from architecture changes
-15. Outputs: Generated content for each block
-16. Performance Target: <10s (LLM generation for multiple blocks)
-17. GraphLinking: Create traceability edges in dependency graph
-18. Inputs: Generated blocks, code files, test files, requirements
-19. Process: Create edges: requirement → architecture block (traces_to), architecture → spec block (implements), spec → code file (realized_in), requirement → test file (tested_by), code → API doc block (documented_in), issue → change log block (has_issue)
-20. Outputs: Graph edges for full traceability
-21. Performance Target: <500ms (graph edge creation)
-22. ConflictDetection: Check for conflicting documentation (SSOT validation)
-23. Purpose: Ensure Single Source of Truth - no duplicate or conflicting documentation
-24. Inputs: Generated blocks, existing documentation
-25. Process: Check for duplicate blocks (same topic, different content), detect conflicting statements (requirement says X, code does Y), identify outdated blocks (code changed but doc didn't), verify SSOT rules (only one architecture doc, one requirements doc per topic)
-26. Outputs: Conflict report, resolution recommendations
-27. Performance Target: <2s (semantic similarity checks across all docs)
-28. UserClarification: Request user input for conflicts
-29. Triggered when: Conflicts detected in ConflictDetection state, ambiguous documentation updates needed, breaking changes to existing docs
-30. Display: Show conflicting documentation side-by-side, highlight differences, suggest resolution options
-31. User Actions: Choose primary source, merge content, mark as different contexts, update SSOT
-32. Performance Target: N/A (waits for human)
-33. ConflictResolution: Apply user's resolution or auto-resolve simple conflicts
-34. Inputs: User decisions from UserClarification, conflict report
-35. Process: Apply user's chosen resolution (update primary, merge, archive), auto-resolve simple conflicts (code changed → update API doc, test added → update test plan), update SSOT registry
-36. Outputs: Resolved documentation, updated blocks
-37. Performance Target: <1s
-38. Validation: Verify documentation quality and completeness
-39. Checks: All code has corresponding API documentation, all requirements have linked tests, all architecture decisions have ADRs, all breaking changes logged, traceability complete (requirement → architecture → spec → code → test → doc)
-40. Outputs: Validation report, quality score
-41. Performance Target: <2s (GNN traversal for traceability)
-42. Complete: Documentation updated and synced
+13. Inputs: Block specifications from BlockIdentification, code context, test results, deployment logs, conversation context (NEW)
+14. Conversation Integration (NEW): Retrieve conversation messages linked to codegen/test/deployment sessions, Use conversation context to understand user intent and requirements, Include user's original natural language intent in documentation, Link documentation blocks to originating conversation messages for audit trail
+15. Process: Generate markdown content using LLM (based on code, architecture, tests, conversation), extract examples from test cases, generate API documentation from code signatures, create decision log entries from architecture changes, write YDoc block files via File Operations Service (Section 3.4.3.3)
+16. Outputs: Generated content for each block, linked to conversation for traceability
+17. Performance Target: <10s (LLM generation for multiple blocks)
+18. GraphLinking: Create traceability edges in dependency graph
+19. Inputs: Generated blocks, code files, test files, requirements
+20. Process: Create edges: requirement → architecture block (traces_to), architecture → spec block (implements), spec → code file (realized_in), requirement → test file (tested_by), code → API doc block (documented_in), issue → change log block (has_issue)
+21. Outputs: Graph edges for full traceability
+22. Performance Target: <500ms (graph edge creation)
+23. ConflictDetection: Check for conflicting documentation (SSOT validation)
+24. Purpose: Ensure Single Source of Truth - no duplicate or conflicting documentation
+25. Inputs: Generated blocks, existing documentation
+26. Process: Check for duplicate blocks (same topic, different content), detect conflicting statements (requirement says X, code does Y), identify outdated blocks (code changed but doc didn't), verify SSOT rules (only one architecture doc, one requirements doc per topic)
+27. Outputs: Conflict report, resolution recommendations
+28. Performance Target: <2s (semantic similarity checks across all docs)
+29. UserClarification: Request user input for conflicts
+30. Triggered when: Conflicts detected in ConflictDetection state, ambiguous documentation updates needed, breaking changes to existing docs
+31. Display: Show conflicting documentation side-by-side, highlight differences, suggest resolution options
+32. User Actions: Choose primary source, merge content, mark as different contexts, update SSOT
+33. Performance Target: N/A (waits for human)
+34. ConflictResolution: Apply user's resolution or auto-resolve simple conflicts
+35. Inputs: User decisions from UserClarification, conflict report
+36. Process: Apply user's chosen resolution (update primary, merge, archive), auto-resolve simple conflicts (code changed → update API doc, test added → update test plan), update SSOT registry
+37. Outputs: Resolved documentation, updated blocks
+38. Performance Target: <1s
+39. Validation: Verify documentation quality and completeness
+40. Checks: All code has corresponding API documentation, all requirements have linked tests, all architecture decisions have ADRs, all breaking changes logged, traceability complete (requirement → architecture → spec → code → test → doc)
+41. Outputs: Validation report, quality score
+42. Performance Target: <2s (GNN traversal for traceability)
+43. Complete: Documentation updated and synced
 
 Integration Hooks in Existing Machines:
 
@@ -2727,7 +6068,482 @@ Performance Targets:
 4. Console error capture: <100ms
 5. Screenshot capture: <500ms
 
-#### 3.4.3.3 SSOT Validation Service
+#### 3.4.3.3 File Operations Service
+
+Purpose: Centralized file system operations with atomic transactions, error handling, and dependency graph integration
+
+Called By: CodeGen Machine (State 13 - CodeGeneration), Testing Machines (test file creation), Documentation Machine (YDoc file writes), Deployment Machine (config file generation)
+
+Service Interface:
+
+pub trait FileOperationsService {
+
+    async fn write_file(&self, path: &Path, content: &str) -> Result`<FileWriteResult>`;
+
+    async fn write_files_batch(&self, files: Vec<(PathBuf, String)>) -> Result`<BatchWriteResult>`;
+
+    async fn edit_file(&self, path: &Path, edits: Vec`<Edit>`) -> Result`<FileEditResult>`;
+
+    async fn create_directories(&self, path: &Path) -> Result<()>;
+
+    async fn validate_path(&self, path: &Path) -> Result`<PathValidation>`;
+
+    async fn rollback_writes(&self, transaction_id: &str) -> Result<()>;
+
+}
+
+File Write Operation Flow:
+
+Step 1: Path Determination
+
+1. Priority order: User-specified path (explicit in request) > Architecture-defined path (from architecture document) > Dependency graph proximity (near related files) > Project conventions (src/, tests/, docs/, etc.)
+2. Resolve relative paths to absolute workspace paths
+3. Validate path safety (no parent directory escapes, workspace-only)
+4. Check path doesn't conflict with system files or .yantra/ directory
+
+Step 2: Pre-Write Validation
+
+1. Call CreationValidation Service (de-duplication check)
+2. Check file system permissions (write access to directory)
+3. Check available disk space (minimum 100MB required)
+4. Verify parent directories exist or can be created
+5. If file exists: determine if new file or modification
+
+Step 3: File Write Execution
+
+1. For new files:
+   - Create parent directories recursively (fs::create_dir_all)
+   - Write content atomically (fs::write with temp file + rename)
+   - Set permissions (0644 for regular files, 0755 for executables)
+   - Record write in transaction log
+2. For file modifications:
+
+- Use file_edit tool for surgical edits (preserves formatting)
+- Backup original file (copy to .yantra/backups/)
+- Apply edits line-by-line or via AST transformations
+- Validate syntax after edit (tree-sitter)
+
+Step 4: Post-Write Actions
+
+1. Update dependency graph:
+   - Add file node if new file
+   - Create edges for imports/dependencies
+   - Update reverse dependencies (files that import this)
+2. Invalidate context cache (Tier 4):
+
+- Remove cached contexts containing this file
+- Mark related files as needing re-tokenization
+
+1. Log to Change Log (YDoc):
+
+- Record file creation/modification event
+- Link to requirement/task that triggered change
+
+1. Stage for Git (optional):
+
+- git add `<filepath>`
+- Prepare for eventual commit
+
+Step 5: Transaction Commit
+
+1. Mark transaction as successful
+2. Release file locks (if Phase 2A multi-agent)
+3. Return success result with file metadata
+
+Error Handling:
+
+Error Type: Permission Denied
+
+1. Detection: fs::write returns ErrorKind::PermissionDenied
+2. Recovery: Try alternative path in /tmp/ or user home directory, log warning about permission issue, if alternative succeeds: notify user of non-standard location, if alternative fails: escalate to user with detailed error
+3. Prevention: Pre-flight permission check before write
+4. Performance: <10ms (check + alternative path attempt)
+
+Error Type: Disk Full
+
+1. Detection: fs::write returns ErrorKind::OutOfSpace OR pre-flight disk space check
+2. Recovery: Check available space on all mounted volumes, attempt write to volume with space if found, if no space available: fail immediately with clear error, do NOT retry (space unlikely to free up quickly)
+3. User Notification: "Disk full. Free at least 100MB and retry."
+4. Prevention: Pre-flight disk space check (fail fast)
+5. Performance: <50ms (disk space query)
+
+Error Type: Path Does Not Exist
+
+1. Detection: fs::write returns ErrorKind::NotFound
+2. Recovery: Attempt to create parent directories (fs::create_dir_all), if parent creation succeeds: retry write, if parent creation fails: check if path is valid, escalate to user if path is invalid
+3. Prevention: Pre-create parent directories in Step 3
+4. Performance: <20ms (mkdir + retry)
+
+Error Type: File Already Exists
+
+1. Detection: Should not occur (CreationValidation Service catches this)
+2. Recovery: If validation was bypassed: query user (overwrite, rename, merge), log warning about validation bypass
+3. Prevention: Always call CreationValidation Service before write
+4. Performance: <1ms (already validated)
+
+Error Type: Invalid Filename
+
+1. Detection: fs::write returns ErrorKind::InvalidInput OR path validation fails
+2. Recovery: Sanitize filename (remove invalid characters: <>:"/\|?\*), replace spaces with underscores, truncate to 255 characters max, retry with sanitized name
+3. Prevention: Path validation in Step 1 catches most cases
+4. Performance: <5ms (sanitization + retry)
+
+Error Type: Path Too Long
+
+1. Detection: Path length > 260 characters (Windows) or > 4096 (Unix)
+2. Recovery: Shorten path components (abbreviate directory names), move file closer to workspace root, suggest shorter module/package names to user
+3. Prevention: Path length check in validation
+4. Performance: <5ms
+
+Multi-File Write Strategy:
+
+Sequential Write (MVP)
+
+1. Write files in dependency order:
+   - Dependencies first (imported files)
+   - Dependents second (files that import)
+   - Independent files (no order dependency)
+2. Atomic transaction semantics:
+
+- All writes succeed OR all writes rollback
+- Transaction log tracks writes in current batch
+- On any failure: rollback all previous writes in batch
+
+1. Rollback procedure:
+
+- Restore files from .yantra/backups/
+- Delete newly created files
+- Update dependency graph to previous state
+- Invalidate all caches (full refresh)
+
+1. Performance: 50-200ms per file (depends on size)
+
+Parallel Write (Phase 2A - Team of Agents)
+
+1. Identify independent files (no direct dependencies)
+2. Launch parallel write operations (one per agent)
+3. File locking prevents same-file conflicts:
+   - Acquire file lock before write (sled Tier 2)
+   - Hold lock during write operation
+   - Release lock after graph update
+4. Dependency-ordered for related files:
+
+- Parallel within dependency levels
+- Sequential across dependency levels
+
+1. Performance: ~40% faster for large batches (4+ files)
+
+Performance Targets:
+
+1. Single file write: <50ms (validation + write + graph update)
+2. Batch write (5 files): <200ms sequential / <120ms parallel
+3. Rollback operation: <100ms (restore from backups)
+4. Directory creation: <20ms (recursive mkdir)
+5. Permission check: <10ms (filesystem stat)
+6. Disk space check: <50ms (df command)
+
+Integration Example in CodeGen State 13:
+
+// After LLM generates code (Phase C):
+
+let files_to_write = vec![
+
+    (PathBuf::from("src/auth.py"), auth_code),
+
+    (PathBuf::from("tests/test_auth.py"), test_code),
+
+];
+
+// Call File Operations Service
+
+let result = file_ops_service
+
+    .write_files_batch(files_to_write)
+
+    .await?;
+
+match result {
+
+    BatchWriteResult::Success { written_files } => {
+
+    // Update dependency graph for each file
+
+    for file_path in written_files {
+
+    dependency_graph.add_file_node(&file_path).await?;
+
+    dependency_graph.extract_imports(&file_path).await?;
+
+    }
+
+    // Invalidate context cache
+
+    context_cache.invalidate_files(&written_files).await?;
+
+    // Log to Change Log
+
+    ydoc_service.log_change(
+
+    ChangeType::FilesCreated,
+
+    written_files.clone()
+
+    ).await?;
+
+    // Transition to DependencyValidation state
+
+    transition_to(State::DependencyValidation)?;
+
+    },
+
+    BatchWriteResult::PartialSuccess { written, failed } => {
+
+    // Some files wrote, some failed
+
+    log::warn!("Partial write success: {} ok, {} failed",
+
+    written.len(), failed.len());
+
+    // Rollback successful writes
+
+    file_ops_service.rollback_writes(&transaction_id).await?;
+
+    // Analyze failures
+
+    let error_context = analyze_write_failures(&failed);
+
+    // Transition to FixingIssues state
+
+    transition_to(State::FixingIssues {
+
+    error_context,
+
+    retry_count: 0
+
+    })?;
+
+    },
+
+    BatchWriteResult::Failure { error } => {
+
+    // Complete failure - no files written
+
+    log::error!("File write batch failed: {}", error);
+
+    match error.kind {
+
+    WriteErrorKind::DiskFull => {
+
+    // Fail immediately - cannot recover
+
+    notify_user("Disk full. Free space and retry.").await?;
+
+    transition_to(State::Failed {
+
+    reason: "Insufficient disk space".into()
+
+    })?;
+
+    },
+
+    WriteErrorKind::PermissionDenied => {
+
+    // Try alternative location
+
+    let alt_result = try_alternative_locations(&files_to_write).await?;
+
+    if alt_result.success {
+
+    notify_user("Files written to alternative location.").await?;
+
+    // Continue with alternative paths
+
+    } else {
+
+    // Escalate to user
+
+    transition_to(State::Failed {
+
+    reason: "Permission denied, no alternatives".into()
+
+    })?;
+
+    }
+
+    },
+
+    _ => {
+
+    // Retryable error
+
+    transition_to(State::FixingIssues {
+
+    error_context: error.into(),
+
+    retry_count: 0
+
+    })?;
+
+    }
+
+    }
+
+    }
+
+}
+
+Transaction Log Schema (Tier 1 SQLite):
+
+| Column         | Type             | Description                             |
+| -------------- | ---------------- | --------------------------------------- |
+| transaction_id | TEXT PRIMARY KEY | UUID for this batch write               |
+| started_at     | TEXT NOT NULL    | ISO-8601 timestamp                      |
+| completed_at   | TEXT             | NULL if in progress                     |
+| status         | TEXT NOT NULL    | pending, committed, rolled_back, failed |
+| file_paths     | TEXT NOT NULL    | JSON array of paths in batch            |
+| backup_paths   | TEXT             | JSON array of backup locations          |
+| error_log      | TEXT             | JSON array of errors if failed          |
+
+Rollback Procedure:
+
+1. Query transaction log for transaction_id
+2. For each file in backup_paths:
+   - Copy backup back to original location
+   - Verify file contents match backup (hash check)
+3. For each newly created file:
+
+- Delete file from filesystem
+- Remove from dependency graph
+
+1. Update transaction status to "rolled_back"
+2. Clear transaction from active transactions list
+3. Performance: <100ms for typical batch (3-5 files)
+
+Extended Integration Example with Full Error Handling:
+
+// Complete flow with error handling:
+
+pub async fn write_generated_code(
+
+    file_path: PathBuf,
+
+    generated_code: String,
+
+    services: &Services
+
+) -> Result`<WriteCodeResult>` {
+
+    // Step 1: Validate file creation (de-duplication)
+
+    let validation_result = services.creation_validation
+
+    .validate_file_creation(&file_path, &generated_code).await?;
+
+    match validation_result {
+
+    ValidationResult::Duplicate { existing, similarity } => {
+
+    if similarity > 0.95 {
+
+    return Ok(WriteCodeResult::ReuseExisting(existing));
+
+    }
+
+    let decision = prompt_deduplication_decision(&existing, &generated_code).await?;
+
+    if decision == Decision::ReuseExisting {
+
+    return Ok(WriteCodeResult::ReuseExisting(existing));
+
+    }
+
+    },
+
+    ValidationResult::NoDuplicate => { /* proceed */ }
+
+    }
+
+    // Step 2: Write file with comprehensive error handling
+
+    match services.file_ops.write_file(&file_path, &generated_code).await {
+
+    Ok(write_result) => {
+
+    // Success path
+
+    services.dependency_graph.add_file_node(&file_path).await?;
+
+    services.dependency_graph.extract_imports(&file_path).await?;
+
+    services.context_cache.invalidate_file(&file_path).await?;
+
+    services.ydoc.log_change(ChangeType::FileCreated, &file_path).await?;
+
+    Ok(WriteCodeResult::Success {
+
+    path: file_path,
+
+    size: write_result.bytes_written
+
+    })
+
+    },
+
+    Err(e) => {
+
+    // Error handling for specific cases
+
+    match e.kind {
+
+    FileWriteErrorKind::PermissionDenied => {
+
+    log::warn!("Permission denied for {:?}, trying alternative", file_path);
+
+    let alt_path = find_alternative_path(&file_path)?;
+
+    return write_generated_code(alt_path, generated_code, services).await;
+
+    },
+
+    FileWriteErrorKind::DiskFull => {
+
+    return Err(anyhow!("Disk full - cannot write file"));
+
+    },
+
+    FileWriteErrorKind::PathTooLong => {
+
+    let short_path = shorten_path(&file_path)?;
+
+    return write_generated_code(short_path, generated_code, services).await;
+
+    },
+
+    FileWriteErrorKind::ParentNotFound => {
+
+    services.file_ops.create_directories(&file_path.parent().unwrap()).await?;
+
+    return write_generated_code(file_path, generated_code, services).await;
+
+    },
+
+    _ => {
+
+    log::error!("File write failed: {}", e);
+
+    return Err(e.into());
+
+    }
+
+    }
+
+    }
+
+    }
+
+}
+
+#### 3.4.3.4 SSOT Validation Service
 
 Purpose: Enforce Single Source of Truth for critical project artifacts
 
@@ -2795,6 +6611,258 @@ pub struct SSOTValidator {
     }
 
 }
+
+#### 3.4.3.5 Conversation Memory Service (NEW)
+
+Purpose: Provide conversation context and work session linking to all state machines
+
+Called By: All state machines that need conversation context (CodeGen, Testing, Documentation Governance)
+
+Service Interface:
+
+pub trait ConversationMemoryService {
+
+    // Save messages
+
+    async fn save_user_message(
+
+    &self,
+
+    session_id: &str,
+
+    content: &str,
+
+    linked_session: Option<&str>
+
+    ) -> Result`<String>`;
+
+    async fn save_agent_message(
+
+    &self,
+
+    session_id: &str,
+
+    content: &str,
+
+    linked_session: Option<&str>
+
+    ) -> Result`<String>`;
+
+    // Retrieve context
+
+    async fn get_recent_messages(
+
+    &self,
+
+    session_id: &str,
+
+    count: usize
+
+    ) -> Result<Vec`<Message>`>;
+
+    async fn get_conversation_context(
+
+    &self,
+
+    session_id: &str,
+
+    current_message: &str,
+
+    token_budget: usize
+
+    ) -> Result`<ConversationContext>`;
+
+    // Search
+
+    async fn search_similar_messages(
+
+    &self,
+
+    session_id: &str,
+
+    query: &str,
+
+    top_k: usize
+
+    ) -> Result<Vec`<Message>`>;
+
+    async fn search_by_date_range(
+
+    &self,
+
+    session_id: &str,
+
+    start: DateTime`<Utc>`,
+
+    end: DateTime`<Utc>`
+
+    ) -> Result<Vec`<Message>`>;
+
+    // Link to work sessions
+
+    async fn link_message_to_codegen(
+
+    &self,
+
+    message_id: &str,
+
+    codegen_session_id: &str
+
+    ) -> Result<()>;
+
+    async fn link_message_to_test(
+
+    &self,
+
+    message_id: &str,
+
+    test_session_id: &str
+
+    ) -> Result<()>;
+
+    async fn link_message_to_deployment(
+
+    &self,
+
+    message_id: &str,
+
+    deployment_session_id: &str
+
+    ) -> Result<()>;
+
+    // Query linked artifacts
+
+    async fn get_artifacts_from_message(
+
+    &self,
+
+    message_id: &str
+
+    ) -> Result`<ArtifactChain>`;
+
+}
+
+pub struct ConversationContext {
+
+    pub recent_messages: Vec`<Message>`,      // Full text, always included
+
+    pub relevant_messages: Vec`<Message>`,    // Semantic search results
+
+    pub summaries: Vec`<ConversationSummary>`, // Compressed old messages
+
+    pub total_tokens: usize,
+
+}
+
+pub struct ArtifactChain {
+
+    pub code_files: Vec`<String>`,
+
+    pub test_results: Option`<TestResults>`,
+
+    pub deployment_url: Option`<String>`,
+
+}
+
+Integration Examples:
+
+CodeGen Machine (ContextAssembly state):
+
+// Get conversation context for LLM
+
+let conversation_ctx = conversation_service
+
+    .get_conversation_context(session_id, current_message, 20_000)
+
+    .await?;
+
+// Assemble full context: conversation + code
+
+let full_context = ContextAssembler::new()
+
+    .add_conversation(conversation_ctx)  // 20K tokens
+
+    .add_code_dependencies(deps)         // 80K tokens
+
+    .add_reserve(20_000)                 // 20K reserve
+
+    .build()?;
+
+// Link current message to codegen session
+
+conversation_service
+
+    .link_message_to_codegen(message_id, codegen_session_id)
+
+    .await?;
+
+Testing Machine (IntentSpecificationExtraction state):
+
+// Retrieve conversation to understand user intent
+
+let messages = conversation_service
+
+    .get_recent_messages(session_id, 10)
+
+    .await?;
+
+// Search for similar conversations about testing
+
+let similar = conversation_service
+
+    .search_similar_messages(session_id, "testing requirements", 5)
+
+    .await?;
+
+// Use conversation context to extract better test oracles
+
+let specifications = extract_specifications(
+
+    user_intent,
+
+    messages,
+
+    similar
+
+).await?;
+
+Documentation Governance (ContentGeneration state):
+
+// Get conversation context for documentation
+
+let conversation_ctx = conversation_service
+
+    .get_conversation_context(session_id, "doc generation", 10_000)
+
+    .await?;
+
+// Generate documentation including user's original intent
+
+let doc_content = llm.generate_documentation(
+
+    code,
+
+    tests,
+
+    conversation_ctx  // Include user's natural language intent
+
+).await?;
+
+Performance Targets:
+
+- Save message: <50ms (includes embedding generation)
+- Get recent (10): <20ms
+- Semantic search (top-5): <30ms
+- Context assembly: <200ms (parallel retrieval)
+- Link to session: <10ms (database update)
+
+Storage: Tier 1 SQLite (.yantra/state.db)
+
+- Tables: conversation_sessions, conversation_messages, conversation_summaries
+- Indexes: FTS5 for keyword search, HNSW for semantic search
+- Size: ~1KB per message, ~150KB per 1K embeddings
+
+Complete Specification: See Section 3.1.13 (Conversation Memory System) for full implementation details, database schema, adaptive retrieval, search capabilities, and privacy/security considerations.
 
 ### 3.4.4 Supporting Sections
 
@@ -2921,7 +6989,16 @@ User Intent
 
 │ Maintenance Machine │ → Self-Healing Loop
 
-Session Linking: Each machine maintains references to previous sessions for full traceability: Testing session stores codegen_session_id (trace back to generated code), Deployment session stores test_session_id (trace back to test results), Maintenance session stores deployment_id (trace back to what's deployed), Full traceability: Maintenance error → Deployment → Tests → Code Generation → User Intent
+Session Linking: Each machine maintains references to previous sessions for full traceability:
+
+- Conversation messages store links to work sessions (NEW): conversation_messages.linked_codegen_session, conversation_messages.linked_test_session, conversation_messages.linked_deployment_session
+- Testing session stores codegen_session_id (trace back to generated code)
+- Deployment session stores test_session_id (trace back to test results)
+- Maintenance session stores deployment_id (trace back to what's deployed)
+- Full traceability chain (NEW): User Message (chat) → CodeGen Session → Test Session → Deployment Session → Live URL → Maintenance Fixes
+- Bidirectional navigation (NEW): From chat message → see generated code/tests/deployment, From code file → see originating chat conversation
+- UI Integration (NEW): Click chat message → UI shows: generated files, test results, deployment URL, full audit trail with timestamps
+- Database schema: See Section 3.1.13.5 (Work Session Linking) for complete conversation linkage implementation
 
 Independent Execution: Machines can be triggered independently: Re-run tests without regenerating code (Testing machine only), Re-deploy without re-running tests (Deployment machine only), Manual fix can trigger Testing then Deployment (skip CodeGen)
 

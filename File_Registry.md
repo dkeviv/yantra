@@ -24,7 +24,7 @@
 - 📝 **Files Added**: 6 new Rust modules in src-tauri/src/ydoc/ (1,592 lines total)
 - 🔗 **Traceability Ready**: 6 edge types defined (traces_to, implements, realized_in, tested_by, documents, has_issue)
 
-**PREVIOUS: Unified GNN Storage Architecture Decision (Dec 5, 2025)
+\*\*PREVIOUS: Unified GNN Storage Architecture Decision (Dec 5, 2025)
 
 **LATEST: Unified GNN Storage Architecture Decision (Dec 5, 2025)**
 
@@ -487,14 +487,14 @@
 
 ### YDoc Module (Dec 8, 2025) - 🚧 FOUNDATION COMPLETE (2/10 tasks)
 
-| File                                    | Status          | Purpose                                                                          | Dependencies                          | Last Updated |
-| --------------------------------------- | --------------- | -------------------------------------------------------------------------------- | ------------------------------------- | ------------ |
-| `src-tauri/src/ydoc/mod.rs`             | ✅ Complete     | YDoc module root with types (DocumentType, BlockType, BlockStatus) + exports    | All YDoc submodules                   | Dec 8, 2025  |
-| `src-tauri/src/ydoc/database.rs`        | ✅ Complete     | SQLite schema (documents, blocks, graph_edges) + FTS5 + connection pooling      | rusqlite, r2d2, r2d2_sqlite, serde    | Dec 8, 2025  |
-| `src-tauri/src/ydoc/parser.rs`          | ⚪ Stub created | .ydoc file I/O (ipynb-compatible JSON), parse/serialize                         | serde, serde_json                     | Dec 8, 2025  |
-| `src-tauri/src/ydoc/manager.rs`         | ⚪ Stub created | High-level document management (create, load, save, delete)                     | database, parser                      | Dec 8, 2025  |
-| `src-tauri/src/ydoc/file_ops.rs`        | ⚪ Stub created | File operations (folder structure, export/import Markdown/HTML)                 | std::fs, std::path                    | Dec 8, 2025  |
-| `src-tauri/src/ydoc/traceability.rs`    | ⚪ Stub created | Query layer (requirement→code, impact analysis, test coverage)                  | database                              | Dec 8, 2025  |
+| File                                 | Status          | Purpose                                                                      | Dependencies                       | Last Updated |
+| ------------------------------------ | --------------- | ---------------------------------------------------------------------------- | ---------------------------------- | ------------ |
+| `src-tauri/src/ydoc/mod.rs`          | ✅ Complete     | YDoc module root with types (DocumentType, BlockType, BlockStatus) + exports | All YDoc submodules                | Dec 8, 2025  |
+| `src-tauri/src/ydoc/database.rs`     | ✅ Complete     | SQLite schema (documents, blocks, graph_edges) + FTS5 + connection pooling   | rusqlite, r2d2, r2d2_sqlite, serde | Dec 8, 2025  |
+| `src-tauri/src/ydoc/parser.rs`       | ⚪ Stub created | .ydoc file I/O (ipynb-compatible JSON), parse/serialize                      | serde, serde_json                  | Dec 8, 2025  |
+| `src-tauri/src/ydoc/manager.rs`      | ⚪ Stub created | High-level document management (create, load, save, delete)                  | database, parser                   | Dec 8, 2025  |
+| `src-tauri/src/ydoc/file_ops.rs`     | ⚪ Stub created | File operations (folder structure, export/import Markdown/HTML)              | std::fs, std::path                 | Dec 8, 2025  |
+| `src-tauri/src/ydoc/traceability.rs` | ⚪ Stub created | Query layer (requirement→code, impact analysis, test coverage)               | database                           | Dec 8, 2025  |
 
 **Implementation Details:**
 
@@ -514,7 +514,7 @@
   - **Connection Pooling**: r2d2 with max 5 connections, min 2 idle (concurrent access support)
   - **WAL Mode**: Enabled from day one (`PRAGMA journal_mode=WAL`, `PRAGMA synchronous=NORMAL`)
   - **Comprehensive Indices**: 9 indices for fast lookups (doc_type, file_path, created_at, status, yantra_type, edges)
-  - **CRUD Operations**: 
+  - **CRUD Operations**:
     - Documents: `create_document()`, `get_document()`, `update_document()`, `delete_document()`, `list_documents()`
     - Blocks: `create_block()`, `get_blocks_for_document()`, `update_block()`, `delete_block()`
     - Edges: `create_edge()`, `get_edges_for_source()`, `get_edges_for_target()`
@@ -551,6 +551,7 @@
   - TODO: Implement TraceabilityQuery with graph traversal algorithms
 
 **Features:**
+
 - ✅ **12 Document Types**: REQ, ADR, ARCH, SPEC, PLAN, TECH, API, USER, TEST, RESULT, CHANGE, DECISION
 - ✅ **Block-Based Documentation**: Each block has unique ID, yantra_type, metadata, graph_edges
 - ✅ **Graph-Native Traceability**: 6 edge types (traces_to, implements, realized_in, tested_by, documents, has_issue)
@@ -563,6 +564,7 @@
 - ⏳ **Tauri Commands**: Frontend API - Commands pending
 
 **Status: Foundation complete (2/10 tasks)**
+
 - ✅ Task 1: Database schema (504 lines, 3 tables, FTS5, pooling, WAL)
 - ✅ Task 2: Module structure (mod.rs with types, all stubs created)
 - ⏳ Task 3: Parser implementation (.ydoc file I/O)
@@ -575,6 +577,7 @@
 - ⏳ Task 10: Tests and documentation
 
 **Next Steps:**
+
 - Task 3: Implement parser (parse/serialize .ydoc JSON, YDocDocument/YDocBlock structures)
 - Task 4: Implement file_ops (initialize folders, export Markdown/HTML, import)
 - Task 5: Implement traceability (graph traversal, impact analysis queries)

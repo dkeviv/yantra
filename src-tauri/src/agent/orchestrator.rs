@@ -22,6 +22,7 @@
 // 13. Otherwise: commit and return success
 
 use super::confidence::ConfidenceScore;
+use super::conversation_integration::ConversationContext;
 use super::dependencies::DependencyInstaller;
 #[cfg(test)]
 use super::dependencies::ProjectType;
@@ -85,6 +86,43 @@ pub async fn orchestrate_code_generation(
     file_path: String,
     target_node: Option<String>,
 ) -> OrchestrationResult {
+    orchestrate_code_generation_with_conversation(
+        gnn,
+        llm,
+        state_manager,
+        None, // No conversation context
+        user_task,
+        file_path,
+        target_node,
+    ).await
+}
+
+/// Orchestrate code generation with conversation context integration
+/// 
+/// Enhanced version that integrates conversation memory for:
+/// - Context assembly with conversation history (State 12)
+/// - Session linking after code generation (State 13)
+/// 
+/// # Arguments
+/// * `gnn` - GNN engine for context and validation
+/// * `llm` - LLM orchestrator for code generation
+/// * `state_manager` - Agent state manager for persistence
+/// * `conversation_context` - Optional conversation context for history and linking
+/// * `user_task` - User's natural language intent
+/// * `file_path` - Target file path for generated code
+/// * `target_node` - Optional specific function/class to modify
+/// 
+/// # Returns
+/// OrchestrationResult with success, escalation, or error
+pub async fn orchestrate_code_generation_with_conversation(
+    gnn: &GNNEngine,
+    llm: &LLMOrchestrator,
+    state_manager: &AgentStateManager,
+    conversation_context: Option<&ConversationContext>,
+    user_task: String,
+    file_path: String,
+    target_node: Option<String>,
+) -> OrchestrationResult {
     // Create agent state for this session
     let mut state = AgentState::new(user_task.clone());
     let session_id = state.session_id.clone();
@@ -97,7 +135,14 @@ pub async fn orchestrate_code_generation(
         };
     }
 
-    // Phase 1: Context Assembly
+    // Save user message to conversation (if context provided)
+    if let Some(ctx) = conversation_context {
+        if let Err(e) = ctx.save_user_message(&user_task, None).await {
+            eprintln!("Warning: Failed to save user message: {}", e);
+        }
+    }
+
+    // Phase 1: Context Assembly (State 12)
     state.transition_to(AgentPhase::ContextAssembly);
     if let Err(e) = state_manager.save_state(&state) {
         return OrchestrationResult::Error {
@@ -106,11 +151,40 @@ pub async fn orchestrate_code_generation(
         };
     }
 
+    // Calculate token budget: 160K Claude limit
+    // Reserve 15-20% for conversation context if available
+    let total_token_budget = 160_000;
+    let conversation_token_budget = if conversation_context.is_some() {
+        (total_token_budget as f32 * 0.175) as usize // 17.5% = 28K tokens
+    } else {
+        0
+    };
+    let gnn_token_budget = total_token_budget - conversation_token_budget;
+
+    // Get conversation context (recent 3-5 messages)
+    let conversation_ctx = if let Some(ctx) = conversation_context {
+        match ctx.get_recent_context(5).await {
+            Ok(context_str) => {
+                if !context_str.is_empty() {
+                    Some(context_str)
+                } else {
+                    None
+                }
+            }
+            Err(e) => {
+                eprintln!("Warning: Failed to get conversation context: {}", e);
+                None
+            }
+        }
+    } else {
+        None
+    };
+
     let context = match assemble_hierarchical_context(
         gnn,
         target_node.as_deref(),
         Some(&file_path),
-        160_000, // Claude's 160K token limit
+        gnn_token_budget,
     ) {
         Ok(ctx) => ctx,
         Err(e) => {
@@ -128,7 +202,7 @@ pub async fn orchestrate_code_generation(
     loop {
         state.increment_attempt();
 
-        // Phase 2: Code Generation
+        // Phase 2: Code Generation (State 13)
         state.transition_to(AgentPhase::CodeGeneration);
         if let Err(e) = state_manager.save_state(&state) {
             return OrchestrationResult::Error {
@@ -137,7 +211,14 @@ pub async fn orchestrate_code_generation(
             };
         }
 
-        let code_result = generate_code_with_context(llm, &user_task, &context, &file_path).await;
+        // Build full user task with conversation context if available
+        let full_user_task = if let Some(ref conv_ctx) = conversation_ctx {
+            format!("Previous conversation:\n{}\n\nCurrent task: {}", conv_ctx, user_task)
+        } else {
+            user_task.clone()
+        };
+
+        let code_result = generate_code_with_context(llm, &full_user_task, &context, &file_path).await;
 
         let response = match code_result {
             Ok(resp) => resp,
@@ -164,6 +245,13 @@ pub async fn orchestrate_code_generation(
 
         state.set_generated_code(response.code.clone());
         let _ = state_manager.save_state(&state);
+
+        // Link code generation to conversation (State 13)
+        if let Some(ctx) = conversation_context {
+            if let Err(e) = ctx.link_code_generation(&session_id, &response.code).await {
+                eprintln!("Warning: Failed to link code generation to conversation: {}", e);
+            }
+        }
 
         // Phase 3: Dependency Validation
         state.transition_to(AgentPhase::DependencyValidation);

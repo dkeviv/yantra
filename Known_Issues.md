@@ -1,11 +1,512 @@
 # Yantra - Known Issues
 
 **Purpose:** Track all bugs, issues, and their fixes  
-**Last Updated:** December 8, 2025
+**Last Updated:** December 9, 2025
 
 ---
 
 ## Active Issues
+
+### Issue #14: UI Design Violations - Non-Minimal Controls and Redundant Elements
+
+**Status:** ✅ RESOLVED  
+**Severity:** Medium (UX Consistency)  
+**Reported:** December 9, 2025  
+**Resolved:** December 9, 2025  
+**Component:** UI / Multiple Components
+
+#### Description
+
+Multiple UI elements violated the minimal UI design philosophy:
+
+1. **Architecture tab remaining black** in bright-white theme
+2. **Traceability filter icons** too large with unnecessary padding/rectangles
+3. **Colored debug bars** (green/orange/red) in DependencyGraph
+4. **Redundant "Editor" text** displayed in panel when tab already says "Editor"
+5. **Instructional text in Architecture view** instead of chat
+
+**Impact:**
+
+- Visual inconsistency across themes
+- Cluttered UI with unnecessary decorative elements
+- Poor information architecture (instructions in wrong place)
+- Violated platform's minimal UI design principles
+
+#### Root Cause
+
+**Design Inconsistency**: Components were created without following the established minimal UI philosophy. Multiple violations:
+
+1. Hardcoded colors (`#1f2937`, `#9ca3af`) in Cytoscape edge styling
+2. Filter chips using background rectangles and padding instead of plain text
+3. Debug indicator bars that serve no user value
+4. Redundant labeling that duplicates navigation context
+5. Instructional content in visualization panel instead of chat interface
+
+#### Fix
+
+**1. Architecture Tab Black Background:**
+
+Fixed hardcoded Cytoscape edge label colors:
+
+```tsx
+// BEFORE - Hardcoded colors
+{
+  selector: 'edge',
+  style: {
+    color: '#9ca3af',
+    'text-background-color': '#1f2937',
+  }
+}
+
+// AFTER - Theme-aware CSS variables
+{
+  selector: 'edge',
+  style: {
+    color: 'var(--text-secondary)',
+    'text-background-color': 'var(--bg-secondary)',
+  }
+}
+```
+
+**File:** `src-ui/components/ArchitectureView/ArchitectureCanvas.tsx` (line 124-127)
+
+**2. Simplified Traceability Filter Icons:**
+
+Removed background rectangles, padding, borders - made minimal like dependency graph:
+
+```css
+/* BEFORE - Heavy styling with backgrounds */
+.filter-chip {
+  padding: 4px 12px;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-secondary);
+  border-radius: 16px;
+}
+
+/* AFTER - Minimal, text-only styling */
+.filter-chip {
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.filter-chip:hover {
+  color: var(--text-primary);
+  transform: scale(1.05);
+}
+
+.filter-chip.active {
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+```
+
+**File:** `src-ui/components/YDocTraceabilityGraph.css` (lines 339-365)
+
+**3. Removed Colored Debug Bars:**
+
+Removed green/orange visual indicators below filter buttons:
+
+```tsx
+// BEFORE - Unnecessary colored bars
+<button>Functions</button>
+<span class="w-3 h-1 mt-1 rounded-full bg-green-500"></span>
+
+<button>Classes</button>
+<span class="w-3 h-1 mt-1 rotate-45 bg-orange-500"></span>
+
+// AFTER - Clean buttons only
+<button>Functions</button>
+<button>Classes</button>
+```
+
+**File:** `src-ui/components/DependencyGraph.tsx` (lines 279-303)
+
+**4. Removed Redundant "Editor" Text:**
+
+Header already shown in tab navigation, no need to repeat in panel:
+
+```tsx
+// BEFORE - Redundant label
+<div class="px-3 py-2 flex items-center justify-between">
+  <h2 class="text-sm font-medium">Editor</h2>
+  <button>◀</button>
+</div>
+
+// AFTER - Just expand/collapse button
+<div class="px-3 py-2 flex items-center justify-end">
+  <button>◀</button>
+</div>
+```
+
+**File:** `src-ui/components/CodeViewer.tsx` (lines 160-180)
+
+**5. Removed Instructional Text from Architecture View:**
+
+Moved prompting to chat interface where it belongs:
+
+```tsx
+// BEFORE - Long instructional text in visualization panel
+<div>
+  <p>No Architecture Yet</p>
+  <p>Tell me in chat what you want to build...</p>
+  <div>Example prompts:
+    - "Create a REST API with JWT authentication"
+    - "Build a 3-tier web app with React and FastAPI"
+    - "Add Redis caching to my architecture"
+  </div>
+</div>
+
+// AFTER - Minimal empty state
+<div>
+  <div class="text-6xl mb-6">🏗️</div>
+  <p>No Architecture Yet</p>
+</div>
+```
+
+**File:** `src-ui/components/ArchitectureView/ArchitectureCanvas.tsx` (lines 250-260)
+
+#### Prevention
+
+1. **Minimal UI Principle**: Every UI element must justify its existence - remove anything decorative
+2. **CSS Variables for Colors**: Never hardcode colors, always use theme variables
+3. **Context-Appropriate Content**: Instructions belong in chat, not in visualization panels
+4. **No Redundant Labels**: Don't repeat information already shown in navigation
+5. **Design Review**: Check all components follow minimal UI philosophy before implementation
+
+**Related Issues:** #12 (React/SolidJS incompatibility), #13 (Architecture theme colors)
+
+---
+
+### Issue #12: React Component in SolidJS Application Causing Tab Navigation Failure
+
+**Status:** ✅ RESOLVED  
+**Severity:** Critical (UI Completely Broken)  
+**Reported:** December 9, 2025  
+**Resolved:** December 9, 2025  
+**Component:** UI / YDocTraceabilityGraph
+
+#### Description
+
+The application's tab navigation (Editor/Dependencies/Architecture) was completely non-functional. Clicking on any tab appeared to do nothing, and the Architecture tab always appeared active. Console showed critical React hooks error: "Invalid hook call. Hooks can only be called inside of the body of a function component."
+
+**Impact:**
+
+- Complete tab navigation failure - users couldn't switch between views
+- App crashed when attempting to view Dependencies or Architecture tabs
+- Core UI functionality completely broken
+- Made the application essentially unusable
+
+#### Root Cause
+
+**Framework Incompatibility**: The `YDocTraceabilityGraph.tsx` component was a React component (906 lines) using React hooks (`useState`, `useEffect`, `useRef`, `useCallback`) but was imported and rendered in a SolidJS application.
+
+**Location:** `src-ui/components/YDocTraceabilityGraph.tsx`
+
+**Problem Code:**
+
+```tsx
+// BROKEN CODE - React in SolidJS app
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+
+export const YDocTraceabilityGraph: React.FC<Props> = ({ blockId, onNodeClick }) => {
+  const [chain, setChain] = useState<TraceabilityChain | null>(null);
+  const [stats, setStats] = useState<Record<string, number> | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    loadCoverageStats();
+  }, []);
+  // ... 900+ more lines of React code
+};
+```
+
+When `GraphViewer.tsx` imported and rendered this component, React's dispatcher couldn't execute because the SolidJS runtime doesn't provide React's context, causing the "Invalid hook call" error and preventing all tab switches.
+
+#### Fix Applied
+
+**Solution:** Converted entire component from React to SolidJS primitives (906 lines)
+
+**Changes Made:**
+
+1. **Imports:**
+
+```tsx
+// BEFORE
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+
+// AFTER
+import { createSignal, createEffect, onMount, onCleanup, Component } from 'solid-js';
+```
+
+2. **Component Declaration:**
+
+```tsx
+// BEFORE
+export const YDocTraceabilityGraph: React.FC<Props> = ({ blockId, onNodeClick }) => {
+
+// AFTER
+export const YDocTraceabilityGraph: Component<Props> = (props) => {
+```
+
+3. **State Management:**
+
+```tsx
+// BEFORE
+const [chain, setChain] = useState<TraceabilityChain | null>(null);
+const [zoom, setZoom] = useState(1);
+
+// AFTER
+const [chain, setChain] = createSignal<TraceabilityChain | null>(null);
+const [zoom, setZoom] = createSignal(1);
+// Must call as functions: chain(), zoom()
+```
+
+4. **Refs:**
+
+```tsx
+// BEFORE
+const canvasRef = useRef<HTMLCanvasElement>(null);
+// Access: canvasRef.current
+
+// AFTER
+let canvasRef: HTMLCanvasElement | undefined;
+// Access: canvasRef (direct)
+```
+
+5. **Effects:**
+
+```tsx
+// BEFORE
+useEffect(() => {
+  loadCoverageStats();
+}, []);
+
+useEffect(() => {
+  if (blockId) {
+    loadTraceabilityChain(blockId);
+  }
+}, [blockId]);
+
+// AFTER
+onMount(() => {
+  loadCoverageStats();
+});
+
+createEffect(() => {
+  if (props.blockId) {
+    loadTraceabilityChain(props.blockId);
+  }
+});
+```
+
+6. **JSX Attributes:**
+
+```tsx
+// BEFORE
+<div className="filter-panel">
+  {showFilters && <div>Filters</div>}
+</div>
+
+// AFTER
+<div class="filter-panel">
+  {showFilters() && <div>Filters</div>}
+</div>
+```
+
+7. **Props Access:**
+
+```tsx
+// BEFORE
+const { blockId, onNodeClick } = props; // destructured
+onNodeClick(nodeId, nodeType);
+
+// AFTER
+props.onNodeClick(nodeId, nodeType); // direct access
+```
+
+**Files Modified:**
+
+- `src-ui/components/YDocTraceabilityGraph.tsx` (906 lines converted)
+
+**Verification:**
+
+- ✅ Zero TypeScript compilation errors
+- ✅ Component fully reactive with SolidJS signals
+- ✅ Tab navigation restored and functional
+- ✅ No React dependencies remaining
+
+#### Lessons Learned
+
+1. **Framework Consistency is Critical**: Cannot mix React and SolidJS components in the same application
+2. **Check Component Origins**: When importing external components, verify framework compatibility
+3. **Early Detection**: Import errors should be caught during code review - React imports in a SolidJS project should trigger immediate red flags
+4. **Component Audit**: Need to audit all components to ensure framework consistency
+5. **TypeScript Strict Mode**: Using strict TypeScript helped identify signal accessor issues during conversion
+
+#### Prevention
+
+- [ ] Add ESLint rule to prevent React imports in SolidJS project
+- [ ] Document framework standards in contribution guidelines
+- [ ] Add automated check in CI to detect React dependencies in frontend code
+- [ ] Component template/generator should enforce SolidJS patterns
+
+---
+
+### Issue #13: Architecture View Ignoring Theme - Hardcoded Dark Backgrounds
+
+**Status:** ✅ RESOLVED  
+**Severity:** Medium (UI Inconsistency)  
+**Reported:** December 9, 2025  
+**Resolved:** December 9, 2025  
+**Component:** UI / ArchitectureView
+
+#### Description
+
+The Architecture tab always displayed with dark backgrounds (black/gray) even when the bright-white theme was selected. The component ignored theme changes completely, making it visually inconsistent with the rest of the application.
+
+**Impact:**
+
+- Poor user experience - jarring visual inconsistency
+- Architecture view unusable in bright theme (black text on dark backgrounds)
+- Made theme toggle appear partially broken
+- Affected all Architecture View sub-components
+
+#### Root Cause
+
+**Hardcoded Tailwind Classes**: All ArchitectureView components used hardcoded Tailwind color classes (`bg-gray-900`, `bg-gray-800`, `text-gray-400`, etc.) instead of CSS custom properties.
+
+**Affected Files:**
+
+- `src-ui/components/ArchitectureView/index.tsx`
+- `src-ui/components/ArchitectureView/ArchitectureCanvas.tsx`
+- `src-ui/components/ArchitectureView/HierarchicalTabs.tsx`
+- `src-ui/components/ArchitectureView/ComponentNode.tsx`
+- `src-ui/components/ArchitectureView/ConnectionEdge.tsx`
+
+**Problem Code Examples:**
+
+```tsx
+// BROKEN - Hardcoded dark theme colors
+<div class="flex flex-col h-full bg-gray-900">
+  <div class="bg-gray-800 border-b border-gray-700 shadow-lg">
+    <button class="bg-gray-700 text-gray-300 hover:bg-gray-600">
+      <span class="text-blue-400">Click</span>
+    </button>
+  </div>
+</div>
+```
+
+These hardcoded classes prevented the components from adapting to theme changes since Tailwind classes don't respect CSS variable updates.
+
+#### Fix Applied
+
+**Solution:** Replaced all hardcoded Tailwind color classes with CSS custom properties
+
+**Changes Made:**
+
+1. **Background Colors:**
+
+```tsx
+// BEFORE
+class="bg-gray-900"
+class="bg-gray-800"
+class="bg-gray-700"
+
+// AFTER
+style={{ 'background-color': 'var(--bg-primary)' }}
+style={{ 'background-color': 'var(--bg-secondary)' }}
+style={{ 'background-color': 'var(--bg-tertiary)' }}
+```
+
+2. **Text Colors:**
+
+```tsx
+// BEFORE
+class="text-white"
+class="text-gray-400"
+class="text-gray-300"
+
+// AFTER
+style={{ 'color': 'var(--text-primary)' }}
+style={{ 'color': 'var(--text-secondary)' }}
+style={{ 'color': 'var(--text-tertiary)' }}
+```
+
+3. **Border Colors:**
+
+```tsx
+// BEFORE
+class="border-gray-700"
+class="border-blue-500"
+
+// AFTER
+style={{ 'border-color': 'var(--border-primary)' }}
+style={{ 'border-color': 'var(--accent-primary)' }}
+```
+
+4. **Accent Colors:**
+
+```tsx
+// BEFORE
+class="bg-blue-600"
+class="text-blue-400"
+
+// AFTER
+style={{ 'background-color': 'var(--accent-primary)' }}
+style={{ 'color': 'var(--accent-primary)' }}
+```
+
+5. **Added New CSS Variables** (in `src-ui/styles/index.css`):
+
+```css
+/* Dark Blue Theme */
+--bg-secondary-transparent: rgba(21, 27, 63, 0.9);
+--accent-primary-transparent: rgba(74, 144, 226, 0.5);
+--text-on-accent: #ffffff;
+
+/* Bright White Theme */
+--bg-secondary-transparent: rgba(238, 238, 236, 0.9);
+--accent-primary-transparent: rgba(217, 119, 6, 0.5);
+--text-on-accent: #ffffff;
+```
+
+**Files Modified:**
+
+- `src-ui/components/ArchitectureView/index.tsx` (2 changes)
+- `src-ui/components/ArchitectureView/ArchitectureCanvas.tsx` (18 changes)
+- `src-ui/components/ArchitectureView/HierarchicalTabs.tsx` (5 changes)
+- `src-ui/components/ArchitectureView/ComponentNode.tsx` (2 changes)
+- `src-ui/components/ArchitectureView/ConnectionEdge.tsx` (3 changes)
+- `src-ui/styles/index.css` (added 3 new CSS variables per theme)
+
+**Verification:**
+
+- ✅ Architecture view respects theme changes
+- ✅ Bright-white theme displays correctly with warm colors
+- ✅ Dark-blue theme maintains existing appearance
+- ✅ All sub-components (tabs, nodes, edges, overlays) theme-aware
+- ✅ Smooth theme transitions with 0.3s ease
+
+#### Lessons Learned
+
+1. **CSS Variables for Theming**: Always use CSS custom properties for colors, never hardcode Tailwind classes
+2. **Component Audit**: Need systematic review of all components for hardcoded colors
+3. **Theme Testing**: Must test all views in both themes during development
+4. **Documentation**: CSS variable naming conventions should be documented
+5. **Inline Styles Acceptable**: For dynamic theming, inline styles with CSS variables are better than Tailwind classes
+
+#### Prevention
+
+- [ ] Add ESLint rule to detect hardcoded Tailwind color classes
+- [ ] Create component template with proper CSS variable usage
+- [ ] Add theme testing to PR checklist
+- [ ] Document CSS variable usage in style guide
+- [ ] Audit remaining components for hardcoded colors
+
+---
 
 ### Issue #11: Circular Dependency Detection Bugs
 

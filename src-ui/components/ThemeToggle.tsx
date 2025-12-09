@@ -12,16 +12,33 @@ const ThemeToggle: Component = () => {
   // Load theme from localStorage on mount
   onMount(() => {
     try {
+      // Check what's actually on the HTML element first
+      const currentDataTheme = document.documentElement.getAttribute('data-theme');
+      console.log('Current data-theme on HTML:', currentDataTheme);
+
+      // Determine theme from data-theme attribute
+      let initialTheme: Theme = 'dark';
+      if (currentDataTheme === 'bright-white') {
+        initialTheme = 'bright';
+      } else if (currentDataTheme === 'dark-blue') {
+        initialTheme = 'dark';
+      }
+
+      // Check localStorage
       const savedTheme = localStorage?.getItem('theme') as Theme;
+      console.log('Saved theme from localStorage:', savedTheme);
+
       if (savedTheme && (savedTheme === 'dark' || savedTheme === 'bright')) {
         setTheme(savedTheme);
         applyTheme(savedTheme);
       } else {
-        // Set default theme
-        applyTheme('dark');
+        // Use what's on HTML or default to dark
+        setTheme(initialTheme);
+        applyTheme(initialTheme);
       }
     } catch {
       // Fallback if localStorage is not available
+      setTheme('dark');
       applyTheme('dark');
     }
   });
@@ -29,19 +46,23 @@ const ThemeToggle: Component = () => {
   // Apply theme to document
   const applyTheme = (newTheme: Theme) => {
     try {
-      document.documentElement.setAttribute('data-theme', newTheme);
+      const themeValue = newTheme === 'dark' ? 'dark-blue' : 'bright-white';
+      document.documentElement.setAttribute('data-theme', themeValue);
       localStorage?.setItem('theme', newTheme);
     } catch {
       // Ignore localStorage errors
-      document.documentElement.setAttribute('data-theme', newTheme);
+      const themeValue = newTheme === 'dark' ? 'dark-blue' : 'bright-white';
+      document.documentElement.setAttribute('data-theme', themeValue);
     }
   };
 
   // Toggle between themes
   const toggleTheme = () => {
     const newTheme: Theme = theme() === 'dark' ? 'bright' : 'dark';
+    console.log('Toggling theme from', theme(), 'to', newTheme);
     setTheme(newTheme);
     applyTheme(newTheme);
+    console.log('Theme after toggle:', document.documentElement.getAttribute('data-theme'));
   };
 
   return (

@@ -13,7 +13,7 @@ import FileTree from './components/FileTree';
 import ChatPanel from './components/ChatPanel';
 import CodeViewer from './components/CodeViewer';
 import Terminal from './components/Terminal';
-import DependencyGraph from './components/DependencyGraph';
+import GraphViewer from './components/GraphViewer';
 import { AgentStatus } from './components/AgentStatus';
 import { Notifications } from './components/Notifications';
 import DocumentationPanels from './components/DocumentationPanels';
@@ -33,7 +33,7 @@ const App: Component = () => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(panelIndex);
-    
+
     // Add dragging class to body for global cursor control
     if (panelIndex === 3) {
       document.body.classList.add('dragging-vertical');
@@ -52,12 +52,23 @@ const App: Component = () => {
 
   const handleMouseMove = (e: MouseEvent) => {
     if (isDragging() === null && !isResizingFileExplorer()) return;
-    
+
     e.preventDefault();
 
     // Handle File Explorer width resizing
     if (isResizingFileExplorer()) {
       const newWidth = e.clientX;
+      const windowWidth = window.innerWidth;
+      const tenPercent = windowWidth * 0.1;
+
+      // Auto-close if dragged to less than 10% of window width
+      if (newWidth < tenPercent) {
+        appStore.setShowFileTree(false);
+        setIsResizingFileExplorer(false);
+        document.body.classList.remove('dragging-horizontal');
+        return;
+      }
+
       layoutStore.updateFileExplorerWidth(newWidth);
       return;
     }
@@ -70,7 +81,7 @@ const App: Component = () => {
       const percentage = (mouseY / containerHeight) * 100;
       const newMainHeight = Math.min(Math.max(percentage, 50), 85); // Main area: 50-85%
       const newTerminalHeight = 100 - newMainHeight;
-      
+
       setTerminalHeight(newTerminalHeight);
       return;
     }
@@ -90,11 +101,33 @@ const App: Component = () => {
 
     if (isDragging() === 1) {
       // Dragging chat-code divider
+      const windowWidth = window.innerWidth;
+      const tenPercent = windowWidth * 0.1;
+
       // Calculate percentage of available width (excluding FileTree)
       const percentage = (mouseXRelative / availableWidth) * 100;
-      const newChatWidth = Math.min(Math.max(percentage, 30), 70); // Chat: 30-70% of available width
+
+      // Check if chat or code should auto-close
+      const chatAbsoluteWidth = (availableWidth * percentage) / 100;
+      const codeAbsoluteWidth = availableWidth - chatAbsoluteWidth;
+
+      // Auto-close chat if less than 10% of total window
+      if (chatAbsoluteWidth < tenPercent) {
+        // Close chat panel - not implementing yet, would need UI control
+        console.log('Chat panel would auto-close here');
+      }
+
+      // Auto-close code editor if less than 10% of total window
+      if (codeAbsoluteWidth < tenPercent) {
+        appStore.setShowCode(false);
+        setIsDragging(null);
+        document.body.classList.remove('dragging-horizontal');
+        return;
+      }
+
+      const newChatWidth = Math.min(Math.max(percentage, 20), 80); // Chat: 20-80% of available width
       const newCodeWidth = 100 - newChatWidth; // Code gets the rest
-      
+
       appStore.setChatWidth(newChatWidth);
       appStore.setCodeWidth(newCodeWidth);
       appStore.setPreviewWidth(0); // Not used in current layout
@@ -105,7 +138,7 @@ const App: Component = () => {
       const percentage = (mouseXRelative / availableWidth) * 100;
       const codeFromStart = percentage - chatW;
       const newCodeWidth = Math.min(Math.max(codeFromStart, remaining * 0.3), remaining * 0.7);
-      
+
       appStore.setCodeWidth(newCodeWidth);
       appStore.setPreviewWidth(remaining - newCodeWidth);
     }
@@ -121,6 +154,12 @@ const App: Component = () => {
   onMount(() => {
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
+
+    // Listen for auto-close event from layoutStore
+    const handleCloseFileExplorer = () => {
+      appStore.setShowFileTree(false);
+    };
+    window.addEventListener('close-file-explorer', handleCloseFileExplorer);
 
     // Keyboard shortcut for terminal toggle (Cmd+`)
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -153,7 +192,7 @@ const App: Component = () => {
           directory: true,
           multiple: false,
         });
-        
+
         if (selected && typeof selected === 'string') {
           appStore.setProjectPath(selected);
           appStore.addMessage('system', `Opened project: ${selected}`);
@@ -274,41 +313,52 @@ const App: Component = () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
       window.removeEventListener('keydown', handleKeyDown);
-      unlistenMenuNewFile.then(fn => fn());
-      unlistenMenuNewFolder.then(fn => fn());
-      unlistenMenuOpenFolder.then(fn => fn());
-      unlistenMenuSave.then(fn => fn());
-      unlistenMenuSaveAll.then(fn => fn());
-      unlistenMenuCloseFolder.then(fn => fn());
-      unlistenMenuFind.then(fn => fn());
-      unlistenMenuReplace.then(fn => fn());
-      unlistenTogglePanel.then(fn => fn());
-      unlistenShowView.then(fn => fn());
-      unlistenResetLayout.then(fn => fn());
-      unlistenMenuCopyCode.then(fn => fn());
-      unlistenMenuToggleFileTree.then(fn => fn());
-      unlistenMenuToggleTerminal.then(fn => fn());
-      unlistenMenuToggleDependencies.then(fn => fn());
-      unlistenMenuResetLayout.then(fn => fn());
-      unlistenMenuAbout.then(fn => fn());
-      unlistenMenuSettings.then(fn => fn());
-      unlistenMenuCheckUpdates.then(fn => fn());
+      window.removeEventListener('close-file-explorer', handleCloseFileExplorer);
+      unlistenMenuNewFile.then((fn) => fn());
+      unlistenMenuNewFolder.then((fn) => fn());
+      unlistenMenuOpenFolder.then((fn) => fn());
+      unlistenMenuSave.then((fn) => fn());
+      unlistenMenuSaveAll.then((fn) => fn());
+      unlistenMenuCloseFolder.then((fn) => fn());
+      unlistenMenuFind.then((fn) => fn());
+      unlistenMenuReplace.then((fn) => fn());
+      unlistenTogglePanel.then((fn) => fn());
+      unlistenShowView.then((fn) => fn());
+      unlistenResetLayout.then((fn) => fn());
+      unlistenMenuCopyCode.then((fn) => fn());
+      unlistenMenuToggleFileTree.then((fn) => fn());
+      unlistenMenuToggleTerminal.then((fn) => fn());
+      unlistenMenuToggleDependencies.then((fn) => fn());
+      unlistenMenuResetLayout.then((fn) => fn());
+      unlistenMenuAbout.then((fn) => fn());
+      unlistenMenuSettings.then((fn) => fn());
+      unlistenMenuCheckUpdates.then((fn) => fn());
     };
   });
 
   return (
-    <div class="h-screen w-screen bg-gray-900 text-white overflow-hidden flex flex-col">
+    <div
+      class="h-screen w-screen overflow-hidden flex flex-col"
+      style={{
+        'background-color': 'var(--bg-primary)',
+        color: 'var(--text-primary)',
+      }}
+    >
       {/* Notifications Overlay */}
       <Notifications />
 
       {/* Top Bar - YANTRA Title */}
-      <div class="h-10 bg-gray-950 border-b border-gray-700 flex items-center justify-between px-4 flex-shrink-0"
-           style={{
-             "background-color": "var(--bg-elevated)",
-             "border-bottom-color": "var(--border-primary)"
-           }}>
+      <div
+        class="h-10 flex items-center justify-between px-4 flex-shrink-0"
+        style={{
+          'background-color': 'var(--bg-elevated)',
+          'border-bottom': '1px solid var(--border-primary)',
+        }}
+      >
         <div class="flex items-center gap-3">
-          <div class="text-xl font-bold tracking-wider" style={{ color: "var(--text-primary)" }}>YANTRA</div>
+          <div class="text-xl font-bold tracking-wider" style={{ color: 'var(--text-primary)' }}>
+            YANTRA
+          </div>
           <ThemeToggle />
         </div>
         <div class="flex items-center gap-2">
@@ -317,21 +367,22 @@ const App: Component = () => {
             onClick={() => setShowTaskPanel(!showTaskPanel())}
             class="px-3 py-1 text-xs rounded transition-colors"
             style={{
-              "background-color": showTaskPanel() ? "var(--accent-primary)" : "var(--bg-tertiary)",
-              "color": "var(--text-primary)",
+              'background-color': showTaskPanel() ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
+              color: 'var(--text-primary)',
             }}
             title="Toggle Task Panel"
           >
             {showTaskPanel() ? '📋 Hide Tasks' : '📋 Show Tasks'}
           </button>
-          
+
           {/* Terminal Toggle Button */}
           <button
             onClick={() => setTerminalHeight(terminalHeight() > 0 ? 0 : 30)}
             class="px-3 py-1 text-xs rounded transition-colors"
             style={{
-              "background-color": terminalHeight() > 0 ? "var(--accent-primary)" : "var(--bg-tertiary)",
-              "color": "var(--text-primary)",
+              'background-color':
+                terminalHeight() > 0 ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
+              color: 'var(--text-primary)',
             }}
             title="Toggle Terminal (Cmd+`)"
           >
@@ -344,34 +395,42 @@ const App: Component = () => {
       <div class="flex flex-1 overflow-hidden">
         {/* Left Column - File Tree OR Documentation Panels */}
         <Show when={appStore.showFileTree()}>
-          <div 
-            class="flex flex-col bg-gray-800 border-r border-gray-700 relative"
-            style={{ 
-              width: layoutStore.isExpanded('fileExplorer') 
-                ? '70%' 
+          <div
+            class="flex flex-col relative"
+            style={{
+              width: layoutStore.isExpanded('fileExplorer')
+                ? '70%'
                 : `${layoutStore.fileExplorerWidth()}px`,
-              transition: 'width 0.3s ease'
+              transition: 'width 0.3s ease',
+              'background-color': 'var(--bg-secondary)',
+              'border-right': '1px solid var(--border-primary)',
             }}
           >
             {/* Toggle Buttons */}
-            <div class="flex border-b border-gray-700">
+            <div class="flex" style={{ 'border-bottom': '1px solid var(--border-primary)' }}>
               <button
                 onClick={() => setShowDocsPanels(false)}
-                class={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${
-                  !showDocsPanels()
-                    ? 'bg-gray-700 text-white border-b-2 border-primary-500'
-                    : 'text-gray-400 hover:text-white'
-                }`}
+                class="flex-1 px-3 py-2 text-sm font-medium transition-colors"
+                style={{
+                  'background-color': !showDocsPanels() ? 'var(--bg-tertiary)' : 'transparent',
+                  color: !showDocsPanels() ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                  'border-bottom': !showDocsPanels()
+                    ? '2px solid var(--accent-primary)'
+                    : '2px solid transparent',
+                }}
               >
                 📁 Files
               </button>
               <button
                 onClick={() => setShowDocsPanels(true)}
-                class={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${
-                  showDocsPanels()
-                    ? 'bg-gray-700 text-white border-b-2 border-primary-500'
-                    : 'text-gray-400 hover:text-white'
-                }`}
+                class="flex-1 px-3 py-2 text-sm font-medium transition-colors"
+                style={{
+                  'background-color': showDocsPanels() ? 'var(--bg-tertiary)' : 'transparent',
+                  color: showDocsPanels() ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                  'border-bottom': showDocsPanels()
+                    ? '2px solid var(--accent-primary)'
+                    : '2px solid transparent',
+                }}
               >
                 📚 Docs
               </button>
@@ -388,12 +447,12 @@ const App: Component = () => {
             </div>
             {/* Agent Status at bottom */}
             <AgentStatus />
-            
+
             {/* Resize Handle for FileExplorer width - only when not expanded */}
             <Show when={!layoutStore.isExpanded('fileExplorer')}>
               <div
-                class="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary-500 transition-colors"
-                style={{ "background-color": "var(--border-primary)" }}
+                class="absolute top-0 right-0 w-0.5 h-full cursor-col-resize hover:bg-primary-500 transition-colors"
+                style={{ 'background-color': 'var(--border-primary)' }}
                 onMouseDown={handleFileExplorerResize}
                 title="Drag to resize"
               />
@@ -403,22 +462,27 @@ const App: Component = () => {
 
         {/* Resize Handle FileTree-Chat */}
         <Show when={appStore.showFileTree()}>
-          <div 
-            class="w-1 bg-gray-700 hover:bg-primary-500 cursor-col-resize transition-colors flex-shrink-0" 
+          <div
+            class="w-0.5 cursor-col-resize transition-colors flex-shrink-0"
+            style={{
+              'background-color': 'var(--border-primary)',
+              'z-index': '10',
+              position: 'relative',
+            }}
             onMouseDown={handleMouseDown(0)}
           />
         </Show>
 
         {/* Center Column - Chat Panel */}
-        <div 
-          class="flex-1 flex flex-col" 
-          style={{ 
-            width: layoutStore.isExpanded('agent') 
-              ? '70%' 
+        <div
+          class="flex-1 flex flex-col"
+          style={{
+            width: layoutStore.isExpanded('agent')
+              ? '70%'
               : layoutStore.isExpanded('fileExplorer') || layoutStore.isExpanded('editor')
-              ? '15%'
-              : `${appStore.chatWidth()}%`,
-            transition: 'width 0.3s ease'
+                ? '15%'
+                : `${appStore.chatWidth()}%`,
+            transition: 'width 0.3s ease',
           }}
         >
           <ChatPanel />
@@ -427,34 +491,71 @@ const App: Component = () => {
         {/* Resize Handle Chat-Code */}
         <Show when={appStore.showCode()}>
           <div
-            class="w-1 bg-gray-700 hover:bg-primary-500 cursor-col-resize transition-colors flex-shrink-0"
+            class="cursor-col-resize transition-colors flex-shrink-0"
+            style={{
+              'background-color': 'var(--border-primary)',
+              'z-index': '100',
+              position: 'relative',
+              'min-width': '3px',
+              width: '3px',
+              cursor: 'col-resize',
+              'user-select': 'none',
+            }}
             onMouseDown={handleMouseDown(1)}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--accent-primary)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--border-primary)';
+            }}
           />
         </Show>
 
         {/* Right Column - Code + Terminal Stack */}
         <Show when={appStore.showCode()}>
-          <div 
-            class="flex flex-col" 
-            style={{ 
-              width: layoutStore.isExpanded('editor') 
-                ? '70%' 
+          <div
+            class="flex flex-col"
+            style={{
+              width: layoutStore.isExpanded('editor')
+                ? '70%'
                 : layoutStore.isExpanded('fileExplorer') || layoutStore.isExpanded('agent')
-                ? '15%'
-                : `${appStore.codeWidth()}%`,
-              transition: 'width 0.3s ease'
+                  ? '15%'
+                  : `${appStore.codeWidth()}%`,
+              transition: 'width 0.3s ease',
             }}
           >
             {/* View Selector Tabs */}
             {/* View tabs - Minimal UI with inline icons */}
-            <div class="flex bg-gray-800 border-b border-gray-700">
+            <div
+              class="flex"
+              style={{
+                'background-color': 'var(--bg-secondary)',
+                'border-bottom': '1px solid var(--border-primary)',
+              }}
+            >
               <button
-                class={`px-3 py-1.5 text-xs transition-colors ${
-                  appStore.activeView() === 'editor'
-                    ? 'bg-gray-900 text-white border-b-2 border-primary-500'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-                onClick={() => appStore.setActiveView('editor')}
+                class="px-3 py-1.5 text-xs transition-colors cursor-pointer"
+                style={{
+                  'background-color':
+                    appStore.activeView() === 'editor' ? 'var(--bg-primary)' : 'transparent',
+                  color:
+                    appStore.activeView() === 'editor'
+                      ? 'var(--text-primary)'
+                      : 'var(--text-tertiary)',
+                  'border-bottom':
+                    appStore.activeView() === 'editor'
+                      ? '2px solid var(--accent-primary)'
+                      : '2px solid transparent',
+                  'font-weight': appStore.activeView() === 'editor' ? '600' : '400',
+                  'pointer-events': 'auto',
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('Editor tab clicked, current view:', appStore.activeView());
+                  appStore.setActiveView('editor');
+                  console.log('After setActiveView, view is:', appStore.activeView());
+                }}
                 title="Editor"
               >
                 <span class="inline-flex items-center gap-1.5">
@@ -463,12 +564,28 @@ const App: Component = () => {
                 </span>
               </button>
               <button
-                class={`px-3 py-1.5 text-xs transition-colors ${
-                  appStore.activeView() === 'dependencies'
-                    ? 'bg-gray-900 text-white border-b-2 border-primary-500'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-                onClick={() => appStore.setActiveView('dependencies')}
+                class="px-3 py-1.5 text-xs transition-colors cursor-pointer"
+                style={{
+                  'background-color':
+                    appStore.activeView() === 'dependencies' ? 'var(--bg-primary)' : 'transparent',
+                  color:
+                    appStore.activeView() === 'dependencies'
+                      ? 'var(--text-primary)'
+                      : 'var(--text-tertiary)',
+                  'border-bottom':
+                    appStore.activeView() === 'dependencies'
+                      ? '2px solid var(--accent-primary)'
+                      : '2px solid transparent',
+                  'font-weight': appStore.activeView() === 'dependencies' ? '600' : '400',
+                  'pointer-events': 'auto',
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('Dependencies tab clicked, current view:', appStore.activeView());
+                  appStore.setActiveView('dependencies');
+                  console.log('After setActiveView, view is:', appStore.activeView());
+                }}
                 title="Dependencies"
               >
                 <span class="inline-flex items-center gap-1.5">
@@ -477,12 +594,28 @@ const App: Component = () => {
                 </span>
               </button>
               <button
-                class={`px-3 py-1.5 text-xs transition-colors ${
-                  appStore.activeView() === 'architecture'
-                    ? 'bg-gray-900 text-white border-b-2 border-primary-500'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-                onClick={() => appStore.setActiveView('architecture')}
+                class="px-3 py-1.5 text-xs transition-colors cursor-pointer"
+                style={{
+                  'background-color':
+                    appStore.activeView() === 'architecture' ? 'var(--bg-primary)' : 'transparent',
+                  color:
+                    appStore.activeView() === 'architecture'
+                      ? 'var(--text-primary)'
+                      : 'var(--text-tertiary)',
+                  'border-bottom':
+                    appStore.activeView() === 'architecture'
+                      ? '2px solid var(--accent-primary)'
+                      : '2px solid transparent',
+                  'font-weight': appStore.activeView() === 'architecture' ? '600' : '400',
+                  'pointer-events': 'auto',
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('Architecture tab clicked, current view:', appStore.activeView());
+                  appStore.setActiveView('architecture');
+                  console.log('After setActiveView, view is:', appStore.activeView());
+                }}
                 title="Architecture"
               >
                 <span class="inline-flex items-center gap-1.5">
@@ -498,7 +631,7 @@ const App: Component = () => {
                 <CodeViewer />
               </Show>
               <Show when={appStore.activeView() === 'dependencies'}>
-                <DependencyGraph />
+                <GraphViewer />
               </Show>
               <Show when={appStore.activeView() === 'architecture'}>
                 <ArchitectureView />
@@ -509,11 +642,14 @@ const App: Component = () => {
             <Show when={terminalHeight() > 0}>
               {/* Horizontal Resize Handle for Terminal */}
               <div
-                class="h-1 bg-gray-700 hover:bg-primary-500 transition-colors select-none"
-                style={{ cursor: 'row-resize' }}
+                class="h-0.5 transition-colors select-none"
+                style={{
+                  cursor: 'row-resize',
+                  'background-color': 'var(--border-primary)',
+                }}
                 onMouseDown={handleMouseDown(3)}
               />
-              
+
               <div class="overflow-hidden" style={{ height: `${terminalHeight()}%` }}>
                 <Terminal terminalId="terminal-1" name="Terminal 1" />
               </div>
@@ -521,12 +657,9 @@ const App: Component = () => {
           </div>
         </Show>
       </div>
-      
+
       {/* Task Panel Overlay */}
-      <TaskPanel 
-        isOpen={showTaskPanel()}
-        onClose={() => setShowTaskPanel(false)}
-      />
+      <TaskPanel isOpen={showTaskPanel()} onClose={() => setShowTaskPanel(false)} />
     </div>
   );
 };

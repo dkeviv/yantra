@@ -59,6 +59,10 @@ pub mod secrets;
 pub mod document_readers;
 pub mod affected_tests;
 pub mod multi_project;
+pub mod code_validation;
+pub mod conversation_memory;
+pub mod conversation_integration;
+pub mod conversation_semantic_search;
 
 // Re-export key types (many not yet used but part of public API)
 #[allow(unused_imports)]
@@ -87,3 +91,11 @@ pub use packaging::{PackageBuilder, PackageType, PackageConfig, PackageBuildResu
 pub use deployment::{DeploymentManager, DeploymentTarget, DeploymentConfig, DeploymentResult, Environment};
 #[allow(unused_imports)]
 pub use monitoring::{MonitoringManager, Alert, Severity, PerformanceMetrics, HealingAction};
+#[allow(unused_imports)]
+pub use code_validation::{CodeValidator, ValidationResult as CodeValidationResult, ValidationError as CodeValidationError, Language};
+#[allow(unused_imports)]
+pub use conversation_memory::{ConversationMemory, Conversation, Message, MessageRole, SessionLink, SessionType, SearchFilter, ExportFormat};
+#[allow(unused_imports)]
+pub use conversation_integration::ConversationContext;
+#[allow(unused_imports)]
+pub use conversation_semantic_search::ConversationSemanticSearch;

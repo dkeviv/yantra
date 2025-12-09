@@ -1,0 +1,281 @@
+/* File: src-ui/components/YDocPreview.css */
+/* Purpose: Styles for YDoc document preview component */
+/* Last Updated: December 8, 2025 */
+
+.ydoc-preview {
+  height: 100%;
+  overflow-y: auto;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  padding: 16px;
+}
+
+.preview-header {
+  border-bottom: 2px solid #333;
+  padding-bottom: 12px;
+  margin-bottom: 20px;
+}
+
+.preview-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #4ec9b0;
+}
+
+/* Document Metadata */
+.doc-metadata {
+  background: #252526;
+  border: 1px solid #3c3c3c;
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.metadata-section h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #569cd6;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.metadata-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.metadata-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.meta-key {
+  font-size: 12px;
+  color: #858585;
+  font-weight: 500;
+}
+
+.meta-value {
+  font-size: 13px;
+  color: #d4d4d4;
+  font-family: 'Consolas', 'Courier New', monospace;
+}
+
+.meta-value.doc-type {
+  color: #4ec9b0;
+  font-weight: 600;
+}
+
+.meta-value.status-draft {
+  color: #dcdcaa;
+}
+
+.meta-value.status-review {
+  color: #4fc1ff;
+}
+
+.meta-value.status-approved {
+  color: #b5cea8;
+}
+
+.meta-value.status-deprecated {
+  color: #f48771;
+}
+
+/* Document Structure */
+.doc-structure {
+  margin-top: 20px;
+}
+
+.doc-structure h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #569cd6;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.blocks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.block-item {
+  background: #252526;
+  border: 1px solid #3c3c3c;
+  border-left: 3px solid #3c3c3c;
+  border-radius: 4px;
+  padding: 12px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.block-item:hover {
+  border-color: #569cd6;
+  background: #2d2d30;
+}
+
+.block-item.active {
+  border-left-color: #4ec9b0;
+  background: #2d2d30;
+  box-shadow: 0 2px 8px rgba(78, 201, 176, 0.2);
+}
+
+.block-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.block-type-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.block-type {
+  font-size: 13px;
+  font-weight: 600;
+  color: #d4d4d4;
+}
+
+.block-line {
+  margin-left: auto;
+  font-size: 11px;
+  color: #858585;
+  font-family: 'Consolas', 'Courier New', monospace;
+}
+
+.block-id {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.id-label {
+  font-size: 11px;
+  color: #858585;
+}
+
+.block-id code {
+  font-size: 11px;
+  color: #9cdcfe;
+  background: #1e1e1e;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+/* Traceability Edges */
+.block-edges {
+  margin-bottom: 8px;
+}
+
+.edges-label {
+  font-size: 11px;
+  color: #858585;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.edges-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.edge-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  padding: 4px 8px;
+  background: #1e1e1e;
+  border-radius: 3px;
+}
+
+.edge-icon {
+  font-size: 14px;
+}
+
+.edge-type {
+  color: #dcdcaa;
+  font-weight: 500;
+}
+
+.edge-arrow {
+  color: #858585;
+}
+
+.edge-target {
+  color: #9cdcfe;
+}
+
+/* Block Preview */
+.block-preview {
+  font-size: 12px;
+  color: #a0a0a0;
+  line-height: 1.5;
+  padding: 8px;
+  background: #1e1e1e;
+  border-radius: 3px;
+  border: 1px solid #333;
+  font-family: 'Consolas', 'Courier New', monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #858585;
+}
+
+.empty-state p {
+  margin: 0 0 20px 0;
+  font-size: 14px;
+}
+
+.example-hint {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  background: #252526;
+  border: 1px solid #3c3c3c;
+  border-radius: 4px;
+  padding: 12px;
+}
+
+.example-hint code {
+  font-size: 12px;
+  color: #ce9178;
+  font-family: 'Consolas', 'Courier New', monospace;
+}
+
+/* Scrollbar Styling */
+.ydoc-preview::-webkit-scrollbar {
+  width: 8px;
+}
+
+.ydoc-preview::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+.ydoc-preview::-webkit-scrollbar-thumb {
+  background: #424242;
+  border-radius: 4px;
+}
+
+.ydoc-preview::-webkit-scrollbar-thumb:hover {
+  background: #4e4e4e;
+}

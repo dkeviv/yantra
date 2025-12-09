@@ -1,14 +1,14 @@
 # Yantra - User Experience Guide
 
-**Version:** MVP 1.0
-**Last Updated:** November 28, 2025
+**Version:** MVP 1.1
+**Last Updated:** December 9, 2025
 **Audience:** End Users and Administrators
 
 ---
 
 ## Design Philosophy
 
-**Updated:** November 28, 2025
+**Updated:** December 9, 2025
 
 Yantra follows a **Minimal UX** design philosophy focused on maximizing content space and minimizing control overhead:
 
@@ -142,17 +142,23 @@ Yantra follows a **Minimal UX** design philosophy focused on maximizing content 
 
 ### Panel Descriptions
 
-**File Tree (256px Fixed Width):**
+**File Tree (Resizable, Responsive Width):**
 
 - **Purpose:** Navigate project structure
-- **Design:** Fixed width, left-aligned, dark background
+- **Design:** Resizable width, left-aligned, dark background
+- **Width Constraints:**
+  - **Responsive:** 10%-60% of window width
+  - **Minimum:** 150px (or 10% of window, whichever is larger)
+  - **Maximum:** 600px (or 60% of window, whichever is smaller)
+  - **Auto-close:** Automatically closes when dragged below 10% of window width
 - **Features:**
   - Recursive folder navigation
   - Click folders to expand/collapse
   - Click files to open in editor
   - File type icons (🐍 .py, 📄 .js, etc.)
   - Smart sorting (directories first, alphabetical)
-- **Toggle:** Cmd+B to show/hide (future)
+  - Drag right edge to resize width
+- **Toggle:** View menu to reopen after auto-close
 
 **Chat Panel (Center, Flexible Width):**
 
@@ -164,7 +170,7 @@ Yantra follows a **Minimal UX** design philosophy focused on maximizing content 
   - Progress updates during generation
   - LLM settings inline (collapsed by default)
   - API config button (⚙️ icon) in input area
-- **Constraints:** 30-70% of available width (minus FileTree)
+- **Constraints:** Flexible width (shares space with Code Editor)
 
 **Code Editor (Right, Flexible Width):**
 
@@ -176,7 +182,9 @@ Yantra follows a **Minimal UX** design philosophy focused on maximizing content 
   - File path in header
   - Line numbers, minimap, bracket matching
   - Close buttons on tabs
-- **Constraints:** 30-70% of available width (minus FileTree)
+  - Switch between Editor, Dependencies, and Architecture views
+- **Constraints:** Flexible width, auto-closes when dragged below 10% of window width
+- **Auto-close:** Can be reopened from View menu
 
 **Terminal (Bottom, Toggleable):**
 
@@ -195,24 +203,37 @@ Yantra follows a **Minimal UX** design philosophy focused on maximizing content 
 
 ---
 
-## Resizable Dividers (November 28, 2025)
+## Resizable Dividers (December 9, 2025)
 
-### Design: Smooth, No Visual Offset
+### Design: Smooth, Thin, Responsive
+
+**Updated:** December 9, 2025 - All dividers reduced for cleaner UI
 
 **Vertical Divider (Chat ↔ Editor):**
 
 - **Purpose:** Adjust space between chat and code editor
-- **Visual:** 6px gray bar between panels
+- **Visual:** 3px thin gray bar between panels (reduced from 6px)
+- **Behavior:**
+  - Hover: Cursor changes to `↔` (col-resize), divider highlights
+  - Click-drag: Both panels resize in real-time
+  - **Auto-close:** Code Editor closes when dragged below 10% of window width
+  - Can reopen from View menu after auto-close
+  - Smooth transition on hover (background color changes)
+
+**Vertical Divider (File Tree ↔ Chat):**
+
+- **Purpose:** Adjust File Tree width
+- **Visual:** 2px ultra-thin gray bar (reduced from 4px)
 - **Behavior:**
   - Hover: Cursor changes to `↔` (col-resize)
-  - Click-drag: Both panels resize in real-time
-  - Range: Chat 30-70%, Editor 30-70% (balanced view)
-  - **Fix Applied (Nov 28):** Cursor now perfectly aligned with divider, no offset
+  - Click-drag: File Tree resizes (10%-60% of window)
+  - **Auto-close:** File Tree closes when dragged below 10% of window width
+  - Responsive constraints prevent overly narrow or wide panels
 
 **Horizontal Divider (Editor ↔ Terminal):**
 
 - **Purpose:** Adjust space between editor and terminal
-- **Visual:** 4px gray bar between panels
+- **Visual:** 2px thin gray bar (reduced from 4px)
 - **Behavior:**
   - Hover: Cursor changes to `↕` (row-resize)
   - Click-drag: Terminal height adjusts
@@ -224,11 +245,28 @@ Yantra follows a **Minimal UX** design philosophy focused on maximizing content 
 **Problem Solved (November 28):**
 
 - **Issue:** Cursor appeared offset to the right of divider during drag
-- **Root Cause:** FileTree width (256px) not accounted for in mouse calculations
+- **Root Cause:** FileTree width not accounted for in mouse calculations
 - **Solution:**
-  1. Adjusted mouse position: `mouseXRelative = e.clientX - 256`
+  1. Adjusted mouse position: `mouseXRelative = e.clientX - fileTreeWidth`
   2. Global CSS cursor override with `!important`
   3. Prevented text selection during drag
+
+**New Features (December 9, 2025):**
+
+1. **Auto-close at 10% threshold:**
+   - Panels automatically close when dragged below 10% of window width
+   - Prevents unusably narrow panels
+   - Clean UX with View menu to reopen
+
+2. **Thinner dividers (2-3px):**
+   - Reduced visual clutter
+   - Smoother, more modern appearance
+   - Still easy to grab and drag
+
+3. **Responsive width constraints:**
+   - Minimum and maximum widths scale with window size
+   - No hard-coded pixel limits
+   - Better multi-monitor support
 
 **CSS Classes:**
 
@@ -243,6 +281,85 @@ body.dragging-vertical * {
 ```
 
 **Result:** Smooth, flicker-free dragging with cursor perfectly aligned on divider
+
+---
+
+## Typography and Font Consistency (December 9, 2025)
+
+### Design: Consistent 11px Font Across All Tabs
+
+**Updated:** December 9, 2025 - Standardized font sizes for visual consistency
+
+**Philosophy:**
+
+- Uniform typography creates a cohesive, professional appearance
+- Consistent font sizes reduce cognitive load
+- Clear hierarchy with primary (11px) and secondary (10px) text
+
+**Typography Hierarchy:**
+
+1. **Primary Text (11px):**
+   - Tab labels (Code Dependencies, Traceability)
+   - Button labels (Files, Functions, Classes, Reset, Export)
+   - Help text at bottom of tabs
+   - Graph node labels
+   - Selected node details
+   - Filter chips and controls
+
+2. **Secondary Text (10px):**
+   - Edge labels in Architecture view
+   - Tooltips
+   - Metadata text
+
+**Implementation:**
+
+**Dependencies Tab:**
+
+- Filter buttons: 11px (consistent with other tabs)
+- Selected node details: 11px
+- Loading/error messages: 11px
+- Graph node labels: 11px (reduced from 12px)
+- Button styling uses theme variables for consistency
+
+**Traceability Tab:**
+
+- Already using 11px (reference standard)
+- Help text: 11px
+- Filter controls: 11px
+- Graph labels: 11px
+
+**Architecture Tab:**
+
+- Node labels: 11px (reduced from 12px)
+- Edge labels: 10px (appropriate for smaller text)
+- Component details: 11px
+
+**Button Styling Consistency:**
+
+All tabs now use unified button styling:
+
+```css
+font-size: 11px;
+background-color: active ? var(--accent-primary) : var(--bg-tertiary);
+color: active ? var(--text-on-accent) : var(--text-secondary);
+border: active ? none : 1px solid var(--border-secondary);
+padding: 4px 10px;
+border-radius: 3px;
+```
+
+**Benefits:**
+
+1. **Visual Consistency:** All tabs look cohesive
+2. **Better Readability:** 11px is optimal for UI elements
+3. **Theme Compatibility:** Works well in both Dark Blue and Bright White themes
+4. **Professional Polish:** Uniform typography signals attention to detail
+
+**Testing:**
+
+- Switch between Dependencies, Traceability, and Architecture tabs
+- All text should appear consistent in size and style
+- Help text at bottom should match across tabs
+- Buttons should have identical styling
 
 ---
 
@@ -2004,9 +2121,633 @@ Example: "Create a REST API with auth"
 
 ---
 
+## YDoc Documentation System UX
+
+### Status: ✅ Backend Complete | 🚧 UI Integration In Progress (Dec 9, 2025)
+
+### Overview
+
+YDoc is Yantra's integrated documentation system that treats documentation as first-class code artifacts. Every requirement, architecture decision, specification, and test result lives in the dependency graph alongside your code.
+
+### Design Philosophy
+
+**Documentation as Code:**
+
+- Documentation files (`.ydoc`) are treated like code files
+- Open `.ydoc` files in the main editor (same workflow as opening `.py` or `.rs`)
+- Full traceability: Requirements → Architecture → Code → Tests
+- Bidirectional navigation: Code ↔ Documentation
+
+**Two Graph Views:**
+
+1. **Code Dependencies** - Shows file/function/class relationships
+2. **Traceability Graph** - Shows requirement/spec/code/test chains
+
+These are **separate but related** - different nodes, different edges, different purposes.
+
+---
+
+### YDoc File Structure
+
+**Project Structure:**
+
+```
+project-root/
+├── ydocs/                      # All documentation lives here
+│   ├── requirements/
+│   │   ├── MASTER.ydoc        # Requirements overview
+│   │   ├── EPIC-auth.ydoc     # Authentication requirements
+│   │   └── EPIC-payment.ydoc  # Payment requirements
+│   ├── architecture/
+│   │   ├── MASTER.ydoc        # Architecture overview
+│   │   ├── COMPONENT-api.ydoc # API component design
+│   │   └── COMPONENT-db.ydoc  # Database design
+│   ├── specs/
+│   │   ├── MASTER.ydoc        # Specifications index
+│   │   ├── FEATURE-login.ydoc # Login feature spec
+│   │   └── FEATURE-oauth.ydoc # OAuth spec
+│   ├── adr/
+│   │   ├── ADR-001-postgres.ydoc
+│   │   └── ADR-002-rust.ydoc
+│   ├── guides/
+│   │   ├── tech/              # Technical guides
+│   │   ├── api/               # API documentation
+│   │   └── user/              # User guides
+│   ├── testing/
+│   │   ├── MASTER.ydoc
+│   │   ├── PLAN-auth.ydoc
+│   │   └── results/           # Test result archives
+│   └── logs/
+│       ├── CHANGE-LOG.ydoc    # What changed
+│       └── DECISION-LOG.ydoc  # Key decisions
+└── src/                        # Your code
+```
+
+---
+
+### Main Editor Integration
+
+**Opening YDoc Files:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ File Tree              │ Main Editor (YDoc Block Editor)        │
+├────────────────────────┼────────────────────────────────────────┤
+│ 📁 ydocs/             │ ┌────────────────────┬─────────────────┐│
+│   📁 requirements/    │ │ Content Editor     │ Metadata Panel  ││
+│   📁 architecture/    │ │                    │                 ││
+│   📄 EPIC-auth.ydoc ← │ │ # Authentication   │ 📋 Block Info   ││
+│   📁 specs/           │ │                    │ ID: REQ-001     ││
+│   📁 adr/             │ │ ## Requirements    │ Type: Requirement││
+│   📁 guides/          │ │ - OAuth2 login     │ Status: ✅ Approved││
+│   📁 testing/         │ │ - Token refresh    │                 ││
+│   📁 logs/            │ │ - 30 min timeout   │ 🏷️ Tags        ││
+│                       │ │                    │ • auth          ││
+│ 📁 src/               │ │ [Monaco editor     │ • security      ││
+│   📄 main.rs          │ │  with markdown     │                 ││
+│   📄 auth.rs          │ │  highlighting]     │ 🔗 Links (3)    ││
+│                       │ │                    │ → ARCH-001      ││
+│                       │ │                    │ → src/auth.rs   ││
+│                       │ │                    │ → test_auth.py  ││
+│                       │ └────────────────────┴─────────────────┘│
+│                       │ [Save] [View Graph] [Export] [History]  │
+└───────────────────────┴─────────────────────────────────────────┘
+```
+
+**How It Works:**
+
+1. Double-click `EPIC-auth.ydoc` in file tree
+2. Main editor switches to YDoc Block Editor mode
+3. Left side: Monaco editor with markdown
+4. Right side: Metadata panel (tags, links, status)
+5. Edit documentation like code (same workflow)
+
+**File Type Detection:**
+
+- `.ydoc` files → YDocBlockEditor component
+- `.md` files → Markdown editor
+- `.py`, `.rs`, etc. → Monaco code editor
+- Same editor pane, different modes
+
+---
+
+### Graph Views (Tabbed Interface)
+
+**Unified Graph Viewer with Tabs:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Graph View:  ┌───────────────┐  ┌──────────────┐              │
+│              │ Code Deps     │  │ Traceability │              │
+│              │ (Active)      │  └──────────────┘              │
+│              └───────────────┘                                 │
+├─────────────────────────────────────────────────────────────────┤
+│ [Show: Files ✓] [Functions ✓] [Classes ✓] [Imports ✓]         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│     Currently Showing: Code Dependencies                        │
+│                                                                 │
+│     ┌──────────┐                                               │
+│     │ main.rs  │────────imports──────→ ┌──────────┐            │
+│     │  (file)  │                       │ auth.rs  │            │
+│     └──────────┘                       │  (file)  │            │
+│          │                             └──────────┘            │
+│          │                                  │                  │
+│       calls                               calls                │
+│          │                                  │                  │
+│          ↓                                  ↓                  │
+│   ┌──────────────┐                  ┌──────────────┐          │
+│   │ main()       │                  │ login()      │          │
+│   │ (function)   │                  │ (function)   │          │
+│   └──────────────┘                  └──────────────┘          │
+│                                                                 │
+│     Legend: 🔵 Files  🟢 Functions  🟠 Classes  🟣 Imports    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Switch to Traceability Tab:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Graph View:  ┌──────────────┐  ┌───────────────┐              │
+│              │ Code Deps    │  │ Traceability  │              │
+│              └──────────────┘  │ (Active)      │              │
+│                                └───────────────┘              │
+├─────────────────────────────────────────────────────────────────┤
+│ [Show: Requirements ✓] [Specs ✓] [Code ✓] [Tests ✓]           │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│     Currently Showing: Traceability Chain                       │
+│                                                                 │
+│   ┌──────────────┐                                             │
+│   │ REQ-001      │─────traces_to────→ ┌──────────────┐        │
+│   │ OAuth Login  │                    │ ARCH-001     │        │
+│   │ (requirement)│                    │ Auth System  │        │
+│   └──────────────┘                    │ (architecture)│       │
+│                                       └──────────────┘        │
+│                                             │                  │
+│                                        implements              │
+│                                             │                  │
+│                                             ↓                  │
+│                                      ┌──────────────┐          │
+│                                      │ SPEC-003     │          │
+│                                      │ OAuth Flow   │          │
+│                                      │ (spec)       │          │
+│                                      └──────────────┘          │
+│                                             │                  │
+│                                       realized_in              │
+│                                             │                  │
+│                                             ↓                  │
+│                                      ┌──────────────┐          │
+│                                      │ src/auth.rs  │          │
+│                                      │ (code)       │          │
+│                                      └──────────────┘          │
+│                                             │                  │
+│                                        tested_by               │
+│                                             │                  │
+│                                             ↓                  │
+│                                      ┌──────────────┐          │
+│                                      │ test_auth.py │          │
+│                                      │ (test)       │          │
+│                                      └──────────────┘          │
+│                                                                 │
+│   Legend: 🔴 Requirements  🔵 Architecture  🟡 Specs           │
+│           🟢 Code  🟣 Tests                                     │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Why Two Separate Graphs?**
+
+| Aspect      | Code Dependencies                  | Traceability                                   |
+| ----------- | ---------------------------------- | ---------------------------------------------- |
+| **Purpose** | "What breaks if I change this?"    | "What requirements does this implement?"       |
+| **Nodes**   | Files, functions, classes, imports | Requirements, architecture, specs, code, tests |
+| **Edges**   | calls, imports, uses, inherits     | traces_to, implements, realized_in, tested_by  |
+| **Size**    | 10,000+ nodes (large projects)     | 100-500 nodes (curated docs)                   |
+| **Usage**   | Refactoring, dependency analysis   | Requirements traceability, compliance          |
+
+**Navigation Between Graphs:**
+
+- Right-click code file in Code Deps → "View Requirements" → switches to Traceability tab
+- Right-click requirement in Traceability → "View Implementation" → switches to Code Deps tab
+- Context actions create seamless cross-navigation
+
+---
+
+### YDoc Block Editor Features
+
+**Content Editing (Left Panel):**
+
+- Monaco editor with markdown syntax highlighting
+- Live preview toggle (side-by-side or single view)
+- Auto-save every 30 seconds
+- Undo/redo with 30-revision history
+- Keyboard shortcuts: Cmd+S (save), Cmd+B (bold), Cmd+K (search)
+
+**Metadata Panel (Right Panel):**
+
+```
+┌─────────────────────────────────┐
+│ 📋 Block Info                   │
+├─────────────────────────────────┤
+│ ID: REQ-AUTH-001                │
+│ Type: [Requirement ▼]           │
+│ Status: ✅ Approved             │
+│ Created: Jan 15, 2025           │
+│ Modified: Jan 20, 2025 (10m ago)│
+├─────────────────────────────────┤
+│ 🏷️ Tags                         │
+├─────────────────────────────────┤
+│ [+ Add tag...]                  │
+│ × auth   × security   × oauth   │
+├─────────────────────────────────┤
+│ 🔗 Links (3)                    │
+├─────────────────────────────────┤
+│ → ARCH-001 (traces_to)          │
+│ → SPEC-003 (implements)         │
+│ → src/auth/oauth.rs (realized_in)│
+│ ← test_auth.py (tested_by)      │
+│                                 │
+│ [+ Add Link]                    │
+├─────────────────────────────────┤
+│ 👥 Collaboration                │
+├─────────────────────────────────┤
+│ Currently editing: You          │
+│ Last edit: Agent (10m ago)      │
+└─────────────────────────────────┘
+```
+
+**Status Indicators:**
+
+- 🔵 Draft (in progress)
+- 🟡 Review (needs approval)
+- 🟢 Approved (finalized)
+- ⚫ Deprecated (outdated)
+
+**Tag Autocomplete:**
+
+- Type to search existing tags
+- Suggests: auth, security, oauth, api, database, etc.
+- Click tag to search for related blocks
+- Color-coded by category
+
+**Link Picker Dialog:**
+
+```
+┌───────────────────────────────────────┐
+│ Add Link                              │
+├───────────────────────────────────────┤
+│ Link Type: [traces_to ▼]             │
+│                                       │
+│ Target: [Search blocks/files...    ] │
+│                                       │
+│ Results:                              │
+│ □ ARCH-001: Authentication Arch       │
+│ □ SPEC-003: OAuth Implementation      │
+│ □ src/auth/oauth.rs                   │
+│ □ tests/test_auth.py                  │
+│                                       │
+│ [Add Link] [Cancel]                   │
+└───────────────────────────────────────┘
+```
+
+---
+
+### Test Result Archive Management
+
+**Purpose:** Keep database lean by archiving old test results (>30 days) while preserving summary statistics.
+
+**Archive Panel (in YDoc Browser):**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ YDoc Browser                                                    │
+├─────────────────────────────────────────────────────────────────┤
+│ 📚 Documents                                                    │
+│   📁 Requirements (5)                                           │
+│   📁 Architecture (3)                                           │
+│   📁 Specifications (8)                                         │
+│   📁 Testing (2)                                                │
+│   📁 Test Results (45) ← [Archive]                             │
+│                                                                 │
+│ ┌───────────────────────────────────────────────────────────┐  │
+│ │ 📦 Test Result Archive                                    │  │
+│ ├───────────────────────────────────────────────────────────┤  │
+│ │ Archive test results older than: [30 ▼] days             │  │
+│ │ [Archive Now]  Last archived: 2 days ago                  │  │
+│ │                                                           │  │
+│ │ 📊 Archived Summaries (12)                               │  │
+│ │                                                           │  │
+│ │ ▼ 2025-01-15 (30 days ago)                               │  │
+│ │   • Test Suite: auth_tests                               │  │
+│ │   • Total: 45 tests                                      │  │
+│ │   • Passed: 43 ✓  Failed: 2 ✗                           │  │
+│ │   • Duration: 2.3s                                       │  │
+│ │   [View Details]                                         │  │
+│ │                                                           │  │
+│ │ ▼ 2025-01-10 (35 days ago)                               │  │
+│ │   • Test Suite: payment_tests                            │  │
+│ │   • Total: 67 tests                                      │  │
+│ │   • Passed: 67 ✓  Failed: 0 ✗                           │  │
+│ │   • Duration: 4.1s                                       │  │
+│ │   [View Details]                                         │  │
+│ │                                                           │  │
+│ │ Settings:                                                │  │
+│ │ Keep archive for: [365 ▼] days                          │  │
+│ │ [Cleanup Old Archives]                                   │  │
+│ └───────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Archive Process:**
+
+1. Click [Archive Now] button
+2. Backend queries test results older than threshold (30 days default)
+3. Creates summary statistics: total/passed/failed counts, duration
+4. Deletes raw test data, keeps summary
+5. Archive displayed in collapsible list
+6. Graph edges preserved (traceability intact)
+
+**Cleanup:**
+
+- Keep archives for 1 year by default (configurable)
+- Manual cleanup via [Cleanup Old Archives] button
+- Automatic cleanup runs weekly
+
+---
+
+### Cross-Navigation Features
+
+**From Code to Documentation:**
+
+```
+┌─────────────────────────────────────┐
+│ Code Editor (src/auth/oauth.rs)    │
+├─────────────────────────────────────┤
+│ fn login(user: &str) -> Result {   │
+│     // implementation               │ ← Right-click
+│ }                                   │
+│                                     │
+│ Context Menu:                       │
+│ ─────────────                       │
+│ Cut                                 │
+│ Copy                                │
+│ Paste                               │
+│ ─────────────                       │
+│ 📄 View Requirements                │ ← Shows REQ-001, REQ-005
+│ 📐 View Architecture                │ ← Shows ARCH-001
+│ 📋 View Specifications              │ ← Shows SPEC-003
+│ 🧪 View Tests                       │ ← Shows test_auth.py
+│ 📊 View in Traceability Graph       │ ← Opens graph view
+└─────────────────────────────────────┘
+```
+
+**From Documentation to Code:**
+
+```
+┌─────────────────────────────────────┐
+│ YDoc Editor (REQ-001)               │
+├─────────────────────────────────────┤
+│ # REQ-001: User Authentication      │
+│                                     │ ← Right-click
+│ Users must authenticate via OAuth2  │
+│                                     │
+│ Context Menu:                       │
+│ ─────────────                       │
+│ Cut                                 │
+│ Copy                                │
+│ Paste                               │
+│ ─────────────                       │
+│ 💻 View Implementation              │ ← Opens src/auth/oauth.rs
+│ 🧪 View Tests                       │ ← Opens test_auth.py
+│ 📊 View in Traceability Graph       │ ← Opens graph view
+│ 🔗 Add Link...                      │ ← Opens link picker
+└─────────────────────────────────────┘
+```
+
+---
+
+### Keyboard Shortcuts (YDoc)
+
+| Shortcut       | Action                      |
+| -------------- | --------------------------- |
+| **Editor**     |                             |
+| Cmd+S          | Save block                  |
+| Cmd+K          | Quick search blocks/files   |
+| Cmd+L          | Add link                    |
+| Cmd+T          | Add tag                     |
+| Cmd+G          | View in graph               |
+| Cmd+P          | Toggle preview              |
+| Escape         | Close editor                |
+| **Navigation** |                             |
+| Cmd+Shift+F    | Search all YDoc             |
+| Cmd+Shift+G    | Open graph view             |
+| Cmd+Shift+B    | Open YDoc browser           |
+| **Graph**      |                             |
+| Cmd+1          | Switch to Code Dependencies |
+| Cmd+2          | Switch to Traceability      |
+| Cmd+F          | Filter nodes                |
+| Cmd+R          | Reset view                  |
+| Cmd+E          | Export graph                |
+
+---
+
+### Visual Design
+
+**Color Scheme (Unified):**
+
+**Code Graph:**
+
+- 🔵 Files: Blue (#3b82f6)
+- 🟢 Functions: Green (#10b981)
+- 🟠 Classes: Orange (#f59e0b)
+- 🟣 Imports: Purple (#8b5cf6)
+
+**Traceability Graph:**
+
+- 🔴 Requirements: Red (#ef4444)
+- 🔵 Architecture: Blue (#3b82f6)
+- 🟡 Specs: Yellow (#facc15)
+- 🟢 Code: Green (#10b981)
+- 🟣 Tests: Purple (#8b5cf6)
+
+**Status Colors:**
+
+- 🔵 Draft: Blue
+- 🟡 Review: Yellow
+- 🟢 Approved: Green
+- ⚫ Deprecated: Gray
+
+**Hover Effects:**
+
+- Code file hover → Highlight linked YDoc blocks in sidebar
+- YDoc block hover → Highlight linked code files in tree
+- Tooltip shows: "Implements REQ-001, SPEC-003"
+
+---
+
+### User Workflows
+
+**1. Creating a New Requirement:**
+
+```
+1. Open File Tree → ydocs/requirements/
+2. Right-click → "New YDoc Document"
+3. Enter title: "User Profile Management"
+4. Select type: "Requirements"
+5. Document opens in editor
+6. Write requirement markdown
+7. Add tags: profile, user, crud
+8. Add links to architecture/specs (if exist)
+9. Auto-saves every 30s
+10. Close editor (Cmd+W)
+```
+
+**2. Tracing Requirement to Code:**
+
+```
+1. Open REQ-001 in editor
+2. Click [View in Graph] button
+3. Graph switches to Traceability tab
+4. REQ-001 is centered and highlighted
+5. Follow edges: REQ-001 → ARCH-001 → SPEC-003 → src/auth.rs
+6. Right-click src/auth.rs → "View Implementation"
+7. Code editor opens src/auth.rs
+8. Visual indicator shows "Implements REQ-001"
+```
+
+**3. Finding Documentation for Code:**
+
+```
+1. Editing src/auth/oauth.rs
+2. Right-click in editor → "View Requirements"
+3. Sidebar shows: REQ-001, REQ-005
+4. Click REQ-001 → Opens in YDoc editor
+5. See full requirement chain
+6. Make documentation updates
+7. Changes sync to graph automatically
+```
+
+**4. Archiving Old Test Results:**
+
+```
+1. Open YDoc Browser panel
+2. Navigate to Test Results section
+3. See "45 test results" with [Archive] button
+4. Click [Archive]
+5. Dialog: "Archive results older than [30] days?"
+6. Click [Archive Now]
+7. Backend creates summaries (2.3s)
+8. Raw results deleted, summaries shown
+9. Database size reduced by ~70%
+10. Traceability links preserved
+```
+
+---
+
+### Performance Expectations
+
+**Editor Operations:**
+
+- YDoc file open: <200ms
+- Block save: <100ms (non-blocking)
+- Tag autocomplete: <50ms
+- Link search: <100ms
+- Version history load: <300ms
+
+**Graph Operations:**
+
+- Graph render (code deps): <1s for 1000 nodes
+- Graph render (traceability): <500ms for 500 nodes
+- Graph filter: <100ms
+- Graph zoom/pan: 60fps smooth
+- Tab switch: <300ms
+
+**Archive Operations:**
+
+- Archive 100 test results: <2s
+- View summaries: <100ms
+- Cleanup old archives: <1s
+
+---
+
+### Best Practices
+
+**Document Organization:**
+
+1. Use MASTER.ydoc files as indexes
+2. One epic per requirements file
+3. One component per architecture file
+4. One feature per spec file
+5. Keep ADRs atomic (one decision per file)
+
+**Tagging Strategy:**
+
+1. Use consistent tag vocabulary
+2. Max 3-5 tags per block
+3. Tag categories: feature, component, priority, team
+4. Example: `auth`, `high-priority`, `backend`, `sprint-5`
+
+**Linking Strategy:**
+
+1. Always link requirements → architecture
+2. Always link architecture → specs
+3. Always link specs → code
+4. Always link requirements → tests
+5. Use correct edge types (traces_to, implements, etc.)
+
+**Archive Strategy:**
+
+1. Archive test results monthly
+2. Keep failures indefinitely
+3. Keep last 10 passing runs
+4. Review archive before cleanup
+5. Export important results before archiving
+
+---
+
 ## Troubleshooting
 
-### "Terminal not responding"
+### YDoc Issues
+
+**"YDoc file not opening in editor"**
+
+- Verify file has `.ydoc` extension
+- Check file permissions (read/write)
+- Try closing and reopening the file
+- Check console for parse errors
+
+**"Links not showing in metadata panel"**
+
+- Ensure graph edges exist in database
+- Run "Rebuild Graph" from Tools menu
+- Check if targets still exist (files not deleted)
+- Verify edge types are correct
+
+**"Archive not working"**
+
+- Check test results exist in `/ydocs/testing/results/`
+- Verify results are older than threshold (30 days)
+- Check database permissions
+- View logs: Help → View Logs
+
+**"Graph not showing nodes"**
+
+- Switch between Code Deps / Traceability tabs
+- Check filter settings (might hide all nodes)
+- Click "Reset View" button
+- Refresh graph: Cmd+Shift+G
+
+**"Traceability chain incomplete"**
+
+- Verify all required documents exist
+- Check graph edges in database
+- Use link picker to add missing links
+- Run "Validate Traceability" from Tools menu
+
+### General Issues
+
+**"Terminal not responding"**
 
 - Check if terminal is visible (Cmd+` to toggle)
 - Resize terminal divider (might be collapsed to 0 height)
@@ -2025,10 +2766,19 @@ Example: "Create a REST API with auth"
 - Check file count (<10,000 files recommended)
 - Try reloading: File → Open (select same folder)
 
-### "Divider cursor offset / flickering"
+### "Panel won't stay open / auto-closes"
 
-- **Fixed in November 28 update!**
-- If still occurring, report issue via Help → Report Issue
+- **New feature (December 9):** Panels auto-close at 10% of window width
+- This is intentional to prevent unusably narrow panels
+- Reopen from View menu after auto-close
+- Drag panel wider to keep it open (above 10% threshold)
+
+### "Dividers too thin / hard to grab"
+
+- **Updated (December 9):** Dividers reduced to 2-3px for cleaner UI
+- Hover over divider to see highlight effect
+- Cursor changes to resize indicator (↔ or ↕)
+- If still difficult, report via Help → Report Issue
 
 ### "Edit menu shows unwanted items"
 
@@ -2066,6 +2816,46 @@ Example: "Create a REST API with auth"
 ---
 
 ## Changelog
+
+### December 9, 2025 - UX Improvements Update
+
+- ✅ **Improved:** Responsive panel widths with auto-close at 10% threshold
+- ✅ **Removed:** Fixed minimum width restrictions on File Explorer (was 200px)
+- ✅ **Added:** File Explorer now responsive (10%-60% of window, min 150px, max 600px)
+- ✅ **Added:** Auto-close functionality when panels dragged below 10% of window width
+- ✅ **Added:** View menu reopening for closed panels
+- ✅ **Improved:** Divider widths reduced for smoother UI
+  - Chat-Code divider: 6px → 3px
+  - FileTree-Chat divider: 4px → 2px
+  - Terminal divider: 4px → 2px
+  - FileExplorer resize handle: 4px → 2px
+- ✅ **Standardized:** Font sizes across all tabs to 11px
+  - Dependencies tab buttons and text: 12px → 11px
+  - Traceability tab: Already 11px (reference standard)
+  - Architecture tab node labels: 12px → 11px
+- ✅ **Unified:** Button styling across all tabs using theme variables
+- ✅ **Added:** Typography hierarchy section in documentation
+- ✅ **Updated:** Panel descriptions with new responsive behavior
+- ✅ **Updated:** Resizable dividers section with new measurements
+- 📝 **Files Modified:** layoutStore.ts, App.tsx, GraphViewer.css, DependencyGraph.tsx, ArchitectureCanvas.tsx
+- 🎯 **Result:** Cleaner, more consistent, and responsive UI
+
+### December 9, 2025 - YDoc System
+
+- ✅ **Added:** Comprehensive YDoc Documentation System UX section
+- ✅ **Added:** YDoc file structure and organization guidelines
+- ✅ **Added:** Main editor integration for `.ydoc` files (YDocBlockEditor mode)
+- ✅ **Added:** Dual graph view design (Code Dependencies + Traceability tabs)
+- ✅ **Added:** YDoc Block Editor features documentation (content + metadata panel)
+- ✅ **Added:** Test Result Archive Management UI design
+- ✅ **Added:** Cross-navigation features (code ↔ documentation)
+- ✅ **Added:** Keyboard shortcuts for YDoc operations
+- ✅ **Added:** Visual design specifications (color scheme, hover effects)
+- ✅ **Added:** User workflows for YDoc (create, trace, find, archive)
+- ✅ **Added:** Performance expectations for YDoc operations
+- ✅ **Added:** Best practices for documentation organization
+- ✅ **Added:** YDoc-specific troubleshooting section
+- 🚧 **Implementation:** Backend complete, UI integration in progress
 
 ### November 28, 2025
 

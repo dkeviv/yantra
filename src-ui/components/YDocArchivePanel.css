@@ -1,0 +1,296 @@
+/* File: src-ui/components/YDocArchivePanel.css */
+/* Purpose: Styles for YDoc test result archive management panel */
+/* Last Updated: December 9, 2025 */
+
+.ydoc-archive-panel {
+  background: var(--color-gray-800, #1f2937);
+  border-radius: 6px;
+  padding: 12px;
+  margin-top: 12px;
+}
+
+.archive-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.archive-header h4 {
+  margin: 0;
+  color: var(--color-gray-100, #f3f4f6);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.collapse-button {
+  background: transparent;
+  border: none;
+  color: var(--color-gray-400, #9ca3af);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px;
+  transition: color 0.2s;
+}
+
+.collapse-button:hover {
+  color: var(--color-gray-200, #e5e7eb);
+}
+
+.archive-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  background: var(--color-gray-900, #111827);
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+
+.control-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.control-row label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-gray-300, #d1d5db);
+  font-size: 12px;
+  flex: 1;
+}
+
+.control-row select {
+  background: var(--color-gray-700, #374151);
+  border: 1px solid var(--color-gray-600, #4b5563);
+  border-radius: 4px;
+  color: var(--color-gray-100, #f3f4f6);
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.control-row select:focus {
+  outline: none;
+  border-color: var(--color-blue-500, #3b82f6);
+}
+
+.control-row select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.archive-button,
+.cleanup-button,
+.refresh-button {
+  background: var(--color-blue-600, #2563eb);
+  border: none;
+  border-radius: 4px;
+  color: white;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.archive-button:hover:not(:disabled),
+.cleanup-button:hover:not(:disabled),
+.refresh-button:hover:not(:disabled) {
+  background: var(--color-blue-700, #1d4ed8);
+}
+
+.archive-button:disabled,
+.cleanup-button:disabled,
+.refresh-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cleanup-button {
+  background: var(--color-red-600, #dc2626);
+}
+
+.cleanup-button:hover:not(:disabled) {
+  background: var(--color-red-700, #b91c1c);
+}
+
+.refresh-button {
+  background: var(--color-gray-600, #4b5563);
+  padding: 4px 8px;
+  font-size: 14px;
+}
+
+.refresh-button:hover:not(:disabled) {
+  background: var(--color-gray-500, #6b7280);
+}
+
+.last-archived {
+  color: var(--color-gray-400, #9ca3af);
+  font-size: 11px;
+  font-style: italic;
+}
+
+.message {
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.message-success {
+  background: var(--color-green-900, #14532d);
+  color: var(--color-green-200, #bbf7d0);
+  border: 1px solid var(--color-green-700, #15803d);
+}
+
+.message-error {
+  background: var(--color-red-900, #7f1d1d);
+  color: var(--color-red-200, #fecaca);
+  border: 1px solid var(--color-red-700, #b91c1c);
+}
+
+.archive-list {
+  margin-bottom: 12px;
+}
+
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.list-header h5 {
+  margin: 0;
+  color: var(--color-gray-200, #e5e7eb);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.loading,
+.empty-state {
+  padding: 20px;
+  text-align: center;
+  color: var(--color-gray-400, #9ca3af);
+  font-size: 12px;
+}
+
+.empty-state small {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--color-gray-500, #6b7280);
+}
+
+.summaries {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.summary-item {
+  background: var(--color-gray-900, #111827);
+  border: 1px solid var(--color-gray-700, #374151);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.summary-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.summary-header:hover {
+  background: var(--color-gray-800, #1f2937);
+}
+
+.expand-icon {
+  color: var(--color-gray-500, #6b7280);
+  font-size: 10px;
+  width: 12px;
+  flex-shrink: 0;
+}
+
+.summary-title {
+  flex: 1;
+  color: var(--color-gray-100, #f3f4f6);
+  font-size: 12px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.summary-meta {
+  color: var(--color-gray-400, #9ca3af);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.summary-details {
+  padding: 8px 8px 8px 28px;
+  border-top: 1px solid var(--color-gray-700, #374151);
+  background: var(--color-gray-950, #030712);
+}
+
+.detail-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 11px;
+}
+
+.detail-row:last-child {
+  margin-bottom: 0;
+}
+
+.detail-key {
+  color: var(--color-gray-400, #9ca3af);
+  min-width: 100px;
+}
+
+.detail-value {
+  color: var(--color-gray-200, #e5e7eb);
+  font-family: monospace;
+}
+
+.cleanup-controls {
+  padding: 8px;
+  background: var(--color-gray-900, #111827);
+  border-radius: 4px;
+}
+
+.cleanup-controls h5 {
+  margin: 0 0 8px 0;
+  color: var(--color-gray-200, #e5e7eb);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Scrollbar styling */
+.summaries::-webkit-scrollbar {
+  width: 8px;
+}
+
+.summaries::-webkit-scrollbar-track {
+  background: var(--color-gray-800, #1f2937);
+  border-radius: 4px;
+}
+
+.summaries::-webkit-scrollbar-thumb {
+  background: var(--color-gray-600, #4b5563);
+  border-radius: 4px;
+}
+
+.summaries::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gray-500, #6b7280);
+}

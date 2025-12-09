@@ -1,7 +1,7 @@
 // File: src-ui/monaco-setup.ts
 // Purpose: Monaco Editor worker configuration and completion provider for Vite
 // Dependencies: monaco-editor
-// Last Updated: December 7, 2025
+// Last Updated: December 8, 2025
 
 import * as monaco from 'monaco-editor';
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
@@ -10,6 +10,10 @@ import cssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker';
 import htmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker';
 import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker';
 import { getCodeCompletions, CompletionKind } from './api/completion';
+import { initializeYDocMonaco } from './monaco-ydoc-language';
+
+// Initialize YDoc language support
+initializeYDocMonaco();
 
 // Configure Monaco Editor web workers
 self.MonacoEnvironment = {

@@ -1,0 +1,350 @@
+/* File: src-ui/components/YDocBrowser.css */
+/* Purpose: Styles for YDoc document browser */
+/* Last Updated: December 8, 2025 */
+
+.ydoc-browser {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Header */
+.browser-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 2px solid #333;
+}
+
+.browser-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #4ec9b0;
+}
+
+.btn-new-doc {
+  background: #0e639c;
+  color: #ffffff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-new-doc:hover {
+  background: #1177bb;
+}
+
+/* Controls */
+.browser-controls {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #333;
+}
+
+.search-input {
+  flex: 1;
+  background: #3c3c3c;
+  border: 1px solid #555;
+  color: #d4d4d4;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #007acc;
+  background: #252526;
+}
+
+.filter-select {
+  background: #3c3c3c;
+  border: 1px solid #555;
+  color: #d4d4d4;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: #007acc;
+}
+
+.btn-refresh {
+  background: #3c3c3c;
+  border: 1px solid #555;
+  color: #d4d4d4;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-refresh:hover {
+  background: #4a4a4a;
+}
+
+/* Error Banner */
+.error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #5a1d1d;
+  border: 1px solid #be1100;
+  color: #f48771;
+  padding: 12px 16px;
+  margin: 8px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.error-banner button {
+  background: transparent;
+  border: 1px solid #f48771;
+  color: #f48771;
+  padding: 4px 12px;
+  border-radius: 3px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.error-banner button:hover {
+  background: #be1100;
+}
+
+/* Loading State */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  gap: 16px;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #3c3c3c;
+  border-top-color: #4ec9b0;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-state p {
+  margin: 0;
+  color: #858585;
+  font-size: 13px;
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  gap: 16px;
+}
+
+.empty-state p {
+  margin: 0;
+  color: #858585;
+  font-size: 14px;
+}
+
+.btn-create-first {
+  background: #0e639c;
+  color: #ffffff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-create-first:hover {
+  background: #1177bb;
+}
+
+/* Documents List */
+.documents-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.document-item {
+  background: #252526;
+  border: 1px solid #3c3c3c;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  transition: all 0.2s ease;
+}
+
+.document-item:hover {
+  border-color: #569cd6;
+}
+
+.document-item.selected {
+  border-color: #4ec9b0;
+  background: #2d2d30;
+  box-shadow: 0 0 0 1px #4ec9b0;
+}
+
+.document-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  cursor: pointer;
+}
+
+.expand-btn {
+  background: transparent;
+  border: none;
+  color: #858585;
+  font-size: 10px;
+  padding: 4px;
+  cursor: pointer;
+  transition: color 0.2s;
+  min-width: 20px;
+}
+
+.expand-btn:hover {
+  color: #d4d4d4;
+}
+
+.doc-icon {
+  font-size: 20px;
+}
+
+.doc-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.doc-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #d4d4d4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+
+.doc-type {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.doc-stats {
+  display: flex;
+  gap: 8px;
+}
+
+.stat-badge {
+  font-size: 11px;
+  color: #858585;
+  background: #1e1e1e;
+  padding: 4px 8px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+/* Document Details */
+.document-details {
+  padding: 12px;
+  padding-top: 0;
+  border-top: 1px solid #3c3c3c;
+  margin-top: -4px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 12px;
+}
+
+.detail-label {
+  color: #858585;
+  font-weight: 500;
+}
+
+.detail-value {
+  color: #d4d4d4;
+  font-family: 'Consolas', 'Courier New', monospace;
+}
+
+/* Footer */
+.browser-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-top: 1px solid #333;
+}
+
+.doc-count {
+  font-size: 12px;
+  color: #858585;
+}
+
+.btn-archive {
+  background: #5a4a7f;
+  color: #ffffff;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-archive:hover {
+  background: #6b5b8f;
+}
+
+/* Scrollbar */
+.documents-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.documents-list::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+.documents-list::-webkit-scrollbar-thumb {
+  background: #424242;
+  border-radius: 4px;
+}
+
+.documents-list::-webkit-scrollbar-thumb:hover {
+  background: #4e4e4e;
+}
