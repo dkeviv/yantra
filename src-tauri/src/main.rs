@@ -1405,7 +1405,6 @@ async fn generate_code(
     intent: String,
     file_path: Option<String>,
     target_node: Option<String>,
-    gnn_state: State<'_, Arc<TokioMutex<gnn::GNNEngine>>>,
 ) -> Result<llm::CodeGenerationResponse, String> {
     use llm::context::assemble_context;
     use llm::CodeGenerationRequest;
@@ -1423,26 +1422,13 @@ async fn generate_code(
         return Err("No LLM API keys configured. Please configure at least one provider in settings.".to_string());
     }
     
-    // INTEGRATION 3: Ensure graph is fresh before context assembly
-    {
-        let mut engine = gnn_state.lock().await;
-        engine.refresh_if_stale()
-            .map_err(|e| format!("Failed to refresh graph: {}", e))?;
-    }
+    // Initialize GNN engine for context
+    let data_dir = app_handle.path_resolver()
+        .app_data_dir()
+        .ok_or_else(|| "Failed to get data directory".to_string())?;
     
-    // Get engine for context assembly (immutable borrow after refresh)
-    let engine = {
-        let locked = gnn_state.lock().await;
-        // We need to clone the engine or work with it directly
-        // For now, let's create a new instance from the same DB
-        // This is not ideal but works around borrow checker
-        let data_dir = app_handle.path_resolver()
-            .app_data_dir()
-            .ok_or_else(|| "Failed to get data directory".to_string())?;
-        
-        let db_path = data_dir.join("gnn.db");
-        gnn::GNNEngine::new(&db_path)?
-    };
+    let db_path = data_dir.join("gnn.db");
+    let engine = gnn::GNNEngine::new(&db_path)?;
     
     // Assemble context from GNN
     let context = assemble_context(
@@ -1476,15 +1462,7 @@ async fn generate_tests(
     language: String,
     file_path: String,
     coverage_target: Option<f32>,
-    gnn_state: State<'_, Arc<TokioMutex<gnn::GNNEngine>>>,
 ) -> Result<testing::TestGenerationResponse, String> {
-    // INTEGRATION 2: Ensure graph is fresh before test generation
-    {
-        let mut engine = gnn_state.lock().await;
-        engine.refresh_if_stale()
-            .map_err(|e| format!("Failed to refresh graph: {}", e))?;
-    }
-    
     // Get configuration
     let config_dir = app_handle.path_resolver()
         .app_config_dir()
@@ -2086,15 +2064,7 @@ async fn get_file_watcher_status(
 async fn validate_code_file(
     file_path: String,
     workspace_path: String,
-    gnn_state: State<'_, Arc<TokioMutex<gnn::GNNEngine>>>,
 ) -> Result<agent::CodeValidationResult, String> {
-    // INTEGRATION 2 & 3: Ensure graph is fresh before validation
-    {
-        let mut engine = gnn_state.lock().await;
-        engine.refresh_if_stale()
-            .map_err(|e| format!("Failed to refresh graph: {}", e))?;
-    }
-    
     let validator = agent::CodeValidator::new(PathBuf::from(workspace_path));
     validator.validate_file(&PathBuf::from(file_path))
         .await
@@ -2518,9 +2488,6 @@ fn main() {
     };
     let llm = Arc::new(tokio::sync::Mutex::new(llm::orchestrator::LLMOrchestrator::new(llm_config)));
     
-    // Clone GNN for shared usage
-    let gnn_for_state = gnn.clone();
-    
     let arch_state = arch_commands::ArchitectureState::new(gnn, llm)
         .expect("Failed to initialize architecture state");
 
@@ -2541,7 +2508,6 @@ fn main() {
     tauri::Builder::default()
         .menu(menu)
         .manage(terminal_manager)
-        .manage(gnn_for_state) // GNN state for auto-refresh integration
         .manage(arch_state)
         .manage(db_manager)
         .manage(status_emitter)

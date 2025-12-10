@@ -302,45 +302,58 @@ impl ConversationMemory {
             metadata: metadata.clone(),
         };
 
-        let conn = self.conn.lock().unwrap();
+        {
+            let conn = self.conn.lock().unwrap();
 
-        // Insert message
-        conn.execute(
-            "INSERT INTO messages (id, conversation_id, parent_message_id, role, content, timestamp, tokens, metadata)
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-            params![
-                id,
-                conversation_id,
-                parent_message_id,
-                role.to_string(),
-                content,
-                now.to_rfc3339(),
-                tokens as i64,
-                metadata.map(|m| m.to_string()),
-            ],
-        )
-        .map_err(|e| format!("Failed to save message: {}", e))?;
+            // Insert message
+            conn.execute(
+                "INSERT INTO messages (id, conversation_id, parent_message_id, role, content, timestamp, tokens, metadata)
+                VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                params![
+                    id,
+                    conversation_id,
+                    parent_message_id,
+                    role.to_string(),
+                    content,
+                    now.to_rfc3339(),
+                    tokens as i64,
+                    metadata.map(|m| m.to_string()),
+                ],
+            )
+            .map_err(|e| format!("Failed to save message: {}", e))?;
 
-        // Update conversation metadata
-        conn.execute(
-            "UPDATE conversations 
-            SET updated_at = ?1, message_count = message_count + 1, total_tokens = total_tokens + ?2
-            WHERE id = ?3",
-            params![now.to_rfc3339(), tokens as i64, conversation_id],
-        )
-        .map_err(|e| format!("Failed to update conversation: {}", e))?;
+            // Update conversation metadata
+            conn.execute(
+                "UPDATE conversations 
+                SET updated_at = ?1, message_count = message_count + 1, total_tokens = total_tokens + ?2
+                WHERE id = ?3",
+                params![now.to_rfc3339(), tokens as i64, conversation_id],
+            )
+            .map_err(|e| format!("Failed to update conversation: {}", e))?;
 
-        // Auto-generate title from first message (CONV-007)
-        if let Ok(count) = self.get_message_count(conversation_id) {
+            // Auto-generate title from first message (CONV-007)
+            // Check message count directly without releasing the lock
+            let mut count_stmt = conn
+                .prepare("SELECT COUNT(*) FROM messages WHERE conversation_id = ?1")
+                .map_err(|e| format!("Failed to prepare count query: {}", e))?;
+            
+            let count: i64 = count_stmt
+                .query_row(params![conversation_id], |row| row.get(0))
+                .map_err(|e| format!("Failed to get count: {}", e))?;
+
             if count == 1 && role == MessageRole::User {
                 let title = if content.len() > 50 {
                     format!("{}...", &content[..50])
                 } else {
                     content.clone()
                 };
-                let _ = self.update_conversation_title(conversation_id, &title);
+                conn.execute(
+                    "UPDATE conversations SET title = ?1 WHERE id = ?2",
+                    params![title, conversation_id],
+                )
+                .map_err(|e| format!("Failed to update title: {}", e))?;
             }
-        }
+        } // Lock released here
 
         let duration = start_time.elapsed();
         if duration.as_millis() > 10 {

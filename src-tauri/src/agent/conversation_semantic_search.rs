@@ -281,10 +281,12 @@ mod tests {
     #[ignore] // Slow: downloads ML model and builds index
     fn test_build_and_search_index() {
         use std::path::Path;
+        use uuid::Uuid;
         
         let temp_dir = std::env::temp_dir();
-        let db_path = temp_dir.join("test_semantic_search.db");
-        let _ = std::fs::remove_file(&db_path);
+        let unique_db = format!("test_semantic_search_{}.db", Uuid::new_v4());
+        let db_path = temp_dir.join(unique_db);
+        let _ = std::fs::remove_file(&db_path); // Clean up any existing file
         
         let memory = ConversationMemory::new(Path::new(&db_path))
             .expect("Failed to create memory");
@@ -317,7 +319,7 @@ mod tests {
         let count = search.build_index(&memory)
             .expect("Failed to build index");
         
-        assert_eq!(count, 2);
+        assert_eq!(count, 2, "Expected 2 messages in index");
         
         // Search for similar messages
         let results = search.search("Python function creation", 5)
@@ -325,5 +327,8 @@ mod tests {
         
         assert!(!results.is_empty());
         assert!(results[0].1 > 0.5); // Should have high similarity
+        
+        // Clean up
+        let _ = std::fs::remove_file(&db_path);
     }
 }
