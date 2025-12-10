@@ -757,6 +757,64 @@ fn file_search(request: agent::file_ops::FileSearchRequest) -> Result<Vec<agent:
     agent::file_ops::search_files(request)
 }
 
+// File transaction commands
+
+/// Execute batch file write with atomic transaction
+#[tauri::command]
+fn batch_file_write(
+    workspace_path: String, 
+    request: agent::file_transaction::BatchFileWriteRequest
+) -> Result<agent::file_transaction::TransactionResult, String> {
+    let workspace = Path::new(&workspace_path);
+    let manager = agent::file_transaction::FileTransactionManager::new(workspace)?;
+    manager.batch_write(request)
+}
+
+/// Get transaction log for audit trail
+#[tauri::command]
+fn get_transaction_log(
+    workspace_path: String,
+    transaction_id: String
+) -> Result<Vec<agent::file_transaction::TransactionLogEntry>, String> {
+    let workspace = Path::new(&workspace_path);
+    let manager = agent::file_transaction::FileTransactionManager::new(workspace)?;
+    manager.get_transaction_log(&transaction_id)
+}
+
+/// Rollback a transaction
+#[tauri::command]
+fn rollback_transaction(
+    workspace_path: String,
+    transaction_id: String
+) -> Result<(), String> {
+    use std::collections::HashMap;
+    let workspace = Path::new(&workspace_path);
+    let manager = agent::file_transaction::FileTransactionManager::new(workspace)?;
+    manager.rollback_transaction(&transaction_id, &HashMap::new())
+}
+
+/// Sanitize a file path
+#[tauri::command]
+fn sanitize_path(
+    workspace_path: String,
+    path: String
+) -> Result<String, String> {
+    let workspace = Path::new(&workspace_path);
+    let manager = agent::file_transaction::FileTransactionManager::new(workspace)?;
+    manager.sanitize_path(&path)
+}
+
+/// Clean up old backups
+#[tauri::command]
+fn cleanup_old_backups(
+    workspace_path: String,
+    days: u64
+) -> Result<usize, String> {
+    let workspace = Path::new(&workspace_path);
+    let manager = agent::file_transaction::FileTransactionManager::new(workspace)?;
+    manager.cleanup_old_backups(days)
+}
+
 // Command classification
 
 /// Classify a command for execution strategy
@@ -2632,6 +2690,12 @@ fn main() {
             file_move,
             directory_tree,
             file_search,
+            // File transaction commands
+            batch_file_write,
+            get_transaction_log,
+            rollback_transaction,
+            sanitize_path,
+            cleanup_old_backups,
             // Command classification
             classify_command,
             // Status tracking commands

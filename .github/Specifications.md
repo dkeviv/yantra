@@ -709,15 +709,76 @@ Impact analysis for changing REQ-001:
 
 Storage Location:
 
-| Data Type                | Storage Tier                 | Rationale                               |
-| ------------------------ | ---------------------------- | --------------------------------------- |
-| YDoc .ydoc files         | Disk (project /ydocs folder) | Git-friendly, human-readable, portable  |
-| YDoc blocks (parsed)     | Tier 1 SQLite                | Fast queries, FTS5 search, local access |
-| Graph edges              | Tier 1 SQLite + petgraph     | Bidirectional queries, fast traversal   |
-| Block content embeddings | Tier 2 (Vector DB)           | Semantic search across docs + code      |
-| Sync metadata            | Tier 1 SQLite                | Track Confluence sync status, conflicts |
+| Data Type                | Storage Tier                 | Rationale                                                    |
+| ------------------------ | ---------------------------- | ------------------------------------------------------------ |
+| YDoc .ydoc files         | Disk (project /ydocs folder) | Git-friendly, human-readable, portable                       |
+| YDoc blocks (parsed)     | Tier 1 SQLite                | Fast queries, FTS5 full-text search, instant agent access    |
+| Graph edges              | Tier 1 SQLite + petgraph     | Bidirectional queries, <5ms traversal, traceability search   |
+| Block content embeddings | Tier 1 SQLite (BLOB)         | 384-dim vectors for semantic search via HNSW                 |
+| FTS5 index               | Tier 1 SQLite (virtual)      | Keyword search, BM25 ranking, <30ms queries                  |
+| Sync metadata            | Tier 1 SQLite                | Track Confluence sync status, conflicts                      |
 
-Rationale: Files on disk provide Git workflow, backup, and portability. SQLite enables fast agent queries and FTS5 full-text search. petgraph enables graph traversal for traceability chains. No duplication as file is source of truth and SQLite is indexed view.
+Rationale: Files on disk provide Git workflow, backup, and portability. SQLite enables fast agent queries (<50ms) and dual search modes (FTS5 keyword + HNSW semantic). petgraph enables graph traversal for traceability chains (<5ms). No duplication as file is source of truth and SQLite is indexed view. Block-based architecture ensures every piece of knowledge is individually searchable and traceable.
+
+Searchability Architecture:
+
+YDoc's block-based design makes everything fully searchable and traceable:
+
+1. Block Granularity: Each requirement, ADR, architecture component, spec is a separate searchable block
+2. Dual Search Modes:
+   - Keyword Search: SQLite FTS5 with BM25 ranking for exact matches
+   - Semantic Search: HNSW embeddings for meaning-based discovery
+3. Rich Metadata: Every block has type, tags, status, timestamps for filtering
+4. Graph Integration: Search results include traceability links (shows connections)
+5. Performance: All searches <50ms via indexed queries
+
+Search Indexes:
+
+-- Full-text search index (keyword)
+CREATE VIRTUAL TABLE ydoc_blocks_fts USING fts5(
+    block_id UNINDEXED,
+    content,
+    title,
+    tags,
+    content='ydoc_blocks',
+    tokenize='porter unicode61'
+);
+
+-- Type-specific indexes (performance optimization)
+CREATE INDEX idx_blocks_by_type ON ydoc_blocks(yantra_type);
+CREATE INDEX idx_blocks_by_tags ON ydoc_blocks(tags);
+CREATE INDEX idx_blocks_by_status ON ydoc_blocks(status);
+CREATE INDEX idx_blocks_by_date ON ydoc_blocks(created_at DESC);
+
+-- Graph traversal indexes
+CREATE INDEX idx_edges_source ON ydoc_graph_edges(source_id, edge_type);
+CREATE INDEX idx_edges_target ON ydoc_graph_edges(target_id, edge_type);
+
+-- Embedding storage (semantic search)
+ALTER TABLE ydoc_blocks ADD COLUMN embedding BLOB;  -- 384-dim vector
+CREATE INDEX idx_blocks_embedding ON ydoc_blocks(embedding);  -- For HNSW
+
+Agent Search Examples:
+
+User: "Find all OAuth requirements"
+→ Agent calls: search_requirements("OAuth")
+→ Returns: All requirement blocks mentioning OAuth
+→ Shows: Linked architecture, specs, code via traceability
+
+User: "What architecture decisions relate to PostgreSQL?"
+→ Agent calls: search_architecture("PostgreSQL")
+→ Returns: ADRs and architecture blocks about PostgreSQL
+→ Shows: Requirements driving the decision, code implementing it
+
+User: "Show me specs not implemented yet"
+→ Agent calls: search_specifications("") with filter status="draft"
+→ Cross-references: query_traceability() to find specs without realized_in edges
+→ Returns: Specifications lacking code implementation
+
+User: "Find orphaned documentation"
+→ Agent calls: find_unlinked_items()
+→ Returns: Blocks with no graph edges (quality issue)
+→ Agent suggests: Linking opportunities based on content similarity
 
 Folder Structure:
 
@@ -875,15 +936,80 @@ Supported External Tools: Confluence (MCP server), Notion (MCP server), GitHub W
 
 YDoc Primitives for Agent (tools accessible by agent):
 
-| Tool                      | Purpose                      | Protocol |
-| ------------------------- | ---------------------------- | -------- |
-| create_ydoc_document      | Create new YDoc document     | Builtin  |
-| create_ydoc_block         | Create new block in document | Builtin  |
-| update_ydoc_block         | Update existing block        | Builtin  |
-| link_ydoc_to_code         | Create graph edge doc → code | Builtin  |
-| search_ydoc_blocks        | Search documentation blocks  | Builtin  |
-| export_ydoc_to_confluence | Push doc to Confluence       | MCP      |
-| import_from_confluence    | Pull doc from Confluence     | MCP      |
+| Tool                      | Purpose                                              | Protocol |
+| ------------------------- | ---------------------------------------------------- | -------- |
+| create_ydoc_document      | Create new YDoc document                             | Builtin  |
+| create_ydoc_block         | Create new block in document                         | Builtin  |
+| update_ydoc_block         | Update existing block                                | Builtin  |
+| delete_ydoc_block         | Delete block (archives, preserves graph edges)       | Builtin  |
+| link_ydoc_to_code         | Create graph edge doc → code                         | Builtin  |
+| link_ydoc_to_ydoc         | Create graph edge between YDoc blocks               | Builtin  |
+| search_ydoc_blocks        | Search all YDoc blocks (keyword + semantic)          | Builtin  |
+| search_architecture       | Search architecture blocks specifically              | Builtin  |
+| search_requirements       | Search requirement blocks specifically               | Builtin  |
+| search_specifications     | Search specification blocks specifically             | Builtin  |
+| search_by_type            | Search blocks by yantra_type filter                  | Builtin  |
+| search_by_tags            | Search blocks by tags                                | Builtin  |
+| query_traceability        | Find traceability links (traces_to, implements, etc) | Builtin  |
+| query_graph_path          | Find shortest path between two blocks/files          | Builtin  |
+| get_block_dependencies    | Get all items this block links to                    | Builtin  |
+| get_block_dependents      | Get all items that link to this block                | Builtin  |
+| find_unlinked_items       | Find orphaned blocks/code (quality check)            | Builtin  |
+| export_ydoc_to_confluence | Push doc to Confluence                               | MCP      |
+| import_from_confluence    | Pull doc from Confluence                             | MCP      |
+
+Search Implementation Details:
+
+search_ydoc_blocks:
+
+- Hybrid Search: SQLite FTS5 (keyword matching) + HNSW embeddings (semantic similarity)
+- Filters: yantra_type, tags, date range, created_by (user/agent), status
+- Ranking: BM25 for keyword relevance + cosine similarity for semantic
+- Performance: <30ms for keyword, <50ms for semantic
+- Returns: Block ID, content snippet (with highlights), metadata, relevance score
+
+search_architecture / search_requirements / search_specifications:
+
+- Specialized versions of search_ydoc_blocks with yantra_type pre-filtered
+- Architecture: searches only yantra_type='architecture' blocks
+- Requirements: searches only yantra_type='requirement' blocks
+- Specifications: searches only yantra_type='spec' blocks
+- Same hybrid search strategy, optimized indexes per type
+- Performance: <20ms (smaller index to search)
+
+query_traceability:
+
+- Purpose: Find all traceability relationships for an item
+- Input: block_id or file_path
+- Returns: All connected items with edge types (traces_to, implements, tested_by, documented_in, realized_in)
+- Modes: incoming (what links to this), outgoing (what this links to), bidirectional (both)
+- Uses: petgraph traversal on in-memory graph
+- Performance: <5ms (graph already in memory)
+
+query_graph_path:
+
+- Purpose: Find how two items are connected
+- Input: source_id, target_id
+- Returns: Shortest path with intermediate nodes and edge types
+- Algorithm: Bidirectional BFS (faster than single-direction)
+- Example: "How is REQ-001 connected to src/auth.py?" → REQ-001 → ARCH-003 → SPEC-002 → src/auth.py
+- Performance: <10ms (petgraph BFS)
+
+Agent Usage Philosophy:
+
+Agent uses natural language chat as the unified search interface:
+- User: "Find all authentication requirements"
+  Agent: Calls search_requirements("authentication")
+- User: "Show me architecture decisions about database"
+  Agent: Calls search_architecture("database")
+- User: "What code implements REQ-AUTH-001?"
+  Agent: Calls query_traceability("REQ-AUTH-001", mode=outgoing) → filters to realized_in edges
+- User: "Is there a spec for the login feature?"
+  Agent: Calls search_specifications("login")
+- User: "Find orphaned requirements"
+  Agent: Calls find_unlinked_items(type="requirement")
+
+No separate search UI needed - chat IS the search interface. Agent intelligently selects appropriate primitives based on user intent.
 
 ##### 3.1.4.1 YDocBlockEditor - Advanced UI Component
 
@@ -4280,12 +4406,28 @@ Code Intelligence:
 | get_definition     | Jump to definition                             | MCP/Builtin       |
 | get_scope          | Get scope context for a position               | Builtin           |
 | get_diagnostics    | Syntax errors, warnings                        | Builtin           |
-| semantic_search    | Search code by meaning                         | Builtin           |
+| semantic_search    | Search code by meaning (embeddings)            | Builtin           |
 | get_call_hierarchy | Incoming/outgoing calls                        | Builtin           |
 | get_type_hierarchy | Class inheritance chains                       | MCP/Builtin       |
 | hover_info         | Get documentation for symbol                   | LSP (Editor-only) |
 
 Note: Tree-sitter is primary for code intelligence (Builtin). MCP fallback via Pylance/rust-analyzer for advanced features. LSP is for editor UI only, not exposed to agent.
+
+Documentation & Knowledge Search:
+
+| Tool                     | Purpose                                                | Protocol |
+| ------------------------ | ------------------------------------------------------ | -------- |
+| search_ydoc_blocks       | Search YDoc blocks (keyword + semantic)                | Builtin  |
+| search_architecture      | Search architecture documents and decisions            | Builtin  |
+| search_requirements      | Search requirement blocks                              | Builtin  |
+| search_specifications    | Search specification blocks                            | Builtin  |
+| query_traceability       | Find traceability links between items                  | Builtin  |
+| query_graph_path         | Find connection path between two items                 | Builtin  |
+| find_unlinked_items      | Find blocks/code not linked in traceability graph      | Builtin  |
+| get_block_dependencies   | Get all items a block traces to/implements/tests       | Builtin  |
+| get_block_dependents     | Get all items that reference this block                | Builtin  |
+
+Note: All YDoc searches use SQLite FTS5 (keyword) + HNSW embeddings (semantic). Traceability queries use petgraph traversal. Agent uses natural language chat to invoke these - no separate search UI needed.
 
 Test & Validation:
 
@@ -4515,13 +4657,16 @@ Note: MCP primary via @modelcontextprotocol/server-git. Builtin fallback via git
 
 YDoc Operations:
 
-| Tool                 | Purpose                      | Protocol |
-| -------------------- | ---------------------------- | -------- |
-| create_ydoc_document | Create new YDoc document     | Builtin  |
-| create_ydoc_block    | Create new block in document | Builtin  |
-| update_ydoc_block    | Update existing block        | Builtin  |
-| link_ydoc_to_code    | Create graph edge doc → code | Builtin  |
-| search_ydoc_blocks   | Search documentation blocks  | Builtin  |
+| Tool                 | Purpose                           | Protocol |
+| -------------------- | --------------------------------- | -------- |
+| create_ydoc_document | Create new YDoc document          | Builtin  |
+| create_ydoc_block    | Create new block in document      | Builtin  |
+| update_ydoc_block    | Update existing block             | Builtin  |
+| delete_ydoc_block    | Delete block from document        | Builtin  |
+| link_ydoc_to_code    | Create graph edge doc → code      | Builtin  |
+| link_ydoc_to_ydoc    | Create graph edge between blocks  | Builtin  |
+
+Note: YDoc write operations are in ACT layer. Search operations (search_ydoc_blocks, query_traceability, etc.) are in PERCEIVE layer under "Documentation & Knowledge Search".
 
 Terminal & Shell Execution:
 
@@ -4825,33 +4970,34 @@ The Six State Machines:
 2B. Test Execution State Machine (MVP)
 
 1. Responsibility: Execute tests with comprehensive validation and debugging feedback
-2. Key States: EnvironmentSetup → FlakeDetectionSetup → UnitTesting → IntegrationTesting → BrowserTesting → PropertyBasedTesting → ExecutionTraceAnalysis → FlakeDetectionAnalysis → CoverageAnalysis → SemanticCorrectnessVerification → ErrorClassification → FixingIssues → TestCodeCoEvolutionCheck → Complete/Failed
+2. Key States: EnvironmentSetup → FlakeDetectionSetup → UnitTesting → IntegrationTesting → BrowserTesting → PropertyBasedTesting → ProactiveTestMonitoring → ExecutionTraceAnalysis → FlakeDetectionAnalysis → CoverageAnalysis → SemanticCorrectnessVerification → ErrorClassification → FixingIssues → TestCodeCoEvolutionCheck → Complete/Failed
 3. Entry: Test suite from Test Intelligence machine + generated code
 4. Exit: Test results + coverage report + execution traces
 5. Auto-Trigger: Yes (runs after Test Intelligence completes)
-6. Total States: 14 sequential states
-7. Deployment State Machine (MVP - Railway Focus)
-8. Responsibility: Deploy validated code to Railway.app
-9. Key States: PackageBuilding → ConfigGeneration → RailwayUpload → FixingIssues → HealthCheck → RollbackOnFailure → Complete/Failed
-10. Entry: Code + passing tests
-11. Exit: Live Railway URL + health status
-12. Auto-Trigger: No (requires user approval)
-13. Total States: 7 (6 sequential + FixingIssues handles pre-deployment errors, RollbackOnFailure handles post-deployment)
-14. Maintenance State Machine (Post-MVP)
-15. Responsibility: Monitor production, detect issues, auto-fix, deploy patches
-16. Key States: LiveMonitoring → BrowserValidation → ErrorAnalysis → IssueDetection → AutoFixGeneration → FixValidation → CICDPipeline → VerificationCheck → LearningUpdate → Active/Incident
-17. Entry: Deployed application in production
-18. Exit: Incident resolved or escalated
-19. Auto-Trigger: Yes (automatic based on error detection)
-20. Philosophy: Self-healing production systems
-21. Total States: 11 total (9 sequential states + 2 runtime states: Active and Incident)
-22. Documentation Governance State Machine (NEW - 6th Machine, Post-MVP)
-23. Responsibility: Maintain accurate, traced documentation throughout development lifecycle
-24. Key States: DocumentationAnalysis → BlockIdentification → ContentGeneration → GraphLinking → ConflictDetection → UserClarification → ConflictResolution → Validation → Complete
-25. Runs: In parallel with all other machines
-26. Integration: Hooks in each existing machine (CodeGen, Testing, Deploy, Maintenance)
-27. Philosophy: Documentation never drifts, full traceability maintained
-28. Total States: 9 sequential states
+6. Total States: 15 sequential states (updated to include ProactiveTestMonitoring)
+7. Critical Enhancement: Continuous polling of test status (every 5s), proactive timeout enforcement, agent stops stuck tests before full timeout
+8. Deployment State Machine (MVP - Railway Focus)
+9. Responsibility: Deploy validated code to Railway.app
+10. Key States: PackageBuilding → ConfigGeneration → RailwayUpload → FixingIssues → HealthCheck → RollbackOnFailure → Complete/Failed
+11. Entry: Code + passing tests
+12. Exit: Live Railway URL + health status
+13. Auto-Trigger: No (requires user approval)
+14. Total States: 7 (6 sequential + FixingIssues handles pre-deployment errors, RollbackOnFailure handles post-deployment)
+15. Maintenance State Machine (Post-MVP)
+16. Responsibility: Monitor production, detect issues, auto-fix, deploy patches
+17. Key States: LiveMonitoring → BrowserValidation → ErrorAnalysis → IssueDetection → AutoFixGeneration → FixValidation → CICDPipeline → VerificationCheck → LearningUpdate → Active/Incident
+18. Entry: Deployed application in production
+19. Exit: Incident resolved or escalated
+20. Auto-Trigger: Yes (automatic based on error detection)
+21. Philosophy: Self-healing production systems
+22. Total States: 11 total (9 sequential states + 2 runtime states: Active and Incident)
+23. Documentation Governance State Machine (NEW - 6th Machine, Post-MVP)
+24. Responsibility: Maintain accurate, traced documentation throughout development lifecycle
+25. Key States: DocumentationAnalysis → BlockIdentification → ContentGeneration → GraphLinking → ConflictDetection → UserClarification → ConflictResolution → Validation → Complete
+26. Runs: In parallel with all other machines
+27. Integration: Hooks in each existing machine (CodeGen, Testing, Deploy, Maintenance)
+28. Philosophy: Documentation never drifts, full traceability maintained
+29. Total States: 9 sequential states
 
 #### 3.4.2.1 Code Generation State Machine (MVP)
 
@@ -5584,9 +5730,9 @@ Exit Point: Test results + coverage report + execution traces + learning data
 
 Trigger: Automatically after Test Intelligence completes
 
-Success Criteria: 100% stable tests pass (flaky tests quarantined), Coverage >80%, Semantic correctness verified, No critical errors
+Success Criteria: 100% stable tests pass (flaky tests quarantined), Coverage >80%, Semantic correctness verified, No critical errors, No tests exceed timeout thresholds
 
-State Count: 13 states (MVP)
+State Count: 14 states (MVP) - Updated to include ProactiveTestMonitoring
 
 States:
 
@@ -5597,75 +5743,87 @@ Phase 1: Environment & Execution Preparation
 3. Performance Target: 10-20s (with parallel pip/npm install)
 4. FlakeDetectionSetup: Configure flaky test detection infrastructure (MVP - Critical)
 5. Purpose: Prevent non-deterministic tests from blocking autonomous loop
-6. Configuration: Set retry count (default: 3 runs per test), configure timeout thresholds, setup flake detection storage (SQLite)
-7. Performance Target: <500ms (configuration)
+6. Configuration: Set retry count (default: 3 runs per test), configure timeout thresholds (per-test timeout: 30s unit tests, 120s integration tests, 180s E2E tests), configure polling interval for background test monitoring (default: 5s), setup flake detection storage (SQLite)
+7. Timeout Enforcement (NEW): Each test type has a maximum execution time limit, agent proactively monitors test execution progress, if test exceeds expected duration by 2x → agent stops test execution, agent initiates troubleshooting: analyze what test was doing when stopped, check for infinite loops or blocking operations, review test logs for hanging operations, generate diagnostic report for user
+8. Performance Target: <500ms (configuration)
 
 Phase 2: Test Execution with Instrumentation
 
 3. UnitTesting: Run pytest/jest for function-level tests with execution tracing
 4. Execution: Run tests with coverage instrumentation, capture execution traces for failures (variable states, call stacks), run each test N times for flake detection
-5. Parallel Processing: Run test files in parallel (pytest -n auto, jest --maxWorkers), execute independent test suites simultaneously, Performance: N test files × 5s = 5N sequential → ~N/4 parallel (4 workers)
-6. Instrumentation: Python sys.settrace(), JavaScript source maps
-7. Performance Target: <30s (parallel execution with 4+ workers)
-8. IntegrationTesting: Test API integrations and data flows with contract verification
-9. Execution: Test API endpoints with contract validation (OpenAPI/Pact), database integration tests, external service mocking
-10. Parallel Processing: Test multiple API endpoints simultaneously, parallel database connection tests, concurrent integration scenario execution
-11. Performance Target: 20-40s (with parallel API/DB testing)
-12. BrowserTesting: Playwright E2E tests for user workflows
-13. Execution: Launch browser via CDP, execute user scenarios (login, checkout, forms), verify UI elements and interactions, capture screenshots and console logs, monitor network requests
-14. Parallel Processing: Run tests in 2-3 browsers concurrently (Chrome, Firefox, Safari), execute independent user flows simultaneously
-15. Performance Target: 15-30s (parallel, 2-3 browsers)
-16. PropertyBasedTesting: Run hypothesis/fast-check for property tests
-17. Execution: Generate random inputs according to properties, verify invariants hold across all inputs, capture counterexamples if property violated
-18. Parallel Processing: Test multiple properties concurrently
-19. Performance Target: <20s (parallel property testing)
+5. Background Execution & Proactive Monitoring (NEW - Critical): Tests run as background processes to avoid blocking agent, agent polls test status continuously (not one-time): initial poll after 5s, then every 5s interval, checks: test progress (which tests completed, which are running), test output for errors or warnings, execution time vs expected duration, if test exceeds timeout threshold → stop test and troubleshoot, agent takes proactive action: analyzes partial results to detect patterns, stops hanging tests before full timeout expires, provides real-time feedback to user on test progress, adjusts strategy if tests failing consistently
+6. Parallel Processing: Run test files in parallel (pytest -n auto, jest --maxWorkers), execute independent test suites simultaneously, Performance: N test files × 5s = 5N sequential → ~N/4 parallel (4 workers)
+7. Instrumentation: Python sys.settrace(), JavaScript source maps
+8. Performance Target: <30s (parallel execution with 4+ workers)
+9. IntegrationTesting: Test API integrations and data flows with contract verification
+10. Execution: Test API endpoints with contract validation (OpenAPI/Pact), database integration tests, external service mocking
+11. Background Execution & Monitoring (NEW): Same proactive polling strategy as UnitTesting, extended timeout thresholds (120s per integration test), monitors network requests and database connections, stops tests on external service failures
+12. Parallel Processing: Test multiple API endpoints simultaneously, parallel database connection tests, concurrent integration scenario execution
+13. Performance Target: 20-40s (with parallel API/DB testing)
+14. BrowserTesting: Playwright E2E tests for user workflows
+15. Execution: Launch browser via CDP, execute user scenarios (login, checkout, forms), verify UI elements and interactions, capture screenshots and console logs, monitor network requests
+16. Background Execution & Monitoring (NEW): Proactive polling of browser test status (every 5s), monitors browser console for errors, tracks page load times and network timeouts, stops tests on browser crashes or unresponsive pages, maximum E2E test timeout: 180s per test
+17. Parallel Processing: Run tests in 2-3 browsers concurrently (Chrome, Firefox, Safari), execute independent user flows simultaneously
+18. Performance Target: 15-30s (parallel, 2-3 browsers)
+19. PropertyBasedTesting: Run hypothesis/fast-check for property tests
+20. Execution: Generate random inputs according to properties, verify invariants hold across all inputs, capture counterexamples if property violated
+21. Background Execution & Monitoring (NEW): Polls property test progress, monitors for infinite loops in property generation, stops tests exceeding timeout, tracks counterexample discovery rate
+22. Parallel Processing: Test multiple properties concurrently
+23. Performance Target: <20s (parallel property testing)
+24. ProactiveTestMonitoring: Continuous monitoring and intervention during test execution (NEW - Critical)
+25. Purpose: Prevent agent from waiting indefinitely on stuck tests, provide real-time feedback
+26. Monitoring Strategy: Background polling loop running parallel to test execution (every 5s interval), not just one-time check after completion, continuously tracks: test execution progress (percentage complete), current test being executed, time elapsed per test, test output stream (stdout/stderr), resource usage (CPU, memory) if available
+27. Proactive Actions: If test exceeds 2x expected duration → stop test immediately and analyze, if test produces no output for >30s → flag as potentially stuck, if error patterns detected in output → stop remaining tests in suite, if resource exhaustion detected → stop and report, provide real-time status updates to UI (test X of Y running, Z seconds elapsed)
+28. Troubleshooting on Timeout: Capture test state at moment of timeout (stack trace, variables), analyze test code for common hang patterns (infinite loops, blocking I/O, deadlocks), check for external dependencies that may be unresponsive, generate diagnostic report with recommendations (fix test logic, increase timeout, mock external service)
+29. Escalation: After stopping stuck test, mark as TIMEOUT failure, include full diagnostic context, continue with remaining tests (don't block entire suite), present clear error report to user with actionable next steps
+30. Performance Target: <100ms per poll cycle, minimal overhead on test execution
 
 Phase 3: Analysis & Debugging
 
-7. ExecutionTraceAnalysis: Analyze execution traces for failures
-8. Purpose: Provide actionable debugging information
-9. Analysis: Variable states at failure point, call stack leading to failure, input values that caused failure, comparison with successful runs
-10. Outputs: Detailed failure reports with traces
-11. Performance Target: <2s
-12. FlakeDetectionAnalysis: Identify and quarantine flaky tests (MVP - Critical)
-13. Purpose: Prevent flaky tests from blocking deployment
-14. Process: Analyze test runs across N attempts (default: 3), identify tests with inconsistent results (pass sometimes, fail sometimes), calculate flakiness score (0.0-1.0), quarantine tests with flakiness score >0.3
-15. Quarantine Action: Mark test as flaky in database, exclude from pass/fail criteria (don't block deployment), report flaky tests to user for investigation, allow manual override to include/exclude
-16. Outputs: Flaky test list, flakiness scores, quarantine decisions
-17. Performance Target: <5s (3 runs, parallel execution)
-18. CoverageAnalysis: Check code coverage metrics
-19. Metrics: Line coverage, branch coverage, function coverage
-20. Target: >80% coverage
-21. Outputs: Coverage report, uncovered lines/branches
-22. Performance Target: <3s
-23. SemanticCorrectnessVerification: Verify tests match intent (MVP - Critical)
-24. Purpose: Detect tests that pass but don't actually verify correct behavior
-25. Technique: Compare test assertions with extracted specifications, verify all specified behaviors have tests, detect tautological assertions (always true), check for meaningless assertions
-26. Outputs: Semantic correctness score, meaningless test warnings
-27. Performance Target: <5s
+8. ExecutionTraceAnalysis: Analyze execution traces for failures
+9. Purpose: Provide actionable debugging information
+10. Analysis: Variable states at failure point, call stack leading to failure, input values that caused failure, comparison with successful runs
+11. Outputs: Detailed failure reports with traces
+12. Performance Target: <2s
+13. FlakeDetectionAnalysis: Identify and quarantine flaky tests (MVP - Critical)
+14. Purpose: Prevent flaky tests from blocking deployment
+15. Process: Analyze test runs across N attempts (default: 3), identify tests with inconsistent results (pass sometimes, fail sometimes), calculate flakiness score (0.0-1.0), quarantine tests with flakiness score >0.3
+16. Quarantine Action: Mark test as flaky in database, exclude from pass/fail criteria (don't block deployment), report flaky tests to user for investigation, allow manual override to include/exclude
+17. Outputs: Flaky test list, flakiness scores, quarantine decisions
+18. Performance Target: <5s (3 runs, parallel execution)
+19. CoverageAnalysis: Check code coverage metrics
+20. Metrics: Line coverage, branch coverage, function coverage
+21. Target: >80% coverage
+22. Outputs: Coverage report, uncovered lines/branches
+23. Performance Target: <3s
+24. SemanticCorrectnessVerification: Verify tests match intent (MVP - Critical)
+25. Purpose: Detect tests that pass but don't actually verify correct behavior
+26. Technique: Compare test assertions with extracted specifications, verify all specified behaviors have tests, detect tautological assertions (always true), check for meaningless assertions
+27. Outputs: Semantic correctness score, meaningless test warnings
+28. Performance Target: <5s
 
 Phase 4: Error Handling & Recovery
 
-11. ErrorClassification: Classify test failures
-12. Categories: Code bug (logic error in implementation), Test bug (incorrect test), Environmental issue (setup problem), Flaky test (non-deterministic), Timeout (performance issue)
-13. Outputs: Classified failures, recommended actions
-14. Performance Target: <3s
-15. FixingIssues: Auto-retry with fixes if tests fail
-16. Process: Analyze failure type, retrieve known issue patterns from Yantra Codex, apply automatic fix if pattern recognized, if auto-fix fails request LLM to generate fix, validate fix and re-run tests
-17. Performance Target: <10s per retry
+12. ErrorClassification: Classify test failures
+13. Categories: Code bug (logic error in implementation), Test bug (incorrect test), Environmental issue (setup problem), Flaky test (non-deterministic), Timeout (performance issue)
+14. Outputs: Classified failures, recommended actions
+15. Performance Target: <3s
+16. FixingIssues: Auto-retry with fixes if tests fail
+17. Process: Analyze failure type, retrieve known issue patterns from Yantra Codex, apply automatic fix if pattern recognized, if auto-fix fails request LLM to generate fix, validate fix and re-run tests
+18. Performance Target: <10s per retry
 
 Phase 5: Co-Evolution Check
 
-13. TestCodeCoEvolutionCheck: Verify tests remain aligned with code (MVP)
-14. Purpose: Ensure tests haven't become stale after code changes
-15. Checks: Do tests still compile/run?, Do tests still match intent specifications?, Are assertions still appropriate for new implementation?
-16. Action: If stale, trigger TestUpdateGeneration in Test Intelligence machine
-17. Performance Target: <1s (GNN queries + static analysis)
+14. TestCodeCoEvolutionCheck: Verify tests remain aligned with code (MVP)
+15. Purpose: Ensure tests haven't become stale after code changes
+16. Checks: Do tests still compile/run?, Do tests still match intent specifications?, Are assertions still appropriate for new implementation?
+17. Action: If stale, trigger TestUpdateGeneration in Test Intelligence machine
+18. Performance Target: <1s (GNN queries + static analysis)
 
 Phase 6: Results & Reporting
 
-14. Complete: All tests pass with adequate coverage and semantic correctness
-15. Report: Test results, coverage metrics, mutation score, semantic correctness score, flaky tests quarantined
+15. Complete: All tests pass with adequate coverage and semantic correctness
+16. Report: Test results, coverage metrics, mutation score, semantic correctness score, flaky tests quarantined
 
 Failed: Tests failed after maximum retries
 
@@ -5677,7 +5835,9 @@ Testing Framework Integration & Workflow:
 
 Total Testing Framework Cycle: ~2.5 minutes (with parallel optimization)
 
-Task Tracking for Parallel Operations (MVP - Critical): When running multiple tasks in parallel, the system tracks: Task Registry (SQLite table tracking all active tasks), Context Preservation (each task maintains isolated context), Dependency Management (tasks track dependencies using GNN), Progress Monitoring (UI shows all parallel tasks with real-time updates), Failure Isolation (one task failure doesn't affect others), Context Recovery (if agent loses context, reload from task registry)
+Task Tracking for Parallel Operations (MVP - Critical): When running multiple tasks in parallel, the system tracks: Task Registry (SQLite table tracking all active tasks), Context Preservation (each task maintains isolated context), Dependency Management (tasks track dependencies using GNN), Progress Monitoring (UI shows all parallel tasks with real-time updates via continuous polling - not one-time check), Failure Isolation (one task failure doesn't affect others), Context Recovery (if agent loses context, reload from task registry)
+
+Continuous Test Monitoring (NEW - Critical): Tests execute as background processes while agent remains responsive, agent polls test status continuously (every 5s) - not just once at completion, polling checks: test progress, execution time, output for errors, resource usage, proactive intervention: stops tests exceeding timeout (2x expected duration), analyzes stuck tests and provides diagnostics, provides real-time UI updates on test status, enables agent to make strategic decisions during execution (stop early on critical failures)
 
 #### 3.4.2.3 Deployment State Machine (MVP - Railway Focus)
 

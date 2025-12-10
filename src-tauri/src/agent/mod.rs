@@ -47,6 +47,7 @@ pub mod database;
 pub mod http_client;
 pub mod file_editor;
 pub mod file_ops;
+pub mod file_transaction;
 pub mod command_classifier;
 pub mod status_emitter;
 pub mod api_manager;

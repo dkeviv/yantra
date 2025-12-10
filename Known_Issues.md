@@ -7,6 +7,132 @@
 
 ## Active Issues
 
+### Issue #15: Deadlock in Conversation Memory save_message()
+
+**Status:** ✅ RESOLVED  
+**Severity:** Critical (System Hang)  
+**Reported:** December 9, 2025  
+**Resolved:** December 9, 2025  
+**Component:** Backend / Conversation Memory
+
+#### Description
+
+The `save_message()` function in `conversation_memory.rs` caused a deadlock when saving messages, causing tests to hang indefinitely (60+ seconds timeout).
+
+**Symptoms:**
+
+- Tests `test_auto_title_generation`, `test_save_and_load_messages`, and `test_session_linking` would hang forever
+- No error messages - just infinite wait
+- Occurred when saving the first user message (auto-title generation path)
+
+**Impact:**
+
+- All conversation memory tests failed to complete
+- Would cause production hangs when users send first message in a conversation
+- Critical blocker for conversation memory feature
+
+#### Root Cause
+
+**Mutex Reentrance Deadlock**: The `save_message()` method held the database connection mutex while calling helper methods that tried to acquire the same mutex:
+
+```rust
+// BEFORE (BUGGY):
+let conn = self.conn.lock().unwrap();  // ← Lock acquired
+
+// ... database operations ...
+
+// Auto-generate title from first message
+if let Ok(count) = self.get_message_count(conversation_id) {  // ← Tries to lock AGAIN!
+    if count == 1 && role == MessageRole::User {
+        let _ = self.update_conversation_title(conversation_id, &title);  // ← Tries to lock AGAIN!
+    }
+}
+```
+
+Both `get_message_count()` and `update_conversation_title()` internally call `self.conn.lock().unwrap()`, but the lock was already held by the outer scope. Since Rust's `Mutex` is not re-entrant, this created a deadlock.
+
+#### Fix
+
+**Inline SQL Queries**: Replaced helper method calls with direct SQL queries within the same lock scope:
+
+```rust
+// AFTER (FIXED):
+{
+    let conn = self.conn.lock().unwrap();  // ← Single lock scope
+
+    // Insert message
+    conn.execute(...)?;
+
+    // Update conversation metadata
+    conn.execute(...)?;
+
+    // Auto-generate title - INLINE query (no second lock attempt)
+    let mut count_stmt = conn.prepare("SELECT COUNT(*) FROM messages WHERE conversation_id = ?1")?;
+    let count: i64 = count_stmt.query_row(params![conversation_id], |row| row.get(0))?;
+
+    if count == 1 && role == MessageRole::User {
+        let title = if content.len() > 50 {
+            format!("{}...", &content[..50])
+        } else {
+            content.clone()
+        };
+        conn.execute("UPDATE conversations SET title = ?1 WHERE id = ?2", params![title, conversation_id])?;
+    }
+} // ← Lock released here
+```
+
+**Key Changes:**
+
+1. All database operations now within single scoped block
+2. Inlined `get_message_count()` logic - direct SQL query
+3. Inlined `update_conversation_title()` logic - direct SQL query
+4. No nested lock attempts
+5. Explicit lock scope with braces for clarity
+
+#### Verification
+
+**Test Results - Before Fix:**
+
+```
+running 5 tests
+test conversation_memory::test_conversation_memory_creation ... ok
+test conversation_memory::test_create_and_load_conversation ... ok
+test conversation_memory::test_auto_title_generation has been running for over 60 seconds [HANG]
+test conversation_memory::test_save_and_load_messages has been running for over 60 seconds [HANG]
+test conversation_memory::test_session_linking has been running for over 60 seconds [HANG]
+```
+
+**Test Results - After Fix:**
+
+```
+running 5 tests
+test conversation_memory::test_auto_title_generation ... ok
+test conversation_memory::test_conversation_memory_creation ... ok
+test conversation_memory::test_create_and_load_conversation ... ok
+test conversation_memory::test_save_and_load_messages ... ok
+test conversation_memory::test_session_linking ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; finished in 0.02s
+```
+
+#### Prevention
+
+**Lessons Learned:**
+
+1. **Never call methods that acquire locks while holding a lock** - leads to deadlock with non-reentrant mutexes
+2. **Use lock scoping with braces** - makes lock lifetime explicit and visible
+3. **Inline critical-path code** - avoid helper methods when they would require nested locks
+4. **Test with sequential execution** - `--test-threads=1` makes deadlocks easier to reproduce
+5. **Monitor test execution time** - hanging tests indicate deadlock
+
+**Related Files:**
+
+- `src-tauri/src/agent/conversation_memory.rs` (lines 305-350)
+
+**Commit:** e4c7677
+
+---
+
 ### Issue #14: UI Design Violations - Non-Minimal Controls and Redundant Elements
 
 **Status:** ✅ RESOLVED  
